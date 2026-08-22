@@ -127,6 +127,31 @@ class CoreTests(unittest.TestCase):
         issues = validate_evidence(FIXTURE, profile, evidence, strict=True)
         self.assertTrue(any("not covered by permissions.writable" in item["message"] for item in issues))
 
+    def test_evidence_accepts_writable_symlink_alias(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / ".agents" / "skills"
+            target.mkdir(parents=True)
+            (root / ".claude").mkdir()
+            try:
+                (root / ".claude" / "skills").symlink_to(target, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"directory symlinks are unavailable: {exc}")
+
+            profile = {
+                "project": {"id": "symlink_fixture"},
+                "permissions": {"writable": [".claude/**"]},
+            }
+            evidence = {
+                "schema_version": 1,
+                "project": "symlink_fixture",
+                "task": "write through the Claude skills alias",
+                "changes": [".claude/skills/rtl-dv-kit/SKILL.md"],
+                "checks": [{"name": "inspect", "status": "passed", "command": ["inspect"]}],
+            }
+            issues = validate_evidence(root, profile, evidence, strict=True)
+            self.assertFalse(issues, issues)
+
     def test_command_confirmation_and_execution(self) -> None:
         _, profile = load_profile(FIXTURE)
         with self.assertRaises(KitError):

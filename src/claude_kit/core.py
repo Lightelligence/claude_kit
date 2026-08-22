@@ -517,6 +517,34 @@ def _relative_project_path(root: Path, value: Any, field: str) -> str | None:
     return path.relative_to(root.resolve()).as_posix()
 
 
+def _permission_path_variants(root: Path, value: Any, field: str) -> tuple[str, ...] | None:
+    """Return lexical and resolved paths for permission checks.
+
+    A project may expose the same integration tree through a symlink, for
+    example ``.claude/skills`` pointing at ``.agents/skills``.  The resolved
+    path is required for the containment check, while the lexical path is
+    required to honor the path the project owner explicitly allowed.
+    """
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        resolved = _project_path(root, value, field)
+    except KitError:
+        return None
+
+    project_root = root.resolve()
+    resolved_relative = resolved.relative_to(project_root).as_posix()
+    candidate = Path(value)
+    if candidate.is_absolute():
+        try:
+            lexical_relative = candidate.relative_to(project_root).as_posix()
+        except ValueError:
+            lexical_relative = resolved_relative
+    else:
+        lexical_relative = candidate.as_posix()
+    return tuple(dict.fromkeys((lexical_relative, resolved_relative)))
+
+
 def _permission_match(path: str, patterns: Iterable[str]) -> bool:
     normalized = path.replace("\\", "/")
     return any(fnmatch.fnmatch(normalized, pattern.replace("\\", "/")) for pattern in patterns)
@@ -601,13 +629,21 @@ def validate_evidence(root: Path, profile: dict[str, Any], evidence: dict[str, A
         else:
             add("error", f"changes[{index}] must be a path or object")
             continue
-        relative = _relative_project_path(root, path_value, f"changes[{index}]")
-        if relative is None:
+        variants = _permission_path_variants(root, path_value, f"changes[{index}]")
+        if variants is None:
             add("error", f"changes[{index}] path is not project-relative: {path_value}")
-        elif _permission_match(relative, forbidden) or _permission_match(relative, read_only):
-            add("error", f"changes[{index}] is outside the writable scope: {relative}")
-        elif writable_declared and not _permission_match(relative, writable):
-            add("warning", f"changes[{index}] is not covered by permissions.writable: {relative}")
+        else:
+            relative = variants[-1]
+            blocked = any(
+                _permission_match(candidate, patterns)
+                for candidate in variants
+                for patterns in (forbidden, read_only)
+            )
+            writable_match = any(_permission_match(candidate, writable) for candidate in variants)
+            if blocked:
+                add("error", f"changes[{index}] is outside the writable scope: {relative}")
+            elif writable_declared and not writable_match:
+                add("warning", f"changes[{index}] is not covered by permissions.writable: {relative}")
 
     for key in ("skipped", "risks"):
         value = evidence.get(key, [])
