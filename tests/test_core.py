@@ -198,7 +198,17 @@ class CoreTests(unittest.TestCase):
             self.assertEqual(result["functions"], ["resolve_target"])
             self.assertIn("resolve_target", result["signatures"])
 
+            adapter.write_text(
+                "def resolve_target(name):\n    return name\n\ndef project_check(name):\n    return name\n",
+                encoding="utf-8",
+            )
+            profile["adapter"]["required_functions"] = ["resolve_target", "project_check"]
+            custom = check_adapter(root, profile)
+            self.assertEqual(custom["status"], "passed", custom)
+            self.assertIn("project_check", custom["functions"])
+
             adapter.write_text("def resolve_target():\n    return 'bad'\n", encoding="utf-8")
+            profile["adapter"]["required_functions"] = ["resolve_target"]
             invalid = check_adapter(root, profile)
             self.assertEqual(invalid["status"], "failed", invalid)
             self.assertTrue(any("at least one argument" in item["message"] for item in invalid["issues"]))

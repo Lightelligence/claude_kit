@@ -801,7 +801,6 @@ def check_adapter(root: Path, profile: dict[str, Any]) -> dict[str, Any]:
     except (Exception, SystemExit) as exc:  # Adapter code is project-owned and may import project tooling.
         return {"status": "failed", "adapter": str(path.relative_to(root)), "functions": [], "signatures": {}, "issues": [{"level": "error", "message": f"Adapter import failed: {exc}"}]}
     expected = ("resolve_target", "resolve_test", "resolve_vip", "collect_artifacts")
-    provided = [name for name in expected if callable(getattr(module, name, None))]
     config = profile.get("adapter")
     required = config.get("required_functions", []) if isinstance(config, dict) else []
     issues: list[dict[str, str]] = []
@@ -809,6 +808,11 @@ def check_adapter(root: Path, profile: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(required, list) or not all(isinstance(name, str) and name for name in required):
         issues.append({"level": "error", "message": "adapter.required_functions must be a list of non-empty strings"})
         required = []
+    names_to_check = list(expected)
+    for name in required:
+        if name not in names_to_check:
+            names_to_check.append(name)
+    provided = [name for name in names_to_check if callable(getattr(module, name, None))]
     issues.extend({"level": "error", "message": f"Missing required adapter function: {name}"} for name in required if name not in provided)
     for name in provided:
         function = getattr(module, name)
