@@ -65,10 +65,40 @@ class CliTests(unittest.TestCase):
             self.assertIn("check APB", output.read_text(encoding="utf-8"))
             self.assertEqual(json.loads(manifest.read_text(encoding="utf-8"))["project"], "minimal_fixture")
 
+    def test_task_file_is_project_relative(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            shutil.copytree(FIXTURE, project)
+            task_file = project / "docs" / "task.md"
+            task_file.write_text("task from file", encoding="utf-8")
+            result = self.run_cli(
+                "context",
+                "--project-root", str(project),
+                "--task-file", str(task_file),
+                "--role", "reviewer",
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("task from file", result.stdout)
+
+            outside = Path(directory) / "outside.md"
+            outside.write_text("must not be read", encoding="utf-8")
+            rejected = self.run_cli(
+                "context",
+                "--project-root", str(project),
+                "--task-file", str(outside),
+            )
+            self.assertNotEqual(rejected.returncode, 0)
+            self.assertIn("escapes project root", rejected.stderr)
+
     def test_check_requires_confirmation(self) -> None:
         result = self.run_cli("check", "--project-root", str(FIXTURE), "confirmed")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("requires explicit confirmation", result.stderr)
+
+    def test_adapter_check_is_optional(self) -> None:
+        result = self.run_cli("adapter", "check", "--project-root", str(FIXTURE), "--json")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["status"], "skipped")
 
 
 if __name__ == "__main__":

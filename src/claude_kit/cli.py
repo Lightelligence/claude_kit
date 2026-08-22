@@ -9,6 +9,7 @@ from typing import Any
 from . import __version__
 from .core import (
     KitError,
+    check_adapter,
     doctor,
     evidence_template,
     find_project_root,
@@ -39,6 +40,17 @@ def _project_output(root: Path, value: Path) -> Path:
         path.relative_to(root.resolve())
     except ValueError as exc:
         raise KitError(f"Output path escapes project root: {value}") from exc
+    return path
+
+
+def _project_input(root: Path, value: Path, label: str) -> Path:
+    path = (value if value.is_absolute() else root / value).resolve()
+    try:
+        path.relative_to(root.resolve())
+    except ValueError as exc:
+        raise KitError(f"{label} escapes project root: {value}") from exc
+    if not path.is_file():
+        raise KitError(f"{label} does not exist: {value}")
     return path
 
 
@@ -108,6 +120,13 @@ def build_parser() -> argparse.ArgumentParser:
     check.add_argument("--confirm", action="store_true", help="Confirm commands marked confirmation=required")
     check.add_argument("--timeout", type=int, default=3600)
     check.set_defaults(handler=handle_check)
+
+    adapter = subparsers.add_parser("adapter", help="Validate the optional project adapter")
+    adapter_subparsers = adapter.add_subparsers(dest="adapter_command", required=True)
+    adapter_check = adapter_subparsers.add_parser("check", help="Import and inspect the adapter contract")
+    _add_project_options(adapter_check)
+    adapter_check.add_argument("--json", action="store_true", help="Print JSON")
+    adapter_check.set_defaults(handler=handle_adapter_check)
 
     mcp = subparsers.add_parser("mcp", help="Optional thin MCP bridge")
     mcp_subparsers = mcp.add_subparsers(dest="mcp_command", required=True)
@@ -179,7 +198,7 @@ def _context_inputs(args: argparse.Namespace) -> tuple[Path, Path, dict[str, Any
     profile_path, profile = load_profile(root, args.profile)
     task = args.task
     if getattr(args, "task_file", None):
-        task = args.task_file.read_text(encoding="utf-8")
+        task = _project_input(root, args.task_file, "Task file").read_text(encoding="utf-8")
     return root, profile_path, profile, task
 
 
@@ -230,6 +249,21 @@ def handle_check(args: argparse.Namespace) -> int:
     result = run_project_command(root, profile, args.name, args.confirm, args.timeout)
     _json_print(result)
     return 0 if result["status"] == "passed" else 1
+
+
+def handle_adapter_check(args: argparse.Namespace) -> int:
+    root = _root(args.project_root)
+    _, profile = load_profile(root, args.profile)
+    result = check_adapter(root, profile)
+    if args.json:
+        _json_print(result)
+    else:
+        print(f"status: {result['status']}")
+        print(f"adapter: {result.get('adapter') or '<none>'}")
+        print(f"functions: {', '.join(result['functions']) or '<none>'}")
+        for issue in result["issues"]:
+            print(f"{issue['level']}: {issue['message']}")
+    return 0 if result["status"] in ("passed", "skipped") else 1
 
 
 def handle_mcp(args: argparse.Namespace) -> int:

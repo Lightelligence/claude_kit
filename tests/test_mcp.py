@@ -52,6 +52,8 @@ class McpTests(unittest.TestCase):
             names = {tool["name"] for tool in tools}
             self.assertIn("resolve_context", names)
             self.assertNotIn("run_check", names)
+            evidence_tool = next(tool for tool in tools if tool["name"] == "review_evidence")
+            self.assertIn("strict", evidence_tool["inputSchema"]["properties"])
 
             process.stdin.write(frame({
                 "jsonrpc": "2.0",
@@ -64,6 +66,55 @@ class McpTests(unittest.TestCase):
             text = response["result"]["content"][0]["text"]
             self.assertNotIn("fixture-secret", text)
             self.assertIn("minimal_fixture", text)
+        finally:
+            process.terminate()
+            process.wait(timeout=5)
+            if process.stdin is not None:
+                process.stdin.close()
+            if process.stdout is not None:
+                process.stdout.close()
+            if process.stderr is not None:
+                process.stderr.close()
+
+    def test_exec_bridge_requires_confirmation(self) -> None:
+        process = subprocess.Popen(
+            [sys.executable, str(ENTRY), "mcp", "serve", "--project-root", str(FIXTURE), "--allow-exec"],
+            cwd=ROOT,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        assert process.stdin is not None
+        assert process.stdout is not None
+        try:
+            process.stdin.write(frame({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}))
+            process.stdin.flush()
+            read_frame(process.stdout)
+
+            process.stdin.write(frame({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}))
+            process.stdin.flush()
+            tools = read_frame(process.stdout)["result"]["tools"]
+            self.assertIn("run_check", {tool["name"] for tool in tools})
+
+            process.stdin.write(frame({
+                "jsonrpc": "2.0",
+                "id": 3,
+                "method": "tools/call",
+                "params": {"name": "run_check", "arguments": {"name": "inspect", "confirm": False}},
+            }))
+            process.stdin.flush()
+            denied = read_frame(process.stdout)
+            self.assertIn("confirm=true", denied["error"]["message"])
+
+            process.stdin.write(frame({
+                "jsonrpc": "2.0",
+                "id": 4,
+                "method": "tools/call",
+                "params": {"name": "run_check", "arguments": {"name": "inspect", "confirm": True}},
+            }))
+            process.stdin.flush()
+            allowed = read_frame(process.stdout)
+            self.assertIn('"status": "passed"', allowed["result"]["content"][0]["text"])
         finally:
             process.terminate()
             process.wait(timeout=5)

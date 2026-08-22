@@ -1,0 +1,7 @@
+{
+  "id": "protocols.spi",
+  "version": "1.0.0",
+  "kind": "protocol",
+  "summary": "SPI mode, chip-select and transfer guidance",
+  "entrypoints": ["overview.md"]
+}

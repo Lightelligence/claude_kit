@@ -11,8 +11,8 @@ claude_kit 把通用 RTL/DV roles、protocol/VIP packs、项目 profile、repo-l
 - profile 解析和校验，支持 TOML/JSON；
 - 项目根目录发现和路径权限检查；
 - context resolver 和可审计 manifest；
-- 9 个通用 RTL/DV roles；
-- common、AXI4、APB、Ethernet、PCIe、UCIe 和 generic VIP packs；
+- 9 个通用 RTL/DV roles，包括 waveform-debugger；
+- common、AXI4、APB、Ethernet、PCIe、UCIe、SPI、UART、JTAG、I2C、CHI 和 generic VIP packs；
 - repo-local CLI；
 - 只读 project inspect；
 - profile allowlist command runner；
@@ -470,6 +470,11 @@ Role 的共通流程：
 | protocols.ethernet | Ethernet framing、CRC、link state、backpressure 和 recovery |
 | protocols.pcie | PCIe LTSSM、TLP、completion、credit、error 和 recovery |
 | protocols.ucie | UCIe training、lane/width、flit、retry、flow control 和 recovery |
+| protocols.spi | SPI mode、chip-select、bit order、边沿时序和多 slave |
+| protocols.uart | UART baud、framing、parity、break 和 overrun |
+| protocols.jtag | JTAG TAP、IR/DR、IDCODE、BYPASS 和 reset |
+| protocols.i2c | I2C open-drain、START/STOP、ACK、stretch 和 arbitration |
+| protocols.chi | CHI channel、credit、ordering、snoop 和 coherency |
 | vip.generic | VIP 版本、连接、实例、时钟/复位和 smoke 检查 |
 
 Pack 只提供领域规则，不提供项目绝对路径、license、VIP class、library path 或 simulator 宏。项目 profile/adapter 负责这些差异。
@@ -507,6 +512,7 @@ claude-kit context
 claude-kit manifest
 claude-kit inspect
 claude-kit check
+claude-kit adapter check
 claude-kit evidence check
 claude-kit evidence template
 claude-kit mcp serve
@@ -574,6 +580,7 @@ claude-kit context \
 ~~~
 
 role 和 pack 可以重复多次。没有显式选择时，使用 profile 中的 defaults。
+`--task-file` 也可以提供任务说明；为避免越权读取，它必须位于 project root 内。
 
 ### manifest
 
@@ -628,7 +635,17 @@ claude-kit check lint --project-root . --confirm
 - confirmation 为 required 的命令必须带 --confirm；
 - argv 不经过 shell 拼接；
 - cwd 必须位于项目根目录内；
-- 输出包含状态、argv、cwd、退出码、stdout 和 stderr。
+- 输出包含状态、argv、cwd、退出码、stdout 和 stderr；超时或启动失败时会保留失败原因并返回空的退出码。
+
+### adapter check
+
+如果 profile 声明了可选 adapter，可以显式检查它的路径、导入和契约函数：
+
+~~~bash
+claude-kit adapter check --project-root . --json
+~~
+
+adapter check 会导入项目侧 Python adapter，但不会自动调用 resolve_target、resolve_test、resolve_vip 或 collect_artifacts。需要实际运行项目行为时，仍应通过 profile 的 allowlisted command 并保留 evidence。
 
 ### mcp serve
 

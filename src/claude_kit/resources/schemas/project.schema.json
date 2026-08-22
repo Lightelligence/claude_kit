@@ -20,6 +20,13 @@
     "roles": {"type": ["object", "array"]},
     "packs": {"type": "array", "items": {"type": "string"}},
     "build": {"type": "object"},
+    "adapter": {
+      "type": ["string", "object"],
+      "properties": {
+        "path": {"type": "string"},
+        "required_functions": {"type": "array", "items": {"type": "string"}}
+      }
+    },
     "vip": {"type": "object"},
     "permissions": {"type": "object"},
     "artifacts": {"type": "object"},

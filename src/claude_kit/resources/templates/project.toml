@@ -29,6 +29,11 @@ simulator = "project-configured"
 
 [vip]
 
+# Optional project adapter:
+# [adapter]
+# path = ".ai/adapter.py"
+# required_functions = ["resolve_target", "resolve_test"]
+
 [permissions]
 writable = ["rtl/**", "dv/**", "tb/**", "docs/**", ".ai/overrides/**"]
 read_only = ["third_party_vip/**", "generated/**", "out/**"]

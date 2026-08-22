@@ -1,0 +1,7 @@
+{
+  "id": "protocols.uart",
+  "version": "1.0.0",
+  "kind": "protocol",
+  "summary": "UART framing, timing and error guidance",
+  "entrypoints": ["overview.md"]
+}

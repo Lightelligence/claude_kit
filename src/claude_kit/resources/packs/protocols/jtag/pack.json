@@ -1,0 +1,7 @@
+{
+  "id": "protocols.jtag",
+  "version": "1.0.0",
+  "kind": "protocol",
+  "summary": "JTAG TAP, instruction/data register and reset guidance",
+  "entrypoints": ["overview.md"]
+}

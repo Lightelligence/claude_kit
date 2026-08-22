@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import fnmatch
 import hashlib
+import importlib.util
 import json
 import os
 import subprocess
@@ -54,6 +55,24 @@ def _load_document(path: Path) -> dict[str, Any]:
     return value
 
 
+def _project_path(root: Path, value: str | Path, label: str) -> Path:
+    """Resolve a path and reject escaping or symlinked-outside paths."""
+    if not isinstance(value, (str, Path)):
+        raise KitError(f"{label} must be a project-relative path")
+    if isinstance(value, str) and not value.strip():
+        raise KitError(f"{label} must not be empty")
+    project_root = root.resolve()
+    candidate = Path(value)
+    if ".." in candidate.parts:
+        raise KitError(f"{label} must stay inside the project root: {value}")
+    resolved = (candidate if candidate.is_absolute() else project_root / candidate).resolve()
+    try:
+        resolved.relative_to(project_root)
+    except ValueError as exc:
+        raise KitError(f"{label} resolves outside the project root: {value}") from exc
+    return resolved
+
+
 def find_project_root(start: Path | None = None) -> Path:
     candidate = (start or Path.cwd()).resolve()
     if candidate.is_file():
@@ -68,10 +87,7 @@ def find_project_root(start: Path | None = None) -> Path:
 
 def discover_profile(root: Path, explicit: str | Path | None = None) -> Path | None:
     if explicit:
-        path = Path(explicit)
-        if not path.is_absolute():
-            path = root / path
-        return path.resolve()
+        return _project_path(root, explicit, "profile")
     for name in PROFILE_NAMES:
         path = root / name
         if path.is_file():
@@ -105,7 +121,8 @@ def _patterns_overlap(left: str, right: str) -> bool:
 
 def _redact(value: Any, key: str = "") -> Any:
     lowered = key.lower()
-    if any(token in lowered for token in ("password", "secret", "token", "private_key", "credential")):
+    normalized = lowered.replace("_", "").replace("-", "")
+    if any(token in normalized for token in ("password", "secret", "token", "privatekey", "credential", "apikey", "accesskey")):
         return "<redacted>"
     if isinstance(value, dict):
         return {str(k): _redact(v, str(k)) for k, v in value.items()}
@@ -146,10 +163,12 @@ def validate_profile(root: Path, profile: dict[str, Any]) -> list[dict[str, str]
             add("error", f"roots.{group} must be a string or list of strings")
             continue
         for entry in entries:
-            path = Path(entry)
-            if path.is_absolute() or ".." in path.parts:
+            try:
+                path = _project_path(root, entry, f"roots.{group}")
+            except KitError:
                 add("error", f"roots.{group} escapes the project root: {entry}")
-            elif not (root / path).exists():
+                continue
+            if not path.exists():
                 add("warning", f"roots.{group} does not exist yet: {entry}")
 
     permissions = profile.get("permissions", {})
@@ -165,7 +184,7 @@ def validate_profile(root: Path, profile: dict[str, Any]) -> list[dict[str, str]
             permission_sets[name] = []
         for pattern in permission_sets[name]:
             normalized = pattern.replace("\\", "/")
-            if normalized.startswith("/") or ":" in normalized[:3] or ".." in Path(normalized).parts:
+            if not normalized.strip() or normalized.startswith("/") or ":" in normalized[:3] or ".." in Path(normalized).parts:
                 add("error", f"permissions.{name} is not project-relative: {pattern}")
 
     for left_name, right_name in (("writable", "read_only"), ("writable", "forbidden"), ("read_only", "forbidden")):
@@ -175,11 +194,11 @@ def validate_profile(root: Path, profile: dict[str, Any]) -> list[dict[str, str]
                     add("error", f"permissions overlap: {left_name}:{left} and {right_name}:{right}")
 
     build = profile.get("build", {})
-    if build and not isinstance(build, dict):
+    if not isinstance(build, dict):
         add("error", "build must be an object")
         build = {}
     commands = build.get("commands", {}) if isinstance(build, dict) else {}
-    if commands and not isinstance(commands, dict):
+    if not isinstance(commands, dict):
         add("error", "build.commands must be an object")
         commands = {}
     for name, command in commands.items():
@@ -190,15 +209,58 @@ def validate_profile(root: Path, profile: dict[str, Any]) -> list[dict[str, str]
         if not isinstance(argv, list) or not argv or not all(isinstance(item, str) and item for item in argv):
             add("error", f"build.commands.{name}.argv must be a non-empty list of strings")
         cwd = command.get("cwd", ".")
-        if not isinstance(cwd, str) or Path(cwd).is_absolute() or ".." in Path(cwd).parts:
+        if not isinstance(cwd, str):
             add("error", f"build.commands.{name}.cwd must stay inside the project root")
+        else:
+            try:
+                _project_path(root, cwd, f"build.commands.{name}.cwd")
+            except KitError:
+                add("error", f"build.commands.{name}.cwd must stay inside the project root")
+        confirmation = command.get("confirmation")
+        if confirmation is not None and confirmation not in ("required", "optional"):
+            add("error", f"build.commands.{name}.confirmation must be required or optional")
 
     roles = profile.get("roles", {})
-    if roles and not isinstance(roles, (dict, list)):
+    if not isinstance(roles, (dict, list)):
         add("error", "roles must be an object or list")
+        roles = {}
+    try:
+        role_defaults = roles.get("defaults", []) if isinstance(roles, dict) else roles
+        role_ids = _as_list(role_defaults)
+    except KitError:
+        add("error", "roles.defaults must be a string or list of strings")
+        role_ids = []
+    known_roles = {item["id"] for item in role_catalog()}
+    for identifier in role_ids:
+        if identifier not in known_roles:
+            add("error", f"Unknown role in profile defaults: {identifier}")
+
     packs = profile.get("packs", [])
-    if packs and not isinstance(packs, list):
+    if not isinstance(packs, list) or not all(isinstance(item, str) and item for item in packs):
         add("error", "packs must be a list")
+        packs = []
+    known_packs = {item["id"] for item in pack_catalog()}
+    for identifier in packs:
+        if identifier not in known_packs:
+            add("error", f"Unknown pack in profile: {identifier}")
+
+    if "adapter" in profile:
+        adapter = profile.get("adapter")
+        if not isinstance(adapter, (str, dict)) or (isinstance(adapter, str) and not adapter.strip()):
+            add("error", "adapter must be a non-empty path or object")
+        else:
+            adapter_value = adapter if isinstance(adapter, str) else adapter.get("path")
+            if not isinstance(adapter_value, str) or not adapter_value.strip():
+                add("error", "adapter.path is required")
+            else:
+                try:
+                    _project_path(root, adapter_value, "adapter.path")
+                except KitError:
+                    add("error", f"adapter.path escapes the project root: {adapter_value}")
+            if isinstance(adapter, dict):
+                required = adapter.get("required_functions", [])
+                if not isinstance(required, list) or not all(isinstance(item, str) and item for item in required):
+                    add("error", "adapter.required_functions must be a list of non-empty strings")
 
     return issues
 
@@ -304,10 +366,12 @@ def resolve_context(
     packs: list[str] | None,
     task: str,
 ) -> tuple[str, dict[str, Any]]:
+    if not isinstance(task, str):
+        raise KitError("task must be a string")
     role_config = profile.get("roles", {})
     defaults = role_config.get("defaults", []) if isinstance(role_config, dict) else role_config
-    role_ids = roles or _as_list(defaults)
-    pack_ids = packs or _as_list(profile.get("packs", []))
+    role_ids = _as_list(roles) if roles is not None else _as_list(defaults)
+    pack_ids = _as_list(packs) if packs is not None else _as_list(profile.get("packs", []))
     resources = resource_root()
     sources: list[dict[str, str]] = []
     sections: list[str] = []
@@ -379,12 +443,13 @@ def resolve_context(
 
 
 def inspect_project(root: Path, profile: dict[str, Any] | None = None) -> dict[str, Any]:
+    root = root.resolve()
     groups = profile.get("roots", {}) if isinstance(profile, dict) else {}
     paths: list[tuple[str, Path]] = []
     if isinstance(groups, dict):
         for name, values in groups.items():
             for value in _as_list(values):
-                paths.append((name, root / value))
+                paths.append((name, _project_path(root, value, f"roots.{name}")))
     if not paths:
         paths = [("project", root)]
     counts: dict[str, dict[str, Any]] = {}
@@ -416,17 +481,20 @@ def inspect_project(root: Path, profile: dict[str, Any] | None = None) -> dict[s
 
 
 def read_artifact(root: Path, relative_path: str, max_bytes: int = 100_000) -> dict[str, Any]:
-    path = (root / relative_path).resolve()
-    try:
-        path.relative_to(root.resolve())
-    except ValueError as exc:
-        raise KitError(f"Artifact path escapes project root: {relative_path}") from exc
+    if isinstance(max_bytes, bool) or not isinstance(max_bytes, int) or max_bytes < 0:
+        raise KitError("max_bytes must be a non-negative integer")
+    path = _project_path(root, relative_path, "artifact path")
     if not path.is_file():
         raise KitError(f"Artifact does not exist: {relative_path}")
     data = path.read_bytes()
     truncated = len(data) > max_bytes
     text = data[:max_bytes].decode("utf-8", errors="replace")
-    return {"path": relative_path, "bytes": len(data), "truncated": truncated, "text": text}
+    return {
+        "path": path.relative_to(root.resolve()).as_posix(),
+        "bytes": len(data),
+        "truncated": truncated,
+        "text": text,
+    }
 
 
 EVIDENCE_STATUSES = {"passed", "failed", "blocked", "skipped", "unknown"}
@@ -435,10 +503,11 @@ EVIDENCE_STATUSES = {"passed", "failed", "blocked", "skipped", "unknown"}
 def _relative_project_path(root: Path, value: Any, field: str) -> str | None:
     if not isinstance(value, str) or not value:
         return None
-    path = Path(value)
-    if path.is_absolute() or ".." in path.parts:
+    try:
+        path = _project_path(root, value, field)
+    except KitError:
         return None
-    return path.as_posix()
+    return path.relative_to(root.resolve()).as_posix()
 
 
 def _permission_match(path: str, patterns: Iterable[str]) -> bool:
@@ -466,7 +535,11 @@ def validate_evidence(root: Path, profile: dict[str, Any], evidence: dict[str, A
     if not isinstance(checks, list):
         add("error", "checks must be a list")
         checks = []
-    require_evidence = bool(profile.get("policies", {}).get("require_evidence", False))
+    policies = profile.get("policies", {})
+    if not isinstance(policies, dict):
+        add("error", "policies must be an object")
+        policies = {}
+    require_evidence = bool(policies.get("require_evidence", False))
     if require_evidence and not checks:
         add("error", "checks must contain at least one check when policies.require_evidence is true")
 
@@ -499,10 +572,15 @@ def validate_evidence(root: Path, profile: dict[str, Any], evidence: dict[str, A
 
     permissions = profile.get("permissions", {})
     if not isinstance(permissions, dict):
+        add("error", "permissions must be an object")
         permissions = {}
-    writable = _as_list(permissions.get("writable", []))
-    read_only = _as_list(permissions.get("read_only", []))
-    forbidden = _as_list(permissions.get("forbidden", []))
+    try:
+        writable = _as_list(permissions.get("writable", []))
+        read_only = _as_list(permissions.get("read_only", []))
+        forbidden = _as_list(permissions.get("forbidden", []))
+    except KitError as exc:
+        add("error", f"permissions are invalid: {exc}")
+        writable, read_only, forbidden = [], [], []
     changes = evidence.get("changes", [])
     if not isinstance(changes, list):
         add("error", "changes must be a list")
@@ -557,6 +635,14 @@ def evidence_template() -> str:
     return (resource_root() / "templates" / "evidence.json").read_text(encoding="utf-8")
 
 
+def _process_output(value: str | bytes | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return str(value)
+
+
 def run_project_command(
     root: Path,
     profile: dict[str, Any],
@@ -564,37 +650,65 @@ def run_project_command(
     confirm: bool = False,
     timeout: int = 3600,
 ) -> dict[str, Any]:
+    if not isinstance(name, str) or not name:
+        raise KitError("Command name must be a non-empty string")
+    if isinstance(timeout, bool) or not isinstance(timeout, int) or timeout <= 0:
+        raise KitError("timeout must be a positive integer")
+    root = root.resolve()
     build = profile.get("build", {})
     commands = build.get("commands", {}) if isinstance(build, dict) else {}
     command = commands.get(name) if isinstance(commands, dict) else None
     if not isinstance(command, dict):
         raise KitError(f"Command is not declared in build.commands: {name}")
     argv = command.get("argv")
-    if not isinstance(argv, list) or not argv or not all(isinstance(item, str) for item in argv):
+    if not isinstance(argv, list) or not argv or not all(isinstance(item, str) and item for item in argv):
         raise KitError(f"Invalid argv for command: {name}")
-    if command.get("confirmation") == "required" and not confirm:
+    confirmation = command.get("confirmation")
+    if confirmation not in (None, "required", "optional"):
+        raise KitError(f"Invalid confirmation policy for command: {name}")
+    if confirmation == "required" and not confirm:
         raise KitError(f"Command {name} requires explicit confirmation (--confirm)")
     cwd_value = command.get("cwd", ".")
-    cwd = (root / cwd_value).resolve()
-    try:
-        cwd.relative_to(root.resolve())
-    except ValueError as exc:
-        raise KitError(f"Command cwd escapes project root: {cwd_value}") from exc
+    cwd = _project_path(root, cwd_value, f"Command cwd for {name}")
     if not cwd.is_dir():
         raise KitError(f"Command cwd does not exist: {cwd_value}")
-    completed = subprocess.run(
-        argv,
-        cwd=cwd,
-        text=True,
-        capture_output=True,
-        timeout=timeout,
-        check=False,
-    )
+    try:
+        completed = subprocess.run(
+            argv,
+            cwd=cwd,
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        return {
+            "status": "failed",
+            "command": name,
+            "argv": argv,
+            "cwd": cwd.relative_to(root).as_posix(),
+            "returncode": None,
+            "stdout": _process_output(exc.stdout),
+            "stderr": _process_output(exc.stderr),
+            "timed_out": True,
+            "timeout": timeout,
+        }
+    except OSError as exc:
+        return {
+            "status": "failed",
+            "command": name,
+            "argv": argv,
+            "cwd": cwd.relative_to(root).as_posix(),
+            "returncode": None,
+            "stdout": "",
+            "stderr": str(exc),
+            "launch_error": True,
+        }
     return {
         "status": "passed" if completed.returncode == 0 else "failed",
         "command": name,
         "argv": argv,
-        "cwd": str(cwd.relative_to(root)),
+        "cwd": cwd.relative_to(root).as_posix(),
         "returncode": completed.returncode,
         "stdout": completed.stdout,
         "stderr": completed.stderr,
@@ -625,6 +739,55 @@ This project uses the reusable RTL/DV Claude kit.
 The kit's shared role and protocol guidance is available under:
 {kit_path}/src/claude_kit/resources/
 """
+
+
+def adapter_path(root: Path, profile: dict[str, Any]) -> Path | None:
+    if "adapter" not in profile:
+        return None
+    config = profile["adapter"]
+    if isinstance(config, str):
+        value = config
+    elif isinstance(config, dict):
+        value = config.get("path")
+    else:
+        raise KitError("adapter must be a path or object with path")
+    if not isinstance(value, str) or not value.strip():
+        raise KitError("adapter.path is required")
+    return _project_path(root, value, "adapter.path")
+
+
+def check_adapter(root: Path, profile: dict[str, Any]) -> dict[str, Any]:
+    root = root.resolve()
+    path = adapter_path(root, profile)
+    if path is None:
+        return {"status": "skipped", "adapter": None, "functions": [], "issues": [{"level": "info", "message": "No adapter configured"}]}
+    if not path.is_file():
+        return {"status": "failed", "adapter": str(path.relative_to(root)), "functions": [], "issues": [{"level": "error", "message": "Adapter file does not exist"}]}
+    spec = importlib.util.spec_from_file_location("claude_kit_project_adapter", path)
+    if spec is None or spec.loader is None:
+        return {"status": "failed", "adapter": str(path.relative_to(root)), "functions": [], "issues": [{"level": "error", "message": "Cannot load adapter module"}]}
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except (Exception, SystemExit) as exc:  # Adapter code is project-owned and may import project tooling.
+        return {"status": "failed", "adapter": str(path.relative_to(root)), "functions": [], "issues": [{"level": "error", "message": f"Adapter import failed: {exc}"}]}
+    expected = ("resolve_target", "resolve_test", "resolve_vip", "collect_artifacts")
+    provided = [name for name in expected if callable(getattr(module, name, None))]
+    config = profile.get("adapter")
+    required = config.get("required_functions", []) if isinstance(config, dict) else []
+    issues: list[dict[str, str]] = []
+    if not isinstance(required, list) or not all(isinstance(name, str) and name for name in required):
+        issues.append({"level": "error", "message": "adapter.required_functions must be a list of non-empty strings"})
+        required = []
+    issues.extend({"level": "error", "message": f"Missing required adapter function: {name}"} for name in required if name not in provided)
+    if not provided:
+        issues.append({"level": "warning", "message": "Adapter imports but provides no known contract functions"})
+    return {
+        "status": "failed" if any(item["level"] == "error" for item in issues) else "passed",
+        "adapter": str(path.relative_to(root)),
+        "functions": provided,
+        "issues": issues,
+    }
 
 
 def integration_skill() -> str:

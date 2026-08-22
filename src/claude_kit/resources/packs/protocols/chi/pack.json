@@ -1,0 +1,7 @@
+{
+  "id": "protocols.chi",
+  "version": "1.0.0",
+  "kind": "protocol",
+  "summary": "CHI channel, credit, ordering and coherency guidance",
+  "entrypoints": ["overview.md"]
+}

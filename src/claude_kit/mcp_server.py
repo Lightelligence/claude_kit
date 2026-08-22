@@ -11,12 +11,12 @@ from .core import (
     inspect_project,
     load_profile,
     pack_catalog,
-    read_artifact,
     redact_profile,
     review_evidence_file,
     resolve_context,
     role_catalog,
     run_project_command,
+    validate_profile,
 )
 
 
@@ -85,11 +85,14 @@ def _tool_definitions(allow_exec: bool) -> list[dict[str, Any]]:
         },
         {
             "name": "review_evidence",
-            "description": "Read a project-relative evidence or log artifact.",
+            "description": "Validate a project-relative evidence JSON file.",
             "inputSchema": {
                 "type": "object",
                 "required": ["path"],
-                "properties": {"path": {"type": "string"}},
+                "properties": {
+                    "path": {"type": "string"},
+                    "strict": {"type": "boolean"},
+                },
             },
         },
     ]
@@ -127,15 +130,26 @@ def _call_tool(
 
     profile_path, profile = load_profile(root, explicit_profile)
     if name == "get_project_profile":
-        return _text_result({"profile": str(profile_path.relative_to(root)), "project": redact_profile(profile)})
+        issues = validate_profile(root, profile)
+        return _text_result({
+            "profile": str(profile_path.relative_to(root)),
+            "project": redact_profile(profile),
+            "validation": {
+                "status": "failed" if any(item["level"] == "error" for item in issues) else "passed",
+                "issues": issues,
+            },
+        })
     if name == "resolve_context":
+        task = arguments.get("task", "")
+        if not isinstance(task, str):
+            raise KitError("resolve_context task must be a string")
         context, manifest = resolve_context(
             root,
             profile_path,
             profile,
             arguments.get("roles"),
             arguments.get("packs"),
-            str(arguments.get("task", "")),
+            task,
         )
         return _text_result({"context": context, "manifest": manifest})
     if name == "inspect_design":
@@ -174,9 +188,12 @@ def serve(root: Path, explicit_profile: str | None = None, allow_exec: bool = Fa
                 result = {"tools": _tool_definitions(allow_exec)}
             elif method == "tools/call":
                 params = request.get("params") or {}
+                arguments = params.get("arguments") or {}
+                if not isinstance(arguments, dict):
+                    raise KitError("tools/call arguments must be an object")
                 result = _call_tool(
                     str(params.get("name", "")),
-                    params.get("arguments") or {},
+                    arguments,
                     root,
                     explicit_profile,
                     allow_exec,

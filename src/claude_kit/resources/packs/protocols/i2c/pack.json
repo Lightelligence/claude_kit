@@ -1,0 +1,7 @@
+{
+  "id": "protocols.i2c",
+  "version": "1.0.0",
+  "kind": "protocol",
+  "summary": "I2C open-drain, arbitration and clock-stretch guidance",
+  "entrypoints": ["overview.md"]
+}

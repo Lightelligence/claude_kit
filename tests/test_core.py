@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from claude_kit.core import (
     KitError,
+    check_adapter,
     doctor,
     inspect_project,
     load_profile,
@@ -32,7 +33,9 @@ FIXTURE = ROOT / "tests" / "fixtures" / "minimal_project"
 class CoreTests(unittest.TestCase):
     def test_catalogs_have_expected_entries(self) -> None:
         self.assertIn("reviewer", {item["id"] for item in role_catalog()})
+        self.assertIn("waveform-debugger", {item["id"] for item in role_catalog()})
         self.assertIn("protocols.apb", {item["id"] for item in pack_catalog()})
+        self.assertIn("protocols.chi", {item["id"] for item in pack_catalog()})
         self.assertIn("rtl-design", {item["id"] for item in skill_catalog()})
 
     def test_doctor_passes_fixture(self) -> None:
@@ -66,6 +69,14 @@ class CoreTests(unittest.TestCase):
         with self.assertRaises(KitError):
             read_artifact(FIXTURE, "../README.md")
 
+    def test_explicit_profile_and_inspect_roots_cannot_escape(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with self.assertRaises(KitError):
+                load_profile(root, "../outside.toml")
+            with self.assertRaises(KitError):
+                inspect_project(root, {"roots": {"rtl": ["../outside"]}})
+
     def test_evidence_contract_passes_and_rejects_read_only_change(self) -> None:
         _, profile = load_profile(FIXTURE)
         result = review_evidence_file(FIXTURE, profile, "out/evidence.json", strict=True)
@@ -87,6 +98,23 @@ class CoreTests(unittest.TestCase):
         result = run_project_command(FIXTURE, profile, "confirmed", confirm=True)
         self.assertEqual(result["status"], "passed")
         self.assertIn("fixture confirmed", result["stdout"])
+
+    def test_command_timeout_returns_structured_failure(self) -> None:
+        profile = {
+            "project": {"id": "timeout_fixture"},
+            "build": {
+                "commands": {
+                    "hang": {
+                        "argv": ["python", "-c", "import time; time.sleep(2)"],
+                        "cwd": ".",
+                    }
+                }
+            },
+        }
+        result = run_project_command(FIXTURE, profile, "hang", timeout=1)
+        self.assertEqual(result["status"], "failed")
+        self.assertTrue(result["timed_out"])
+        self.assertIsNone(result["returncode"])
 
     def test_invalid_permission_overlap_is_reported(self) -> None:
         profile = {
@@ -115,6 +143,17 @@ class CoreTests(unittest.TestCase):
             created = sync_project_skills(Path(directory))
             self.assertGreaterEqual(len(created), 6)
             self.assertTrue((Path(directory) / ".claude/skills/rtl-design/SKILL.md").is_file())
+
+    def test_adapter_check_imports_only_explicit_project_adapter(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            adapter = root / ".ai" / "adapter.py"
+            adapter.parent.mkdir(parents=True)
+            adapter.write_text("def resolve_target(name):\n    return name\n", encoding="utf-8")
+            profile = {"project": {"id": "adapter_fixture"}, "adapter": {"path": ".ai/adapter.py", "required_functions": ["resolve_target"]}}
+            result = check_adapter(root, profile)
+            self.assertEqual(result["status"], "passed", result)
+            self.assertEqual(result["functions"], ["resolve_target"])
 
 
 if __name__ == "__main__":

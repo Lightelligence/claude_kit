@@ -8,9 +8,12 @@
     "command": {"type": "string"},
     "argv": {"type": "array", "items": {"type": "string"}},
     "cwd": {"type": "string"},
-    "returncode": {"type": "integer"},
+    "returncode": {"type": ["integer", "null"]},
     "stdout": {"type": "string"},
     "stderr": {"type": "string"},
-    "artifacts": {"type": "array", "items": {"type": "string"}}
+    "artifacts": {"type": "array", "items": {"type": "string"}},
+    "timed_out": {"type": "boolean"},
+    "timeout": {"type": "integer", "minimum": 1},
+    "launch_error": {"type": "boolean"}
   }
 }
