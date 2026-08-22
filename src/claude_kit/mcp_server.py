@@ -7,10 +7,13 @@ from typing import Any
 
 from . import __version__
 from .core import (
+    DEFAULT_ARTIFACT_MAX_BYTES,
     KitError,
+    MAX_ARTIFACT_BYTES,
     inspect_project,
     load_profile,
     pack_catalog,
+    read_artifact,
     redact_profile,
     review_evidence_file,
     resolve_context,
@@ -84,6 +87,18 @@ def _tool_definitions(allow_exec: bool) -> list[dict[str, Any]]:
             "inputSchema": {"type": "object", "properties": {}},
         },
         {
+            "name": "read_artifact",
+            "description": "Read a bounded UTF-8 project artifact without leaving the project root.",
+            "inputSchema": {
+                "type": "object",
+                "required": ["path"],
+                "properties": {
+                    "path": {"type": "string"},
+                    "max_bytes": {"type": "integer", "minimum": 0, "maximum": MAX_ARTIFACT_BYTES},
+                },
+            },
+        },
+        {
             "name": "review_evidence",
             "description": "Validate a project-relative evidence JSON file.",
             "inputSchema": {
@@ -114,6 +129,13 @@ def _tool_definitions(allow_exec: bool) -> list[dict[str, Any]]:
 
 def _text_result(value: Any) -> dict[str, Any]:
     return {"content": [{"type": "text", "text": json.dumps(value, indent=2, ensure_ascii=False)}]}
+
+
+def _bool_argument(arguments: dict[str, Any], name: str, default: bool = False) -> bool:
+    value = arguments.get(name, default)
+    if not isinstance(value, bool):
+        raise KitError(f"{name} must be a boolean")
+    return value
 
 
 def _call_tool(
@@ -154,17 +176,26 @@ def _call_tool(
         return _text_result({"context": context, "manifest": manifest})
     if name == "inspect_design":
         return _text_result(inspect_project(root, profile))
+    if name == "read_artifact":
+        path = arguments.get("path")
+        if not isinstance(path, str):
+            raise KitError("read_artifact requires path")
+        max_bytes = arguments.get("max_bytes", DEFAULT_ARTIFACT_MAX_BYTES)
+        return _text_result(read_artifact(root, path, max_bytes))
     if name == "review_evidence":
         path = arguments.get("path")
         if not isinstance(path, str):
             raise KitError("review_evidence requires path")
-        return _text_result(review_evidence_file(root, profile, path, bool(arguments.get("strict", False))))
+        return _text_result(review_evidence_file(root, profile, path, _bool_argument(arguments, "strict")))
     if name == "run_check":
         if not allow_exec:
             raise KitError("run_check is disabled; start the bridge with --allow-exec")
-        if arguments.get("confirm") is not True:
+        if _bool_argument(arguments, "confirm") is not True:
             raise KitError("run_check requires confirm=true")
-        return _text_result(run_project_command(root, profile, str(arguments.get("name", "")), True))
+        name_value = arguments.get("name")
+        if not isinstance(name_value, str):
+            raise KitError("run_check requires a command name")
+        return _text_result(run_project_command(root, profile, name_value, True))
     raise KitError(f"Unknown tool: {name}")
 
 
@@ -188,6 +219,8 @@ def serve(root: Path, explicit_profile: str | None = None, allow_exec: bool = Fa
                 result = {"tools": _tool_definitions(allow_exec)}
             elif method == "tools/call":
                 params = request.get("params") or {}
+                if not isinstance(params, dict):
+                    raise KitError("tools/call params must be an object")
                 arguments = params.get("arguments") or {}
                 if not isinstance(arguments, dict):
                     raise KitError("tools/call arguments must be an object")

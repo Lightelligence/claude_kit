@@ -8,6 +8,7 @@ from typing import Any
 
 from . import __version__
 from .core import (
+    DEFAULT_ARTIFACT_MAX_BYTES,
     KitError,
     check_adapter,
     doctor,
@@ -17,6 +18,7 @@ from .core import (
     inspect_project,
     load_profile,
     pack_catalog,
+    read_artifact,
     resolve_context,
     review_evidence_file,
     role_catalog,
@@ -74,6 +76,8 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--kit-path", default="third_party/claude_kit", help="Pinned kit path written into project files")
     init.add_argument("--force", action="store_true", help="Overwrite existing generated integration files")
     init.add_argument("--with-adapter", action="store_true", help="Also create an optional project adapter template")
+    init.add_argument("--with-mcp", action="store_true", help="Also create an optional .mcp.json for the read-only bridge")
+    init.add_argument("--minimal", action="store_true", help="Only materialize the integration skill; use sync for all skills")
     init.set_defaults(handler=handle_init)
 
     sync = subparsers.add_parser("sync", help="Materialize the kit's Claude Code skills into a project")
@@ -114,6 +118,15 @@ def build_parser() -> argparse.ArgumentParser:
     inspect.add_argument("--json", action="store_true", help="Print JSON")
     inspect.set_defaults(handler=handle_inspect)
 
+    artifact = subparsers.add_parser("artifact", help="Read a bounded project artifact")
+    artifact_subparsers = artifact.add_subparsers(dest="artifact_command", required=True)
+    artifact_read = artifact_subparsers.add_parser("read", help="Read a project-relative text artifact")
+    _add_project_options(artifact_read)
+    artifact_read.add_argument("--file", required=True, type=Path, help="Project-relative artifact path")
+    artifact_read.add_argument("--max-bytes", type=int, default=DEFAULT_ARTIFACT_MAX_BYTES)
+    artifact_read.add_argument("--json", action="store_true", help="Print JSON")
+    artifact_read.set_defaults(handler=handle_artifact_read)
+
     check = subparsers.add_parser("check", help="Run an allowlisted project command")
     _add_project_options(check)
     check.add_argument("name", help="Name under build.commands")
@@ -153,7 +166,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def handle_init(args: argparse.Namespace) -> int:
     root = _root(args.project_root)
-    created = init_project(root, args.kit_path, args.force, args.with_adapter)
+    created = init_project(root, args.kit_path, args.force, args.with_adapter, args.with_mcp, args.minimal)
     _json_print({"project_root": str(root), "created": created, "status": "passed"})
     return 0
 
@@ -240,6 +253,20 @@ def handle_inspect(args: argparse.Namespace) -> int:
         print(f"scanned_files: {result['scanned_files']}")
         for name, group in result["groups"].items():
             print(f"{name}: {group['files']} files ({group['path']})")
+    return 0
+
+
+def handle_artifact_read(args: argparse.Namespace) -> int:
+    root = _root(args.project_root)
+    result = read_artifact(root, args.file.as_posix(), args.max_bytes)
+    if args.json:
+        _json_print(result)
+    else:
+        print(f"path: {result['path']}")
+        print(f"bytes: {result['bytes']}")
+        print(f"truncated: {str(result['truncated']).lower()}")
+        print("---")
+        print(result["text"], end="" if result["text"].endswith("\n") else "\n")
     return 0
 
 

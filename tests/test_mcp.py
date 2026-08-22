@@ -51,6 +51,7 @@ class McpTests(unittest.TestCase):
             tools = read_frame(process.stdout)["result"]["tools"]
             names = {tool["name"] for tool in tools}
             self.assertIn("resolve_context", names)
+            self.assertIn("read_artifact", names)
             self.assertNotIn("run_check", names)
             evidence_tool = next(tool for tool in tools if tool["name"] == "review_evidence")
             self.assertIn("strict", evidence_tool["inputSchema"]["properties"])
@@ -66,6 +67,18 @@ class McpTests(unittest.TestCase):
             text = response["result"]["content"][0]["text"]
             self.assertNotIn("fixture-secret", text)
             self.assertIn("minimal_fixture", text)
+
+            process.stdin.write(frame({
+                "jsonrpc": "2.0",
+                "id": 4,
+                "method": "tools/call",
+                "params": {"name": "read_artifact", "arguments": {"path": "out/logs/README.md", "max_bytes": 4}},
+            }))
+            process.stdin.flush()
+            artifact = read_frame(process.stdout)
+            artifact_text = artifact["result"]["content"][0]["text"]
+            artifact_payload = json.loads(artifact_text)
+            self.assertTrue(artifact_payload["truncated"])
         finally:
             process.terminate()
             process.wait(timeout=5)

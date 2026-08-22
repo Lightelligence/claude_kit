@@ -12,9 +12,11 @@ claude_kit 把通用 RTL/DV roles、protocol/VIP packs、项目 profile、repo-l
 - 项目根目录发现和路径权限检查；
 - context resolver 和可审计 manifest；
 - 9 个通用 RTL/DV roles，包括 waveform-debugger；
+- 7 个可按需同步或触发的通用 skills；
 - common、AXI4、APB、Ethernet、PCIe、UCIe、SPI、UART、JTAG、I2C、CHI 和 generic VIP packs；
 - repo-local CLI；
 - 只读 project inspect；
+- 有大小上限的 artifact/log 只读读取；
 - profile allowlist command runner；
 - profile、manifest、artifact 和 evidence schema；
 - 可选 project adapter template；
@@ -66,6 +68,7 @@ Claude Code
 - [Project profile](#project-profile)
 - [Project adapter](#project-adapter)
 - [Roles](#roles)
+- [Skills](#skills)
 - [Protocol/VIP packs](#protocolvip-packs)
 - [CLI 参考](#cli-参考)
 - [Context 和 manifest](#context-和-manifest)
@@ -122,6 +125,16 @@ python third_party/claude_kit/bin/claude-kit init \
   --kit-path third_party/claude_kit
 ~~~
 
+如果希望项目只保留最薄的 Claude Code skill 入口，可以使用 `--minimal`；之后按需运行 `sync` 把 kit 内全部通用 skills materialize 到项目：
+
+~~~bash
+python third_party/claude_kit/bin/claude-kit init \
+  --project-root . \
+  --kit-path third_party/claude_kit \
+  --minimal
+python third_party/claude_kit/bin/claude-kit sync --project-root .
+~~~
+
 如果项目有 target/test/VIP mapping，希望保留一个薄 adapter，可以额外生成模板：
 
 ~~~bash
@@ -129,6 +142,15 @@ python third_party/claude_kit/bin/claude-kit init \
   --project-root . \
   --kit-path third_party/claude_kit \
   --with-adapter
+~~~
+
+如果希望同时启用只读 MCP bridge，可以额外生成项目根目录下的 `.mcp.json`：
+
+~~~bash
+python third_party/claude_kit/bin/claude-kit init \
+  --project-root . \
+  --kit-path third_party/claude_kit \
+  --with-mcp
 ~~~
 
 默认会创建：
@@ -144,6 +166,8 @@ python third_party/claude_kit/bin/claude-kit init \
 .claude/skills/rtl-dv-debugging/SKILL.md
 .claude/skills/rtl-dv-review/SKILL.md
 ~~~
+
+使用 `--with-mcp` 时还会创建 `.mcp.json`；使用 `--with-adapter` 时还会创建 `.ai/adapter.py`。两者都是可选的，默认不会生成。
 
 init 的特点：
 
@@ -461,6 +485,22 @@ Role 的共通流程：
 
 没有运行仿真时，必须明确写“未运行仿真”，不能写“验证通过”。
 
+## Skills
+
+skills 是可由 Claude Code 按任务触发或由项目按需同步到 `.claude/skills/` 的执行流程：
+
+| Skill | 触发和职责 |
+| --- | --- |
+| rtl-dv-context | 读取 profile、做只读 inspect 并选择最小 context |
+| rtl-design | 规划和实施有边界的 RTL 修改 |
+| dv-engineering | 规划 test、sequence、scoreboard、assertion 和 coverage |
+| protocol-vip | 应用对应 protocol/VIP pack 并验证连接 smoke |
+| rtl-dv-debugging | 根据日志、断言、scoreboard 或 timeout 证据定位问题 |
+| rtl-dv-review | 做只读 RTL/DV review 和交付前检查 |
+| rtl-dv-evidence | 记录可复现的 checks、artifacts、skipped/blocked 和 risks |
+
+默认 `init` 会同步全部通用 skills；`init --minimal` 只生成一个 integration skill，之后可用 `sync` 再同步完整集合。
+
 ## Protocol/VIP packs
 
 当前内置 packs：
@@ -514,6 +554,7 @@ claude-kit list skills
 claude-kit context
 claude-kit manifest
 claude-kit inspect
+claude-kit artifact read
 claude-kit check
 claude-kit adapter check
 claude-kit evidence check
@@ -539,6 +580,8 @@ claude-kit init \
 
 创建最小项目集成文件。已存在的文件默认不覆盖；只有显式使用 --force 才会覆盖。
 使用 --with-adapter 可额外创建 .ai/adapter.py 模板。
+使用 --with-mcp 可额外创建只读 MCP 的 .mcp.json；该配置不会启用 run_check。
+使用 --minimal 时只创建 `rtl-dv-kit` integration skill，不复制其余 skills；这适合希望项目仓库只保留极薄 Claude Code 配置的场景。
 
 ### sync
 
@@ -605,6 +648,20 @@ claude-kit inspect --project-root . --json
 
 只读统计 profile roots 下的文件数量和扩展名。它不解析或修改 RTL，也不会访问 profile 之外的路径。
 
+### artifact read
+
+读取项目根目录内的日志、报告、波形索引或其他文本 artifact。默认最多读取 100 KiB，硬上限为 1 MiB；返回中保留原始文件字节数和是否截断的信息。
+
+~~~bash
+claude-kit artifact read \
+  --project-root . \
+  --file out/logs/smoke.log \
+  --max-bytes 100000 \
+  --json
+~~~
+
+该命令只读，不解析 artifact 的语义，也不会跟随越出 project root 的路径或 symlink。
+
 ### evidence
 
 生成 evidence 模板：
@@ -648,7 +705,7 @@ claude-kit check lint --project-root . --confirm
 claude-kit adapter check --project-root . --json
 ~~
 
-adapter check 会导入项目侧 Python adapter，但不会自动调用 resolve_target、resolve_test、resolve_vip 或 collect_artifacts。需要实际运行项目行为时，仍应通过 profile 的 allowlisted command 并保留 evidence。
+adapter check 会导入项目侧 Python adapter，检查 required functions、已知函数签名是否至少接受一个参数，但不会自动调用 resolve_target、resolve_test、resolve_vip 或 collect_artifacts。需要实际运行项目行为时，仍应通过 profile 的 allowlisted command 并保留 evidence。
 
 ### mcp serve
 
@@ -812,6 +869,7 @@ MCP bridge 是 CLI/context resolver 的适配层，不是另一个工作流引�
 - list_packs；
 - resolve_context；
 - inspect_design；
+- read_artifact；
 - review_evidence。
 
 使用 --allow-exec 后才增加：
@@ -826,17 +884,21 @@ run_check 仍要求 tool arguments 中显式传入 confirm = true，并且只运
 
 ~~~json
 {
-  "type": "stdio",
-  "command": "python3",
-  "args": [
-    "third_party/claude_kit/bin/claude-kit",
-    "mcp",
-    "serve",
-    "--project-root",
-    ".",
-    "--profile",
-    ".ai/project.toml"
-  ]
+  "mcpServers": {
+    "claude-kit": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "third_party/claude_kit/bin/claude-kit",
+        "mcp",
+        "serve",
+        "--project-root",
+        ".",
+        "--profile",
+        ".ai/project.toml"
+      ]
+    }
+  }
 }
 ~~~
 
@@ -855,6 +917,7 @@ MCP 配置是可选的。项目的 .mcp.json 只负责连接 bridge；profile、
 - vendor、generated、build、out 和 .git 默认只读或禁止写入。
 - 不因路径不存在就自动创建源码目录。
 - artifact 读取拒绝越出项目根目录的路径。
+- artifact 读取默认限制为 100 KiB，最大为 1 MiB，避免把完整大日志送入 context。
 
 ### 命令
 
@@ -893,6 +956,8 @@ python -m compileall -q src bin
 python -m unittest discover -s tests -v
 ~~~
 
+仓库的 `.github/workflows/ci.yml` 会在 Python 3.11、3.12、3.13 上执行同一组 compile、安装态 CLI 和 unittest 检查；它不启动 simulator、不提交 ETX/bsub 作业，也不需要项目 license。
+
 当前 fixture 覆盖：
 
 - role/pack catalog；
@@ -907,7 +972,8 @@ python -m unittest discover -s tests -v
 - skill catalog 和 sync；
 - evidence schema、artifact 引用和 read-only path；
 - CLI doctor/context/check/evidence；
-- MCP tools/list、profile 脱敏和只读工具。
+- CLI artifact read；
+- MCP tools/list、profile 脱敏、artifact read 和只读工具。
 
 ### 添加 role
 

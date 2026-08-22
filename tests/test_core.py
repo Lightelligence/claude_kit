@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 import unittest
@@ -13,6 +14,7 @@ from claude_kit.core import (
     doctor,
     inspect_project,
     load_profile,
+    mcp_config,
     read_artifact,
     resolve_context,
     role_catalog,
@@ -37,6 +39,20 @@ class CoreTests(unittest.TestCase):
         self.assertIn("protocols.apb", {item["id"] for item in pack_catalog()})
         self.assertIn("protocols.chi", {item["id"] for item in pack_catalog()})
         self.assertIn("rtl-design", {item["id"] for item in skill_catalog()})
+        self.assertIn("rtl-dv-evidence", {item["id"] for item in skill_catalog()})
+
+    def test_project_schema_describes_runtime_profile_contract(self) -> None:
+        schema_path = ROOT / "src" / "claude_kit" / "resources" / "schemas" / "project.schema.json"
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        self.assertEqual(schema["properties"]["schema_version"]["const"], 1)
+        self.assertIn("commands", schema["properties"]["build"]["properties"])
+        self.assertIn("required_functions", schema["properties"]["adapter"]["oneOf"][1]["properties"])
+        self.assertEqual(schema["properties"]["packs"]["type"], "array")
+
+        evidence_schema = json.loads(
+            (ROOT / "src" / "claude_kit" / "resources" / "schemas" / "evidence.schema.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(evidence_schema["properties"]["checks"]["items"]["properties"]["status"]["enum"][0], "passed")
 
     def test_doctor_passes_fixture(self) -> None:
         result = doctor(FIXTURE, strict=True)
@@ -71,6 +87,10 @@ class CoreTests(unittest.TestCase):
     def test_read_artifact_rejects_escape(self) -> None:
         with self.assertRaises(KitError):
             read_artifact(FIXTURE, "../README.md")
+        result = read_artifact(FIXTURE, "out/logs/README.md", 4)
+        self.assertTrue(result["truncated"])
+        with self.assertRaises(KitError):
+            read_artifact(FIXTURE, "out/logs/README.md", 1_000_001)
 
     def test_explicit_profile_and_inspect_roots_cannot_escape(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -143,11 +163,28 @@ class CoreTests(unittest.TestCase):
             _, generated_profile = load_profile(root)
             self.assertEqual(generated_profile["packs"], ["common"])
 
+    def test_init_minimal_keeps_project_skill_footprint_small(self) -> None:
+        from claude_kit.core import init_project
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            created = init_project(root, minimal=True)
+            self.assertIn(".claude/skills/rtl-dv-kit/SKILL.md", created)
+            self.assertNotIn(".claude/skills/rtl-design/SKILL.md", created)
+
+    def test_mcp_config_is_wrapped_and_points_to_pinned_kit(self) -> None:
+        config = json.loads(mcp_config("third_party\\claude_kit"))
+        server = config["mcpServers"]["claude-kit"]
+        self.assertEqual(server["command"], "python")
+        self.assertEqual(server["args"][0], "third_party/claude_kit/bin/claude-kit")
+        self.assertIn("--profile", server["args"])
+
     def test_sync_materializes_all_skills(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             created = sync_project_skills(Path(directory))
-            self.assertGreaterEqual(len(created), 6)
+            self.assertGreaterEqual(len(created), 7)
             self.assertTrue((Path(directory) / ".claude/skills/rtl-design/SKILL.md").is_file())
+            self.assertTrue((Path(directory) / ".claude/skills/rtl-dv-evidence/SKILL.md").is_file())
 
     def test_adapter_check_imports_only_explicit_project_adapter(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -159,6 +196,12 @@ class CoreTests(unittest.TestCase):
             result = check_adapter(root, profile)
             self.assertEqual(result["status"], "passed", result)
             self.assertEqual(result["functions"], ["resolve_target"])
+            self.assertIn("resolve_target", result["signatures"])
+
+            adapter.write_text("def resolve_target():\n    return 'bad'\n", encoding="utf-8")
+            invalid = check_adapter(root, profile)
+            self.assertEqual(invalid["status"], "failed", invalid)
+            self.assertTrue(any("at least one argument" in item["message"] for item in invalid["issues"]))
 
 
 if __name__ == "__main__":

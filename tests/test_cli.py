@@ -41,6 +41,24 @@ class CliTests(unittest.TestCase):
         self.assertEqual(evidence.returncode, 0, evidence.stderr)
         self.assertEqual(json.loads(evidence.stdout)["status"], "passed")
 
+    def test_artifact_read_is_bounded_and_project_relative(self) -> None:
+        result = self.run_cli(
+            "artifact", "read", "--project-root", str(FIXTURE),
+            "--file", "out/logs/README.md", "--max-bytes", "4", "--json",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["bytes"], len((FIXTURE / "out/logs/README.md").read_bytes()))
+        self.assertTrue(payload["truncated"])
+        self.assertEqual(len(payload["text"].encode("utf-8")), 4)
+
+        rejected = self.run_cli(
+            "artifact", "read", "--project-root", str(FIXTURE),
+            "--file", "../README.md", "--json",
+        )
+        self.assertNotEqual(rejected.returncode, 0)
+        self.assertIn("project root", rejected.stderr)
+
     def test_context_writes_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             project = Path(directory) / "project"
@@ -99,6 +117,20 @@ class CliTests(unittest.TestCase):
         result = self.run_cli("adapter", "check", "--project-root", str(FIXTURE), "--json")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)["status"], "skipped")
+
+    def test_init_can_generate_optional_mcp_config(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            project.mkdir()
+            result = self.run_cli(
+                "init", "--project-root", str(project),
+                "--kit-path", "third_party/claude_kit", "--with-mcp",
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            config = json.loads((project / ".mcp.json").read_text(encoding="utf-8"))
+            server = config["mcpServers"]["claude-kit"]
+            self.assertEqual(server["type"], "stdio")
+            self.assertIn("mcp", server["args"])
 
 
 if __name__ == "__main__":

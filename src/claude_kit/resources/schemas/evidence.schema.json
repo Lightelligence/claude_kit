@@ -8,9 +8,44 @@
     "project": {"type": "string", "minLength": 1},
     "task": {"type": "string", "minLength": 1},
     "source_revision": {"type": "string"},
-    "changes": {"type": "array"},
-    "checks": {"type": "array"},
-    "skipped": {"type": "array"},
-    "risks": {"type": "array"}
+    "changes": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {"type": "string", "minLength": 1},
+          {
+            "type": "object",
+            "required": ["path"],
+            "properties": {"path": {"type": "string", "minLength": 1}}
+          }
+        ]
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "status"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "status": {"enum": ["passed", "failed", "blocked", "skipped", "unknown"]},
+          "command": {"type": "array", "items": {"type": "string"}},
+          "artifacts": {
+            "oneOf": [
+              {"type": "string", "minLength": 1},
+              {"type": "array", "items": {"type": "string", "minLength": 1}}
+            ]
+          },
+          "artifact": {
+            "oneOf": [
+              {"type": "string", "minLength": 1},
+              {"type": "array", "items": {"type": "string", "minLength": 1}}
+            ]
+          }
+        }
+      }
+    },
+    "skipped": {"type": "array", "items": {"oneOf": [{"type": "string"}, {"type": "object"}]}},
+    "risks": {"type": "array", "items": {"oneOf": [{"type": "string"}, {"type": "object"}]}}
   }
 }

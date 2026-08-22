@@ -19,3 +19,12 @@ Keep these concerns in claude_kit:
 - context resolution and evidence review.
 
 An adapter should expose small deterministic functions such as resolve_target, resolve_test, resolve_vip and collect_artifacts. It should not import project RTL/DV modules into the kit or require an ETX runner.
+
+The conventional signatures are:
+
+- `resolve_target(name)`;
+- `resolve_test(selector)`;
+- `resolve_vip(protocol)`;
+- `collect_artifacts(run_id)`.
+
+`claude-kit adapter check` imports the adapter and checks that required functions exist and accept at least one argument. It does not call those functions or execute project tools; behavior still needs an allowlisted command and evidence.

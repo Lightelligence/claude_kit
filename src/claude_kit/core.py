@@ -3,6 +3,7 @@ from __future__ import annotations
 import fnmatch
 import hashlib
 import importlib.util
+import inspect
 import json
 import os
 import subprocess
@@ -480,9 +481,15 @@ def inspect_project(root: Path, profile: dict[str, Any] | None = None) -> dict[s
     return {"root": str(root), "groups": counts, "scanned_files": min(scanned, 20000), "truncated": truncated}
 
 
-def read_artifact(root: Path, relative_path: str, max_bytes: int = 100_000) -> dict[str, Any]:
+DEFAULT_ARTIFACT_MAX_BYTES = 100_000
+MAX_ARTIFACT_BYTES = 1_000_000
+
+
+def read_artifact(root: Path, relative_path: str, max_bytes: int = DEFAULT_ARTIFACT_MAX_BYTES) -> dict[str, Any]:
     if isinstance(max_bytes, bool) or not isinstance(max_bytes, int) or max_bytes < 0:
         raise KitError("max_bytes must be a non-negative integer")
+    if max_bytes > MAX_ARTIFACT_BYTES:
+        raise KitError(f"max_bytes must not exceed {MAX_ARTIFACT_BYTES}")
     path = _project_path(root, relative_path, "artifact path")
     if not path.is_file():
         raise KitError(f"Artifact does not exist: {relative_path}")
@@ -741,6 +748,28 @@ The kit's shared role and protocol guidance is available under:
 """
 
 
+def mcp_config(kit_path: str) -> str:
+    normalized_kit_path = str(kit_path).replace("\\", "/").rstrip("/")
+    config = {
+        "mcpServers": {
+            "claude-kit": {
+                "type": "stdio",
+                "command": "python",
+                "args": [
+                    f"{normalized_kit_path}/bin/claude-kit",
+                    "mcp",
+                    "serve",
+                    "--project-root",
+                    ".",
+                    "--profile",
+                    ".ai/project.toml",
+                ],
+            }
+        }
+    }
+    return json.dumps(config, indent=2, ensure_ascii=False) + "\n"
+
+
 def adapter_path(root: Path, profile: dict[str, Any]) -> Path | None:
     if "adapter" not in profile:
         return None
@@ -760,32 +789,47 @@ def check_adapter(root: Path, profile: dict[str, Any]) -> dict[str, Any]:
     root = root.resolve()
     path = adapter_path(root, profile)
     if path is None:
-        return {"status": "skipped", "adapter": None, "functions": [], "issues": [{"level": "info", "message": "No adapter configured"}]}
+        return {"status": "skipped", "adapter": None, "functions": [], "signatures": {}, "issues": [{"level": "info", "message": "No adapter configured"}]}
     if not path.is_file():
-        return {"status": "failed", "adapter": str(path.relative_to(root)), "functions": [], "issues": [{"level": "error", "message": "Adapter file does not exist"}]}
+        return {"status": "failed", "adapter": str(path.relative_to(root)), "functions": [], "signatures": {}, "issues": [{"level": "error", "message": "Adapter file does not exist"}]}
     spec = importlib.util.spec_from_file_location("claude_kit_project_adapter", path)
     if spec is None or spec.loader is None:
-        return {"status": "failed", "adapter": str(path.relative_to(root)), "functions": [], "issues": [{"level": "error", "message": "Cannot load adapter module"}]}
+        return {"status": "failed", "adapter": str(path.relative_to(root)), "functions": [], "signatures": {}, "issues": [{"level": "error", "message": "Cannot load adapter module"}]}
     module = importlib.util.module_from_spec(spec)
     try:
         spec.loader.exec_module(module)
     except (Exception, SystemExit) as exc:  # Adapter code is project-owned and may import project tooling.
-        return {"status": "failed", "adapter": str(path.relative_to(root)), "functions": [], "issues": [{"level": "error", "message": f"Adapter import failed: {exc}"}]}
+        return {"status": "failed", "adapter": str(path.relative_to(root)), "functions": [], "signatures": {}, "issues": [{"level": "error", "message": f"Adapter import failed: {exc}"}]}
     expected = ("resolve_target", "resolve_test", "resolve_vip", "collect_artifacts")
     provided = [name for name in expected if callable(getattr(module, name, None))]
     config = profile.get("adapter")
     required = config.get("required_functions", []) if isinstance(config, dict) else []
     issues: list[dict[str, str]] = []
+    signatures: dict[str, str] = {}
     if not isinstance(required, list) or not all(isinstance(name, str) and name for name in required):
         issues.append({"level": "error", "message": "adapter.required_functions must be a list of non-empty strings"})
         required = []
     issues.extend({"level": "error", "message": f"Missing required adapter function: {name}"} for name in required if name not in provided)
+    for name in provided:
+        function = getattr(module, name)
+        try:
+            signature = inspect.signature(function)
+            signatures[name] = str(signature)
+            accepts_argument = any(
+                parameter.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.VAR_POSITIONAL)
+                for parameter in signature.parameters.values()
+            )
+            if not accepts_argument:
+                issues.append({"level": "error", "message": f"Adapter function {name} must accept at least one argument"})
+        except (TypeError, ValueError) as exc:
+            issues.append({"level": "error", "message": f"Cannot inspect adapter function {name}: {exc}"})
     if not provided:
         issues.append({"level": "warning", "message": "Adapter imports but provides no known contract functions"})
     return {
         "status": "failed" if any(item["level"] == "error" for item in issues) else "passed",
         "adapter": str(path.relative_to(root)),
         "functions": provided,
+        "signatures": signatures,
         "issues": issues,
     }
 
@@ -819,6 +863,8 @@ def init_project(
     kit_path: str = "third_party/claude_kit",
     force: bool = False,
     with_adapter: bool = False,
+    with_mcp: bool = False,
+    minimal: bool = False,
 ) -> list[str]:
     targets = {
         root / ".ai" / "project.toml": project_template(),
@@ -826,6 +872,8 @@ def init_project(
     }
     if with_adapter:
         targets[root / ".ai" / "adapter.py"] = adapter_template()
+    if with_mcp:
+        targets[root / ".mcp.json"] = mcp_config(kit_path)
     created: list[str] = []
     for path, content in targets.items():
         if path.exists() and not force:
@@ -834,6 +882,9 @@ def init_project(
         path.write_text(content, encoding="utf-8", newline="\n")
         created.append(str(path.relative_to(root)).replace(os.sep, "/"))
     skill_targets = _skill_targets(root)
+    if minimal:
+        integration_path = root / ".claude" / "skills" / "rtl-dv-kit" / "SKILL.md"
+        skill_targets = {integration_path: integration_skill()}
     for path, content in skill_targets.items():
         if path.exists() and not force:
             continue

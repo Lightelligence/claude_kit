@@ -16,20 +16,103 @@
         "platform": {"type": "string"}
       }
     },
-    "roots": {"type": "object", "additionalProperties": {"type": ["string", "array"]}},
-    "roles": {"type": ["object", "array"]},
-    "packs": {"type": "array", "items": {"type": "string"}},
-    "build": {"type": "object"},
-    "adapter": {
-      "type": ["string", "object"],
-      "properties": {
-        "path": {"type": "string"},
-        "required_functions": {"type": "array", "items": {"type": "string"}}
+    "roots": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {"type": "string", "minLength": 1},
+          {"type": "array", "items": {"type": "string", "minLength": 1}}
+        ]
       }
     },
+    "roles": {
+      "oneOf": [
+        {"type": "array", "items": {"type": "string", "minLength": 1}},
+        {
+          "type": "object",
+          "properties": {
+            "defaults": {
+              "oneOf": [
+                {"type": "string", "minLength": 1},
+                {"type": "array", "items": {"type": "string", "minLength": 1}}
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "packs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "build": {
+      "type": "object",
+      "properties": {
+        "system": {"type": "string"},
+        "simulator": {"type": "string"},
+        "target": {"type": "string"},
+        "test_selector": {"type": "string"},
+        "commands": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["argv"],
+            "properties": {
+              "argv": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+              "cwd": {"type": "string"},
+              "kind": {"type": "string"},
+              "confirmation": {"enum": ["required", "optional"]}
+            }
+          }
+        }
+      }
+    },
+    "adapter": {
+      "oneOf": [
+        {"type": "string", "minLength": 1},
+        {
+          "type": "object",
+          "required": ["path"],
+          "properties": {
+            "path": {"type": "string", "minLength": 1},
+            "required_functions": {"type": "array", "items": {"type": "string", "minLength": 1}}
+          }
+        }
+      ]
+    },
     "vip": {"type": "object"},
-    "permissions": {"type": "object"},
-    "artifacts": {"type": "object"},
-    "policies": {"type": "object"}
+    "permissions": {
+      "type": "object",
+      "properties": {
+        "writable": {
+          "oneOf": [
+            {"type": "string", "minLength": 1},
+            {"type": "array", "items": {"type": "string", "minLength": 1}}
+          ]
+        },
+        "read_only": {
+          "oneOf": [
+            {"type": "string", "minLength": 1},
+            {"type": "array", "items": {"type": "string", "minLength": 1}}
+          ]
+        },
+        "forbidden": {
+          "oneOf": [
+            {"type": "string", "minLength": 1},
+            {"type": "array", "items": {"type": "string", "minLength": 1}}
+          ]
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": {"type": "string", "minLength": 1}
+    },
+    "policies": {
+      "type": "object",
+      "properties": {
+        "require_evidence": {"type": "boolean"},
+        "network": {"type": "string"},
+        "auto_commit": {"type": "boolean"},
+        "auto_push": {"type": "boolean"}
+      }
+    }
   }
 }
