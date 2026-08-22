@@ -581,6 +581,7 @@ def validate_evidence(root: Path, profile: dict[str, Any], evidence: dict[str, A
     if not isinstance(permissions, dict):
         add("error", "permissions must be an object")
         permissions = {}
+    writable_declared = "writable" in permissions
     try:
         writable = _as_list(permissions.get("writable", []))
         read_only = _as_list(permissions.get("read_only", []))
@@ -605,7 +606,7 @@ def validate_evidence(root: Path, profile: dict[str, Any], evidence: dict[str, A
             add("error", f"changes[{index}] path is not project-relative: {path_value}")
         elif _permission_match(relative, forbidden) or _permission_match(relative, read_only):
             add("error", f"changes[{index}] is outside the writable scope: {relative}")
-        elif writable and not _permission_match(relative, writable):
+        elif writable_declared and not _permission_match(relative, writable):
             add("warning", f"changes[{index}] is not covered by permissions.writable: {relative}")
 
     for key in ("skipped", "risks"):

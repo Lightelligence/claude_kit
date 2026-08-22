@@ -115,6 +115,18 @@ class CoreTests(unittest.TestCase):
         issues = validate_evidence(FIXTURE, profile, bad, strict=True)
         self.assertTrue(any("outside the writable scope" in item["message"] for item in issues))
 
+    def test_explicit_empty_writable_scope_rejects_changes(self) -> None:
+        profile = {"project": {"id": "readonly"}, "permissions": {"writable": []}}
+        evidence = {
+            "schema_version": 1,
+            "project": "readonly",
+            "task": "read only",
+            "changes": ["rtl/README.md"],
+            "checks": [{"name": "inspect", "status": "passed", "command": ["inspect"]}],
+        }
+        issues = validate_evidence(FIXTURE, profile, evidence, strict=True)
+        self.assertTrue(any("not covered by permissions.writable" in item["message"] for item in issues))
+
     def test_command_confirmation_and_execution(self) -> None:
         _, profile = load_profile(FIXTURE)
         with self.assertRaises(KitError):
