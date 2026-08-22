@@ -168,6 +168,7 @@ python third_party/claude_kit/bin/claude-kit init \
 ~~~
 
 使用 `--with-mcp` 时还会创建 `.mcp.json`；使用 `--with-adapter` 时还会创建 `.ai/adapter.py`。两者都是可选的，默认不会生成。
+使用 `--with-adapter` 时还会在 `.ai/project.toml` 中启用对应的 `[adapter]` 段，生成的模板可以直接通过 `claude-kit adapter check`；项目再按真实 target/test/VIP 事实替换模板逻辑。
 
 init 的特点：
 

@@ -173,6 +173,17 @@ class CoreTests(unittest.TestCase):
             self.assertIn(".claude/skills/rtl-dv-kit/SKILL.md", created)
             self.assertNotIn(".claude/skills/rtl-design/SKILL.md", created)
 
+    def test_init_with_adapter_enables_profile_contract(self) -> None:
+        from claude_kit.core import init_project
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            init_project(root, with_adapter=True)
+            _, profile = load_profile(root)
+            self.assertEqual(profile["adapter"]["path"], ".ai/adapter.py")
+            result = check_adapter(root, profile)
+            self.assertEqual(result["status"], "passed", result)
+
     def test_mcp_config_is_wrapped_and_points_to_pinned_kit(self) -> None:
         config = json.loads(mcp_config("third_party\\claude_kit"))
         server = config["mcpServers"]["claude-kit"]

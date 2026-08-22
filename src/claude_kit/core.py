@@ -722,8 +722,14 @@ def run_project_command(
     }
 
 
-def project_template() -> str:
-    return (resource_root() / "templates" / "project.toml").read_text(encoding="utf-8")
+def project_template(with_adapter: bool = False) -> str:
+    content = (resource_root() / "templates" / "project.toml").read_text(encoding="utf-8")
+    if with_adapter:
+        content = content.replace(
+            "# Optional project adapter:\n# [adapter]\n# path = \".ai/adapter.py\"\n# required_functions = [\"resolve_target\", \"resolve_test\"]",
+            "[adapter]\npath = \".ai/adapter.py\"\nrequired_functions = [\"resolve_target\", \"resolve_test\", \"resolve_vip\", \"collect_artifacts\"]",
+        )
+    return content
 
 
 def adapter_template() -> str:
@@ -871,7 +877,7 @@ def init_project(
     minimal: bool = False,
 ) -> list[str]:
     targets = {
-        root / ".ai" / "project.toml": project_template(),
+        root / ".ai" / "project.toml": project_template(with_adapter),
         root / ".claude" / "CLAUDE.md": integration_claude(kit_path),
     }
     if with_adapter:
