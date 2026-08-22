@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Lightelligence/claude_kit/manifest.schema.json",
+  "type": "object",
+  "required": ["schema_version", "project", "profile", "roles", "packs", "sources"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "project": {"type": "string"},
+    "profile": {"type": "string"},
+    "roles": {"type": "array", "items": {"type": "string"}},
+    "packs": {"type": "array", "items": {"type": "string"}},
+    "task": {"type": "string"},
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "sha256"],
+        "properties": {
+          "path": {"type": "string"},
+          "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+        }
+      }
+    },
+    "warnings": {"type": "array"}
+  }
+}

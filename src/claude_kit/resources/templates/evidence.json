@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "project": "replace-me",
+  "task": "describe the completed task",
+  "source_revision": "git commit or other source identifier",
+  "changes": [],
+  "checks": [
+    {
+      "name": "replace-me",
+      "status": "passed",
+      "command": [],
+      "artifacts": []
+    }
+  ],
+  "skipped": [],
+  "risks": []
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Lightelligence/claude_kit/project.schema.json",
+  "type": "object",
+  "required": ["schema_version", "project"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "project": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "display_name": {"type": "string"},
+        "root": {"type": "string"},
+        "language": {"type": "string"},
+        "platform": {"type": "string"}
+      }
+    },
+    "roots": {"type": "object", "additionalProperties": {"type": ["string", "array"]}},
+    "roles": {"type": ["object", "array"]},
+    "packs": {"type": "array", "items": {"type": "string"}},
+    "build": {"type": "object"},
+    "vip": {"type": "object"},
+    "permissions": {"type": "object"},
+    "artifacts": {"type": "object"},
+    "policies": {"type": "object"}
+  }
+}

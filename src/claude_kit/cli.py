@@ -10,14 +10,18 @@ from . import __version__
 from .core import (
     KitError,
     doctor,
+    evidence_template,
     find_project_root,
     init_project,
     inspect_project,
     load_profile,
     pack_catalog,
     resolve_context,
+    review_evidence_file,
     role_catalog,
     run_project_command,
+    skill_catalog,
+    sync_project_skills,
 )
 
 
@@ -57,7 +61,13 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--project-root", help="Project root")
     init.add_argument("--kit-path", default="third_party/claude_kit", help="Pinned kit path written into project files")
     init.add_argument("--force", action="store_true", help="Overwrite existing generated integration files")
+    init.add_argument("--with-adapter", action="store_true", help="Also create an optional project adapter template")
     init.set_defaults(handler=handle_init)
+
+    sync = subparsers.add_parser("sync", help="Materialize the kit's Claude Code skills into a project")
+    sync.add_argument("--project-root", help="Project root")
+    sync.add_argument("--force", action="store_true", help="Overwrite generated skill files")
+    sync.set_defaults(handler=handle_sync)
 
     doctor_parser = subparsers.add_parser("doctor", help="Validate the project profile and permissions")
     _add_project_options(doctor_parser)
@@ -66,7 +76,7 @@ def build_parser() -> argparse.ArgumentParser:
     doctor_parser.set_defaults(handler=handle_doctor)
 
     listing = subparsers.add_parser("list", help="List roles or packs")
-    listing.add_argument("kind", choices=("roles", "packs"))
+    listing.add_argument("kind", choices=("roles", "packs", "skills"))
     listing.add_argument("--json", action="store_true", help="Print JSON")
     listing.set_defaults(handler=handle_list)
 
@@ -106,13 +116,33 @@ def build_parser() -> argparse.ArgumentParser:
     serve.add_argument("--allow-exec", action="store_true", help="Expose run_check to the bridge")
     serve.set_defaults(handler=handle_mcp)
 
+    evidence = subparsers.add_parser("evidence", help="Create or validate task evidence")
+    evidence_subparsers = evidence.add_subparsers(dest="evidence_command", required=True)
+    evidence_check = evidence_subparsers.add_parser("check", help="Validate an evidence JSON file")
+    _add_project_options(evidence_check)
+    evidence_check.add_argument("--file", required=True, type=Path, help="Project-relative evidence JSON")
+    evidence_check.add_argument("--strict", action="store_true", help="Treat warnings as failures")
+    evidence_check.add_argument("--json", action="store_true", help="Print JSON")
+    evidence_check.set_defaults(handler=handle_evidence_check)
+    evidence_template_parser = evidence_subparsers.add_parser("template", help="Print an evidence JSON template")
+    evidence_template_parser.add_argument("--output", type=Path)
+    evidence_template_parser.add_argument("--project-root")
+    evidence_template_parser.set_defaults(handler=handle_evidence_template)
+
     return parser
 
 
 def handle_init(args: argparse.Namespace) -> int:
     root = _root(args.project_root)
-    created = init_project(root, args.kit_path, args.force)
+    created = init_project(root, args.kit_path, args.force, args.with_adapter)
     _json_print({"project_root": str(root), "created": created, "status": "passed"})
+    return 0
+
+
+def handle_sync(args: argparse.Namespace) -> int:
+    root = _root(args.project_root)
+    created = sync_project_skills(root, args.force)
+    _json_print({"project_root": str(root), "synced": created, "status": "passed"})
     return 0
 
 
@@ -129,7 +159,12 @@ def handle_doctor(args: argparse.Namespace) -> int:
 
 
 def handle_list(args: argparse.Namespace) -> int:
-    result = role_catalog() if args.kind == "roles" else pack_catalog()
+    if args.kind == "roles":
+        result = role_catalog()
+    elif args.kind == "packs":
+        result = pack_catalog()
+    else:
+        result = skill_catalog()
     if args.json:
         _json_print(result)
     else:
@@ -202,6 +237,38 @@ def handle_mcp(args: argparse.Namespace) -> int:
 
     root = _root(args.project_root)
     serve(root, args.profile, args.allow_exec)
+    return 0
+
+
+def handle_evidence_check(args: argparse.Namespace) -> int:
+    root = _root(args.project_root)
+    _, profile = load_profile(root, args.profile)
+    path = args.file
+    if path.is_absolute():
+        try:
+            path = path.resolve().relative_to(root.resolve())
+        except ValueError as exc:
+            raise KitError(f"Evidence path escapes project root: {args.file}") from exc
+    result = review_evidence_file(root, profile, path.as_posix(), args.strict)
+    if args.json:
+        _json_print(result)
+    else:
+        print(f"status: {result['status']}")
+        print(f"file: {result['path']}")
+        for issue in result["issues"]:
+            print(f"{issue['level']}: {issue['message']}")
+    return 0 if result["status"] == "passed" else 1
+
+
+def handle_evidence_template(args: argparse.Namespace) -> int:
+    content = evidence_template()
+    if args.output:
+        root = _root(args.project_root)
+        path = _project_output(root, args.output)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8", newline="\n")
+    else:
+        print(content, end="")
     return 0
 
 

@@ -265,6 +265,20 @@ def pack_catalog() -> list[dict[str, Any]]:
     return result
 
 
+def skill_catalog() -> list[dict[str, str]]:
+    directory = resource_root() / "skills"
+    result: list[dict[str, str]] = []
+    for path in sorted(directory.rglob("SKILL.md")):
+        metadata = _front_matter(path)
+        result.append({
+            "id": metadata.get("name", path.parent.name),
+            "version": metadata.get("version", "1"),
+            "description": metadata.get("description", ""),
+            "path": str(path.relative_to(resource_root())).replace(os.sep, "/"),
+        })
+    return result
+
+
 def _find_by_id(entries: Iterable[dict[str, Any]], identifier: str, kind: str) -> dict[str, Any]:
     entries = list(entries)
     for entry in entries:
@@ -415,6 +429,134 @@ def read_artifact(root: Path, relative_path: str, max_bytes: int = 100_000) -> d
     return {"path": relative_path, "bytes": len(data), "truncated": truncated, "text": text}
 
 
+EVIDENCE_STATUSES = {"passed", "failed", "blocked", "skipped", "unknown"}
+
+
+def _relative_project_path(root: Path, value: Any, field: str) -> str | None:
+    if not isinstance(value, str) or not value:
+        return None
+    path = Path(value)
+    if path.is_absolute() or ".." in path.parts:
+        return None
+    return path.as_posix()
+
+
+def _permission_match(path: str, patterns: Iterable[str]) -> bool:
+    normalized = path.replace("\\", "/")
+    return any(fnmatch.fnmatch(normalized, pattern.replace("\\", "/")) for pattern in patterns)
+
+
+def validate_evidence(root: Path, profile: dict[str, Any], evidence: dict[str, Any], strict: bool = False) -> list[dict[str, str]]:
+    issues: list[dict[str, str]] = []
+
+    def add(level: str, message: str) -> None:
+        issues.append({"level": level, "message": message})
+
+    if evidence.get("schema_version") != 1:
+        add("error", "schema_version must be 1")
+    project_id = profile.get("project", {}).get("id") if isinstance(profile.get("project"), dict) else None
+    if evidence.get("project") != project_id:
+        add("error", f"project must match profile project.id: {project_id}")
+    if not isinstance(evidence.get("task"), str) or not evidence["task"].strip():
+        add("error", "task is required")
+    if evidence.get("source_revision") is not None and not isinstance(evidence.get("source_revision"), str):
+        add("error", "source_revision must be a string")
+
+    checks = evidence.get("checks", [])
+    if not isinstance(checks, list):
+        add("error", "checks must be a list")
+        checks = []
+    require_evidence = bool(profile.get("policies", {}).get("require_evidence", False))
+    if require_evidence and not checks:
+        add("error", "checks must contain at least one check when policies.require_evidence is true")
+
+    for index, check in enumerate(checks):
+        prefix = f"checks[{index}]"
+        if not isinstance(check, dict):
+            add("error", f"{prefix} must be an object")
+            continue
+        if not isinstance(check.get("name"), str) or not check["name"].strip():
+            add("error", f"{prefix}.name is required")
+        if check.get("status") not in EVIDENCE_STATUSES:
+            add("error", f"{prefix}.status must be one of {sorted(EVIDENCE_STATUSES)}")
+        command = check.get("command")
+        if command is not None and (not isinstance(command, list) or not all(isinstance(item, str) for item in command)):
+            add("error", f"{prefix}.command must be a list of strings")
+        if check.get("status") == "passed" and not command:
+            add("warning", f"{prefix} is passed without command evidence")
+        artifacts = check.get("artifacts", check.get("artifact", []))
+        if isinstance(artifacts, str):
+            artifacts = [artifacts]
+        if not isinstance(artifacts, list) or not all(isinstance(item, str) for item in artifacts):
+            add("error", f"{prefix}.artifacts must be a string or list of strings")
+            artifacts = []
+        for artifact in artifacts:
+            relative = _relative_project_path(root, artifact, f"{prefix}.artifacts")
+            if relative is None:
+                add("error", f"{prefix}.artifacts path is not project-relative: {artifact}")
+            elif not (root / relative).is_file():
+                add("warning", f"{prefix}.artifact does not exist: {relative}")
+
+    permissions = profile.get("permissions", {})
+    if not isinstance(permissions, dict):
+        permissions = {}
+    writable = _as_list(permissions.get("writable", []))
+    read_only = _as_list(permissions.get("read_only", []))
+    forbidden = _as_list(permissions.get("forbidden", []))
+    changes = evidence.get("changes", [])
+    if not isinstance(changes, list):
+        add("error", "changes must be a list")
+        changes = []
+    for index, change in enumerate(changes):
+        if isinstance(change, str):
+            path_value = change
+        elif isinstance(change, dict):
+            path_value = change.get("path")
+        else:
+            add("error", f"changes[{index}] must be a path or object")
+            continue
+        relative = _relative_project_path(root, path_value, f"changes[{index}]")
+        if relative is None:
+            add("error", f"changes[{index}] path is not project-relative: {path_value}")
+        elif _permission_match(relative, forbidden) or _permission_match(relative, read_only):
+            add("error", f"changes[{index}] is outside the writable scope: {relative}")
+        elif writable and not _permission_match(relative, writable):
+            add("warning", f"changes[{index}] is not covered by permissions.writable: {relative}")
+
+    for key in ("skipped", "risks"):
+        value = evidence.get(key, [])
+        if not isinstance(value, list) or not all(isinstance(item, (str, dict)) for item in value):
+            add("error", f"{key} must be a list of strings or objects")
+
+    if strict:
+        for issue in issues:
+            if issue["level"] == "warning":
+                issue["level"] = "error"
+    return issues
+
+
+def review_evidence_file(root: Path, profile: dict[str, Any], relative_path: str, strict: bool = False) -> dict[str, Any]:
+    artifact = read_artifact(root, relative_path, max_bytes=1_000_000)
+    try:
+        evidence = json.loads(artifact["text"])
+    except json.JSONDecodeError as exc:
+        raise KitError(f"Evidence must be JSON: {relative_path}: {exc}") from exc
+    if not isinstance(evidence, dict):
+        raise KitError(f"Evidence must contain an object: {relative_path}")
+    issues = validate_evidence(root, profile, evidence, strict)
+    failed = any(item["level"] == "error" for item in issues)
+    return {
+        "status": "failed" if failed else "passed",
+        "path": relative_path,
+        "issues": issues,
+        "evidence": _redact(evidence),
+    }
+
+
+def evidence_template() -> str:
+    return (resource_root() / "templates" / "evidence.json").read_text(encoding="utf-8")
+
+
 def run_project_command(
     root: Path,
     profile: dict[str, Any],
@@ -463,6 +605,10 @@ def project_template() -> str:
     return (resource_root() / "templates" / "project.toml").read_text(encoding="utf-8")
 
 
+def adapter_template() -> str:
+    return (resource_root() / "templates" / "adapter.py").read_text(encoding="utf-8")
+
+
 def integration_claude(kit_path: str) -> str:
     return f"""# Claude Kit integration
 
@@ -485,14 +631,47 @@ def integration_skill() -> str:
     return (resource_root() / "templates" / "SKILL.md").read_text(encoding="utf-8")
 
 
-def init_project(root: Path, kit_path: str = "third_party/claude_kit", force: bool = False) -> list[str]:
+def _skill_targets(root: Path) -> dict[Path, str]:
+    targets = {root / ".claude" / "skills" / "rtl-dv-kit" / "SKILL.md": integration_skill()}
+    resources = resource_root()
+    for entry in skill_catalog():
+        source = resources / entry["path"]
+        targets[root / ".claude" / "skills" / entry["id"] / "SKILL.md"] = source.read_text(encoding="utf-8")
+    return targets
+
+
+def sync_project_skills(root: Path, force: bool = False) -> list[str]:
+    created: list[str] = []
+    for path, content in _skill_targets(root).items():
+        if path.exists() and not force:
+            continue
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8", newline="\n")
+        created.append(str(path.relative_to(root)).replace(os.sep, "/"))
+    return created
+
+
+def init_project(
+    root: Path,
+    kit_path: str = "third_party/claude_kit",
+    force: bool = False,
+    with_adapter: bool = False,
+) -> list[str]:
     targets = {
         root / ".ai" / "project.toml": project_template(),
         root / ".claude" / "CLAUDE.md": integration_claude(kit_path),
-        root / ".claude" / "skills" / "rtl-dv-kit" / "SKILL.md": integration_skill(),
     }
+    if with_adapter:
+        targets[root / ".ai" / "adapter.py"] = adapter_template()
     created: list[str] = []
     for path, content in targets.items():
+        if path.exists() and not force:
+            continue
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8", newline="\n")
+        created.append(str(path.relative_to(root)).replace(os.sep, "/"))
+    skill_targets = _skill_targets(root)
+    for path, content in skill_targets.items():
         if path.exists() and not force:
             continue
         path.parent.mkdir(parents=True, exist_ok=True)

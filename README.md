@@ -16,6 +16,8 @@ claude_kit 把通用 RTL/DV roles、protocol/VIP packs、项目 profile、repo-l
 - repo-local CLI；
 - 只读 project inspect；
 - profile allowlist command runner；
+- profile、manifest、artifact 和 evidence schema；
+- 可选 project adapter template；
 - 默认只读的 stdio MCP bridge；
 - project init 模板；
 - fixture 和自动化测试。
@@ -120,21 +122,63 @@ python third_party/claude_kit/bin/claude-kit init \
   --kit-path third_party/claude_kit
 ~~~
 
+如果项目有 target/test/VIP mapping，希望保留一个薄 adapter，可以额外生成模板：
+
+~~~bash
+python third_party/claude_kit/bin/claude-kit init \
+  --project-root . \
+  --kit-path third_party/claude_kit \
+  --with-adapter
+~~~
+
 默认会创建：
 
 ~~~text
 .ai/project.toml
 .claude/CLAUDE.md
 .claude/skills/rtl-dv-kit/SKILL.md
+.claude/skills/rtl-dv-context/SKILL.md
+.claude/skills/rtl-design/SKILL.md
+.claude/skills/dv-engineering/SKILL.md
+.claude/skills/protocol-vip/SKILL.md
+.claude/skills/rtl-dv-debugging/SKILL.md
+.claude/skills/rtl-dv-review/SKILL.md
 ~~~
 
 init 的特点：
 
 - 不修改 RTL、DV、vendor、generated 或 build 文件；
 - 已存在的文件默认不覆盖；
-- 只有明确使用 --force 才会覆盖这三个集成文件；
+- 只有明确使用 --force 才会覆盖这些生成的集成文件；
 - 生成的 profile 是模板，必须由项目维护者填写；
-- 生成的 CLAUDE.md 和 skill 只提供通用规则，不包含项目路径猜测。
+- 生成的 CLAUDE.md 和 skills 只提供通用规则，不包含项目路径猜测。
+
+更新 submodule 后，可以只同步 skills，不触碰 profile 和项目规则：
+
+~~~bash
+python third_party/claude_kit/bin/claude-kit sync \
+  --project-root .
+~~~
+
+### Schema 和资源位置
+
+通用资源位于 kit 内部：
+
+~~~text
+src/claude_kit/resources/
+├── claude/CLAUDE.md
+├── roles/
+├── skills/
+├── packs/
+├── schemas/
+│   ├── project.schema.json
+│   ├── manifest.schema.json
+│   ├── artifact-result.schema.json
+│   └── evidence.schema.json
+└── templates/
+~~~
+
+项目 profile/adapter 只填写项目事实；schema、rules、skills、packs 和 evidence 语义由 kit 统一维护。
 
 初始化后先运行：
 
@@ -454,13 +498,17 @@ Pack 只提供领域规则，不提供项目绝对路径、license、VIP class�
 ~~~text
 claude-kit version
 claude-kit init
+claude-kit sync
 claude-kit doctor
 claude-kit list roles
 claude-kit list packs
+claude-kit list skills
 claude-kit context
 claude-kit manifest
 claude-kit inspect
 claude-kit check
+claude-kit evidence check
+claude-kit evidence template
 claude-kit mcp serve
 ~~~
 
@@ -481,6 +529,16 @@ claude-kit init \
 ~~~
 
 创建最小项目集成文件。已存在的文件默认不覆盖；只有显式使用 --force 才会覆盖。
+使用 --with-adapter 可额外创建 .ai/adapter.py 模板。
+
+### sync
+
+~~~bash
+claude-kit sync --project-root .
+claude-kit sync --project-root . --force
+~~~
+
+只同步 kit 提供的 Claude Code skills。默认不覆盖项目已有 skill；--force 只覆盖由 kit 生成的 skill 路径，不触碰 profile、CLAUDE.md、RTL、DV 或其他项目文件。
 
 ### doctor
 
@@ -496,11 +554,12 @@ doctor 只读检查 profile 和安全边界。推荐在每次接入、更新 sub
 ~~~bash
 claude-kit list roles
 claude-kit list packs
+claude-kit list skills
 claude-kit list roles --json
 claude-kit list packs --json
 ~~~
 
-列出 role/pack 的 ID、版本、摘要和来源。
+列出 role、pack 或 skill 的 ID、版本、摘要和来源。
 
 ### context
 
@@ -535,6 +594,26 @@ claude-kit inspect --project-root . --json
 ~~~
 
 只读统计 profile roots 下的文件数量和扩展名。它不解析或修改 RTL，也不会访问 profile 之外的路径。
+
+### evidence
+
+生成 evidence 模板：
+
+~~~bash
+claude-kit evidence template --project-root . --output out/evidence.json
+~~~
+
+校验证据文件：
+
+~~~bash
+claude-kit evidence check \
+  --project-root . \
+  --file out/evidence.json \
+  --strict \
+  --json
+~~~
+
+evidence 至少说明 project、task、source revision、changes、checks、skipped 和 risks。每个 check 要有状态；passed check 应尽量带实际 command 和 artifact。严格模式会把 warning 当成失败，并检查 changed path 是否落在 profile 的 writable 范围。
 
 ### check
 
@@ -804,7 +883,10 @@ python -m unittest discover -s tests -v
 - artifact 越界保护；
 - command confirmation；
 - init 的非破坏行为；
-- CLI doctor/context/check。
+- skill catalog 和 sync；
+- evidence schema、artifact 引用和 read-only path；
+- CLI doctor/context/check/evidence；
+- MCP tools/list、profile 脱敏和只读工具。
 
 ### 添加 role
 
@@ -821,6 +903,14 @@ python -m unittest discover -s tests -v
 3. 写清协议版本、适用范围、reset、握手、错误、边界和验证建议。
 4. 不放项目绝对路径、VIP license、token 或 simulator 宏。
 5. 更新 pack catalog、fixture 和 README。
+
+### 添加 skill
+
+1. 放到 src/claude_kit/resources/skills/<skill-id>/SKILL.md。
+2. 使用 front matter 声明 name、version 和 description。
+3. 只写跨项目通用的 Claude Code 工作规则。
+4. 不在 skill 中硬编码项目路径、target、license 或调度平台。
+5. 更新 skill catalog、sync 测试和 README。
 
 ### 添加 CLI 命令
 

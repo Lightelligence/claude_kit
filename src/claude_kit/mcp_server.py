@@ -13,6 +13,7 @@ from .core import (
     pack_catalog,
     read_artifact,
     redact_profile,
+    review_evidence_file,
     resolve_context,
     role_catalog,
     run_project_command,
@@ -143,7 +144,7 @@ def _call_tool(
         path = arguments.get("path")
         if not isinstance(path, str):
             raise KitError("review_evidence requires path")
-        return _text_result(read_artifact(root, path))
+        return _text_result(review_evidence_file(root, profile, path, bool(arguments.get("strict", False))))
     if name == "run_check":
         if not allow_exec:
             raise KitError("run_check is disabled; start the bridge with --allow-exec")

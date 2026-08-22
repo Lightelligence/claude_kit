@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "project": "minimal_fixture",
+  "task": "run fixture inspection",
+  "source_revision": "fixture",
+  "changes": ["rtl/README.md"],
+  "checks": [
+    {
+      "name": "inspect",
+      "status": "passed",
+      "command": ["python", "-c", "print('fixture inspect')"],
+      "artifacts": ["out/logs/README.md"]
+    }
+  ],
+  "skipped": [],
+  "risks": []
+}

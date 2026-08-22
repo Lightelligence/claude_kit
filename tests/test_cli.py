@@ -30,6 +30,17 @@ class CliTests(unittest.TestCase):
         payload = json.loads(result.stdout)
         self.assertEqual(payload["status"], "passed")
 
+    def test_list_skills_and_evidence_check(self) -> None:
+        skills = self.run_cli("list", "skills", "--json")
+        self.assertEqual(skills.returncode, 0, skills.stderr)
+        self.assertIn("rtl-design", {item["id"] for item in json.loads(skills.stdout)})
+        evidence = self.run_cli(
+            "evidence", "check", "--project-root", str(FIXTURE),
+            "--file", "out/evidence.json", "--strict", "--json",
+        )
+        self.assertEqual(evidence.returncode, 0, evidence.stderr)
+        self.assertEqual(json.loads(evidence.stdout)["status"], "passed")
+
     def test_context_writes_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             project = Path(directory) / "project"

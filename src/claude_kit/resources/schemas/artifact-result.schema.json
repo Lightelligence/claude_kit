@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Lightelligence/claude_kit/artifact-result.schema.json",
+  "type": "object",
+  "required": ["status", "command", "argv", "cwd", "returncode"],
+  "properties": {
+    "status": {"enum": ["passed", "failed", "blocked", "skipped", "unknown"]},
+    "command": {"type": "string"},
+    "argv": {"type": "array", "items": {"type": "string"}},
+    "cwd": {"type": "string"},
+    "returncode": {"type": "integer"},
+    "stdout": {"type": "string"},
+    "stderr": {"type": "string"},
+    "artifacts": {"type": "array", "items": {"type": "string"}}
+  }
+}

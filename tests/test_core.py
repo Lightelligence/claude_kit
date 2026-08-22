@@ -16,8 +16,12 @@ from claude_kit.core import (
     resolve_context,
     role_catalog,
     pack_catalog,
+    review_evidence_file,
     run_project_command,
+    skill_catalog,
+    sync_project_skills,
     validate_profile,
+    validate_evidence,
 )
 
 
@@ -29,6 +33,7 @@ class CoreTests(unittest.TestCase):
     def test_catalogs_have_expected_entries(self) -> None:
         self.assertIn("reviewer", {item["id"] for item in role_catalog()})
         self.assertIn("protocols.apb", {item["id"] for item in pack_catalog()})
+        self.assertIn("rtl-design", {item["id"] for item in skill_catalog()})
 
     def test_doctor_passes_fixture(self) -> None:
         result = doctor(FIXTURE, strict=True)
@@ -61,6 +66,20 @@ class CoreTests(unittest.TestCase):
         with self.assertRaises(KitError):
             read_artifact(FIXTURE, "../README.md")
 
+    def test_evidence_contract_passes_and_rejects_read_only_change(self) -> None:
+        _, profile = load_profile(FIXTURE)
+        result = review_evidence_file(FIXTURE, profile, "out/evidence.json", strict=True)
+        self.assertEqual(result["status"], "passed", result)
+        bad = {
+            "schema_version": 1,
+            "project": "minimal_fixture",
+            "task": "bad change",
+            "changes": ["generated/README.md"],
+            "checks": [{"name": "inspect", "status": "passed", "command": ["inspect"]}],
+        }
+        issues = validate_evidence(FIXTURE, profile, bad, strict=True)
+        self.assertTrue(any("outside the writable scope" in item["message"] for item in issues))
+
     def test_command_confirmation_and_execution(self) -> None:
         _, profile = load_profile(FIXTURE)
         with self.assertRaises(KitError):
@@ -90,6 +109,12 @@ class CoreTests(unittest.TestCase):
             self.assertIn(".ai/project.toml", created)
             self.assertNotIn(".claude/CLAUDE.md", created)
             self.assertEqual(existing.read_text(encoding="utf-8"), "keep me")
+
+    def test_sync_materializes_all_skills(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            created = sync_project_skills(Path(directory))
+            self.assertGreaterEqual(len(created), 6)
+            self.assertTrue((Path(directory) / ".claude/skills/rtl-design/SKILL.md").is_file())
 
 
 if __name__ == "__main__":
