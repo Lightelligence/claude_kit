@@ -19,7 +19,6 @@ generated = ["generated", "out"]
 
 [roles]
 defaults = ["rtl-designer", "dv-engineer", "reviewer"]
-local = []
 
 [build]
 system = "project-wrapper"

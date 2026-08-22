@@ -297,7 +297,6 @@ generated = ["generated", "out"]
 
 [roles]
 defaults = ["rtl-designer", "dv-engineer", "reviewer"]
-local = []
 
 [build]
 system = "project-wrapper"
@@ -357,7 +356,7 @@ auto_push = false
 | schema_version | profile schema 版本，不等于 kit 版本 |
 | project | 项目标识、根目录、语言和运行平台 |
 | roots | RTL、DV、testbench、vendor、generated 的范围 |
-| roles | 默认 role 和项目本地 role |
+| roles | 默认 role 选择；项目特有规则放在项目 `.claude/CLAUDE.md` 或 `.ai/overrides/` |
 | packs | 项目真正启用的协议/VIP pack |
 | build | build、lint、compile、simulation 入口 |
 | vip | 项目真实接口名、实例数量和 mapping |
@@ -666,13 +665,14 @@ claude-kit mcp serve \
 Resolved context 由以下来源合并：
 
 ~~~text
-generic defaults
-  < selected protocol/VIP pack
-  < project profile
-  < project-local override
-  < task-local instruction
-  < explicit user request
+generic role guidance
+  + selected protocol/VIP pack
+  + project profile facts
+  + task-local instruction
+  + explicit user request
 ~~~
+
+当前 CLI resolver 自动合并的是 role、pack、profile 和 task；项目 `.claude/CLAUDE.md`、`.ai/overrides/` 以及用户请求由 Claude Code 的规则层继续提供，不会被 kit 偷猜或隐式读取。这样可以保持 manifest 的来源边界清楚。
 
 Context 包含：
 
