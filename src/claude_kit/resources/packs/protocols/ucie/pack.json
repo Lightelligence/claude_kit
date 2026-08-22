@@ -1,0 +1,7 @@
+{
+  "id": "protocols.ucie",
+  "version": "1.0.0",
+  "kind": "protocol",
+  "summary": "UCIe die-to-die link and adapter guidance",
+  "entrypoints": ["overview.md"]
+}

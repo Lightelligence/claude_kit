@@ -1,0 +1,53 @@
+schema_version = 1
+
+[project]
+id = "minimal_fixture"
+display_name = "Minimal fixture"
+api_token = "fixture-secret"
+root = "."
+language = "systemverilog"
+platform = "linux"
+
+[roots]
+rtl = ["rtl"]
+dv = ["dv"]
+testbench = ["tb"]
+docs = ["docs"]
+vendor = ["third_party_vip"]
+generated = ["generated"]
+artifacts = ["out"]
+
+[roles]
+defaults = ["reviewer"]
+
+packs = ["common", "protocols.apb"]
+
+[build]
+system = "fixture"
+simulator = "none"
+
+[build.commands.inspect]
+argv = ["python", "-c", "print('fixture inspect')"]
+cwd = "."
+kind = "read_only"
+
+[build.commands.confirmed]
+argv = ["python", "-c", "print('fixture confirmed')"]
+cwd = "."
+kind = "verification"
+confirmation = "required"
+
+[permissions]
+writable = ["rtl/**", "dv/**", "tb/**", "docs/**"]
+read_only = ["third_party_vip/**", "generated/**", "out/**"]
+forbidden = [".git/**", "secrets/**"]
+
+[artifacts]
+logs = "out/logs"
+reports = "out/reports"
+
+[policies]
+require_evidence = true
+network = "disabled"
+auto_commit = false
+auto_push = false

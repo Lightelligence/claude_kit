@@ -1,0 +1,7 @@
+{
+  "id": "vip.generic",
+  "version": "1.0.0",
+  "kind": "vip",
+  "summary": "Generic VIP connection, configuration and smoke guidance",
+  "entrypoints": ["overview.md"]
+}

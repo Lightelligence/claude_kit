@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "claude-kit"
+version = "0.1.0"
+description = "Reusable RTL/DV Claude Code kit"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "Lightelligence" }]
+dependencies = []
+
+[project.scripts]
+claude-kit = "claude_kit.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+claude_kit = ["resources/**/*"]

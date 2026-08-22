@@ -1,0 +1,7 @@
+{
+  "id": "protocols.apb",
+  "version": "1.0.0",
+  "kind": "protocol",
+  "summary": "APB setup/access and response guidance",
+  "entrypoints": ["overview.md"]
+}

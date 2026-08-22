@@ -1,0 +1,47 @@
+schema_version = 1
+
+[project]
+id = "replace-me"
+display_name = "Replace me"
+root = "."
+language = "systemverilog"
+platform = "linux"
+
+[roots]
+rtl = ["rtl"]
+dv = ["dv"]
+testbench = ["tb"]
+docs = ["docs"]
+vendor = ["third_party_vip"]
+generated = ["generated", "out"]
+
+[roles]
+defaults = ["rtl-designer", "dv-engineer", "reviewer"]
+local = []
+
+packs = ["common"]
+
+[build]
+system = "project-wrapper"
+simulator = "project-configured"
+
+[build.commands]
+
+[vip]
+
+[permissions]
+writable = ["rtl/**", "dv/**", "tb/**", "docs/**", ".ai/overrides/**"]
+read_only = ["third_party_vip/**", "generated/**", "out/**"]
+forbidden = [".git/**", "secrets/**"]
+
+[artifacts]
+logs = "out/logs"
+reports = "out/reports"
+waveforms = "out/waves"
+coverage = "out/coverage"
+
+[policies]
+require_evidence = true
+network = "disabled"
+auto_commit = false
+auto_push = false

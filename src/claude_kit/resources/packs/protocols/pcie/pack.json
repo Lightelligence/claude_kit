@@ -1,0 +1,7 @@
+{
+  "id": "protocols.pcie",
+  "version": "1.0.0",
+  "kind": "protocol",
+  "summary": "PCIe link, transaction and error-path guidance",
+  "entrypoints": ["overview.md"]
+}

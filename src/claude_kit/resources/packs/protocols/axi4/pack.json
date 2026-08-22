@@ -1,0 +1,7 @@
+{
+  "id": "protocols.axi4",
+  "version": "1.0.0",
+  "kind": "protocol",
+  "summary": "AXI4 handshake, ordering and verification guidance",
+  "entrypoints": ["overview.md"]
+}

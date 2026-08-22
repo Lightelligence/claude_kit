@@ -1,0 +1,7 @@
+{
+  "id": "protocols.ethernet",
+  "version": "1.0.0",
+  "kind": "protocol",
+  "summary": "Ethernet datapath, framing and link-state guidance",
+  "entrypoints": ["overview.md"]
+}

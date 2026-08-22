@@ -1,0 +1,7 @@
+{
+  "id": "common",
+  "version": "1.0.0",
+  "kind": "common",
+  "summary": "Common RTL/DV review and evidence rules",
+  "entrypoints": ["overview.md"]
+}
