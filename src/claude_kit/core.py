@@ -621,7 +621,7 @@ def validate_evidence(root: Path, profile: dict[str, Any], evidence: dict[str, A
 
 
 def review_evidence_file(root: Path, profile: dict[str, Any], relative_path: str, strict: bool = False) -> dict[str, Any]:
-    artifact = read_artifact(root, relative_path, max_bytes=1_000_000)
+    artifact = read_artifact(root, relative_path, max_bytes=MAX_ARTIFACT_BYTES)
     try:
         evidence = json.loads(artifact["text"])
     except json.JSONDecodeError as exc:
