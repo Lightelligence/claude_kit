@@ -45,6 +45,7 @@ class CoreTests(unittest.TestCase):
 
     def test_context_and_manifest_have_sources(self) -> None:
         profile_path, profile = load_profile(FIXTURE)
+        self.assertEqual(profile["packs"], ["common", "protocols.apb"])
         context, manifest = resolve_context(
             FIXTURE,
             profile_path,
@@ -58,6 +59,8 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(manifest["project"], "minimal_fixture")
         self.assertTrue(manifest["sources"])
         self.assertTrue(all(item["sha256"] for item in manifest["sources"]))
+        _, default_manifest = resolve_context(FIXTURE, profile_path, profile, None, None, "use profile defaults")
+        self.assertEqual(default_manifest["packs"], ["common", "protocols.apb"])
 
     def test_inspect_uses_profile_roots(self) -> None:
         _, profile = load_profile(FIXTURE)
@@ -137,6 +140,8 @@ class CoreTests(unittest.TestCase):
             self.assertIn(".ai/project.toml", created)
             self.assertNotIn(".claude/CLAUDE.md", created)
             self.assertEqual(existing.read_text(encoding="utf-8"), "keep me")
+            _, generated_profile = load_profile(root)
+            self.assertEqual(generated_profile["packs"], ["common"])
 
     def test_sync_materializes_all_skills(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

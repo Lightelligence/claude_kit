@@ -1,5 +1,7 @@
 schema_version = 1
 
+packs = ["common", "protocols.apb"]
+
 [project]
 id = "minimal_fixture"
 display_name = "Minimal fixture"
@@ -19,8 +21,6 @@ artifacts = ["out"]
 
 [roles]
 defaults = ["reviewer"]
-
-packs = ["common", "protocols.apb"]
 
 [build]
 system = "fixture"

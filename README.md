@@ -278,6 +278,8 @@ project.json
 ~~~toml
 schema_version = 1
 
+packs = ["common", "protocols.axi4", "vip.generic"]
+
 [project]
 id = "example_ip"
 display_name = "Example IP"
@@ -296,8 +298,6 @@ generated = ["generated", "out"]
 [roles]
 defaults = ["rtl-designer", "dv-engineer", "reviewer"]
 local = []
-
-packs = ["common", "protocols.axi4", "vip.generic"]
 
 [build]
 system = "project-wrapper"
@@ -365,6 +365,8 @@ auto_push = false
 | artifacts | 日志、报告、波形和 coverage 位置 |
 | policies | 网络、证据、commit 和 push 策略 |
 
+TOML 的 `packs` 是根级字段，必须放在任何 `[project]`、`[roots]` 或其他 table 之前；如果把它写在 `[roles]` 或 `[roots]` 下面，TOML 会把它解析成该 table 的子字段，CLI 就不会使用它作为默认 pack。
+
 ### Profile 校验规则
 
 doctor 会检查：
@@ -376,7 +378,9 @@ doctor 会检查：
 - writable、read_only、forbidden 是否重叠；
 - build command 的 argv 是否为非空字符串列表；
 - command cwd 是否越出项目根目录；
-- roles 和 packs 的基本类型。
+- roles 和 packs 的类型、内置 ID 引用；
+- 可选 adapter 的路径和 required functions；
+- command confirmation policy。
 
 doctor 对尚不存在但可能由项目后续创建的 roots 报 warning；doctor --strict 会把 warning 也当成失败。
 
