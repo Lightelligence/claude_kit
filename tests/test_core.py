@@ -38,6 +38,7 @@ class CoreTests(unittest.TestCase):
         self.assertIn("waveform-debugger", {item["id"] for item in role_catalog()})
         self.assertIn("protocols.apb", {item["id"] for item in pack_catalog()})
         self.assertIn("protocols.chi", {item["id"] for item in pack_catalog()})
+        self.assertIn("protocols.axi4lite", {item["id"] for item in pack_catalog()})
         self.assertIn("rtl-design", {item["id"] for item in skill_catalog()})
         self.assertIn("rtl-dv-evidence", {item["id"] for item in skill_catalog()})
 

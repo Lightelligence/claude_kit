@@ -13,7 +13,7 @@ claude_kit 把通用 RTL/DV roles、protocol/VIP packs、项目 profile、repo-l
 - context resolver 和可审计 manifest；
 - 9 个通用 RTL/DV roles，包括 waveform-debugger；
 - 7 个可按需同步或触发的通用 skills；
-- common、AXI4、APB、Ethernet、PCIe、UCIe、SPI、UART、JTAG、I2C、CHI 和 generic VIP packs；
+- common、AXI4、AXI4-Lite、AXI4-Stream、APB、AHB、Wishbone、Ethernet、PCIe、UCIe、SPI、UART、JTAG、I2C、CHI 和 generic VIP packs；
 - repo-local CLI；
 - 只读 project inspect；
 - 有大小上限的 artifact/log 只读读取；
@@ -509,7 +509,11 @@ skills 是可由 Claude Code 按任务触发或由项目按需同步到 `.claude
 | --- | --- |
 | common | 通用 RTL/DV、reset、握手、边界和 evidence 规则 |
 | protocols.axi4 | AXI4 handshake、ordering、ID、burst、backpressure 和 response |
+| protocols.axi4lite | AXI4-Lite register access、side effect、strobe 和 response |
+| protocols.axi_stream | AXI4-Stream packet、TLAST、TKEEP、sideband 和 backpressure |
 | protocols.apb | APB setup/access、wait state、side effect 和 error |
+| protocols.ahb | AHB phase、HREADY、HRESP、burst 和 wait state |
+| protocols.wishbone | Wishbone Classic/Pipelined、ACK、STALL、ERR 和 retry |
 | protocols.ethernet | Ethernet framing、CRC、link state、backpressure 和 recovery |
 | protocols.pcie | PCIe LTSSM、TLP、completion、credit、error 和 recovery |
 | protocols.ucie | UCIe training、lane/width、flit、retry、flow control 和 recovery |

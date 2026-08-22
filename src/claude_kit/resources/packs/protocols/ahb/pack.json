@@ -1,0 +1,7 @@
+{
+  "id": "protocols.ahb",
+  "version": "1.0.0",
+  "kind": "protocol",
+  "summary": "AMBA AHB transfer, response and burst guidance",
+  "entrypoints": ["overview.md"]
+}

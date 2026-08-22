@@ -1,0 +1,7 @@
+{
+  "id": "protocols.axi_stream",
+  "version": "1.0.0",
+  "kind": "protocol",
+  "summary": "AXI4-Stream packet, sideband and backpressure guidance",
+  "entrypoints": ["overview.md"]
+}

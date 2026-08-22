@@ -1,0 +1,7 @@
+{
+  "id": "protocols.wishbone",
+  "version": "1.0.0",
+  "kind": "protocol",
+  "summary": "Wishbone Classic/Pipelined transfer and response guidance",
+  "entrypoints": ["overview.md"]
+}
