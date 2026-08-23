@@ -132,6 +132,18 @@ class CliTests(unittest.TestCase):
             self.assertEqual(server["type"], "stdio")
             self.assertIn("mcp", server["args"])
 
+    def test_init_no_skills_flag_is_available(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            project.mkdir()
+            result = self.run_cli(
+                "init", "--project-root", str(project), "--no-skills",
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            created = json.loads(result.stdout)["created"]
+            self.assertNotIn(".claude/skills/rtl-dv-kit/SKILL.md", created)
+            self.assertFalse((project / ".claude" / "skills").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

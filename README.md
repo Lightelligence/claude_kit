@@ -135,6 +135,16 @@ python third_party/claude_kit/bin/claude-kit init \
 python third_party/claude_kit/bin/claude-kit sync --project-root .
 ~~~
 
+如果项目已经有自己的 `.claude/skills`、`.agents/skills` 或对应 symlink，且希望第一次接入时完全不新增 skill 文件，可以使用 `--no-skills`。它仍会生成 `.ai/project.toml` 和 `.claude/CLAUDE.md`，但不会写入任何 `.claude/skills/` 路径；以后需要 Claude Code 自动发现 kit skills 时，再单独运行 `sync`：
+
+~~~bash
+python third_party/claude_kit/bin/claude-kit init \
+  --project-root . \
+  --kit-path third_party/claude_kit \
+  --no-skills
+python third_party/claude_kit/bin/claude-kit sync --project-root .
+~~~
+
 如果项目有 target/test/VIP mapping，希望保留一个薄 adapter，可以额外生成模板：
 
 ~~~bash
@@ -167,7 +177,7 @@ python third_party/claude_kit/bin/claude-kit init \
 .claude/skills/rtl-dv-review/SKILL.md
 ~~~
 
-使用 `--with-mcp` 时还会创建 `.mcp.json`；使用 `--with-adapter` 时还会创建 `.ai/adapter.py`。两者都是可选的，默认不会生成。
+使用 `--with-mcp` 时会增量加入 `.mcp.json` 中的 `claude-kit` server；已有的项目 MCP server 会保留。如果已有同名但内容不同的 `claude-kit` server，默认会报冲突，只有显式 `--force` 才会刷新这一项，不会覆盖其他 server。使用 `--with-adapter` 时还会创建 `.ai/adapter.py`。两者都是可选的，默认不会生成。
 使用 `--with-adapter` 时还会在 `.ai/project.toml` 中启用对应的 `[adapter]` 段，生成的模板可以直接通过 `claude-kit adapter check`；项目再按真实 target/test/VIP 事实替换模板逻辑。
 
 init 的特点：
@@ -500,7 +510,7 @@ skills 是可由 Claude Code 按任务触发或由项目按需同步到 `.claude
 | rtl-dv-review | 做只读 RTL/DV review 和交付前检查 |
 | rtl-dv-evidence | 记录可复现的 checks、artifacts、skipped/blocked 和 risks |
 
-默认 `init` 会同步全部通用 skills；`init --minimal` 只生成一个 integration skill，之后可用 `sync` 再同步完整集合。
+默认 `init` 会同步全部通用 skills；`init --minimal` 只生成一个 integration skill；`init --no-skills` 不生成任何项目侧 skill 文件。两种最小模式之后都可以用 `sync` 同步完整集合。
 
 ## Protocol/VIP packs
 
@@ -585,8 +595,9 @@ claude-kit init \
 
 创建最小项目集成文件。已存在的文件默认不覆盖；只有显式使用 --force 才会覆盖。
 使用 --with-adapter 可额外创建 .ai/adapter.py 模板。
-使用 --with-mcp 可额外创建只读 MCP 的 .mcp.json；该配置不会启用 run_check。
+使用 --with-mcp 可在 `.mcp.json` 中增量加入只读 MCP bridge；它只更新 `claude-kit` 条目，不会覆盖项目已有 server，也不会启用 `run_check`。
 使用 --minimal 时只创建 `rtl-dv-kit` integration skill，不复制其余 skills；这适合希望项目仓库只保留极薄 Claude Code 配置的场景。
+使用 --no-skills 时不创建任何 `.claude/skills/` 文件；这适合项目已有 agent/skills 层或 `.claude/skills` symlink 的场景。
 
 ### sync
 
@@ -923,6 +934,7 @@ MCP 配置是可选的。项目的 .mcp.json 只负责连接 bridge；profile、
 - 不因路径不存在就自动创建源码目录。
 - artifact 读取拒绝越出项目根目录的路径。
 - artifact 读取默认限制为 100 KiB，最大为 1 MiB，避免把完整大日志送入 context。
+- 生成文件不会在显式覆盖时写入 symlink 文件；项目可以保留自己的 agent/skills 映射而不被 kit 跟随写出项目边界。
 
 ### 命令
 

@@ -813,6 +813,63 @@ def mcp_config(kit_path: str) -> str:
     return json.dumps(config, indent=2, ensure_ascii=False) + "\n"
 
 
+def _merged_mcp_config(root: Path, kit_path: str, force: bool) -> str | None:
+    """Return an additive MCP config, or None when the existing entry is current.
+
+    A consumer project may already own several MCP servers.  Initialization must
+    add or refresh only the kit entry and must never replace the rest of the
+    project configuration.
+    """
+    path = root / ".mcp.json"
+    if path.is_symlink():
+        if path.exists() and not force:
+            return None
+        raise KitError("Refusing to write through symlink: .mcp.json")
+
+    desired = json.loads(mcp_config(kit_path))
+    if not path.exists():
+        return json.dumps(desired, indent=2, ensure_ascii=False) + "\n"
+    if not path.is_file():
+        raise KitError("Existing .mcp.json is not a regular file")
+    try:
+        current = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise KitError(f"Cannot merge existing .mcp.json: {exc}") from exc
+    if not isinstance(current, dict):
+        raise KitError("Existing .mcp.json must contain an object")
+    servers = current.setdefault("mcpServers", {})
+    if not isinstance(servers, dict):
+        raise KitError("Existing .mcp.json mcpServers must be an object")
+
+    kit_server = desired["mcpServers"]["claude-kit"]
+    existing = servers.get("claude-kit")
+    if existing is not None and existing != kit_server and not force:
+        raise KitError("Existing .mcp.json has a different claude-kit server; use --force to refresh only that entry")
+    if existing == kit_server:
+        return None
+    servers["claude-kit"] = kit_server
+    return json.dumps(current, indent=2, ensure_ascii=False) + "\n"
+
+
+def _write_project_text(root: Path, path: Path, content: str, force: bool, label: str) -> bool:
+    """Write a generated project file without escaping through a symlink."""
+    root = root.resolve()
+    try:
+        relative = path.relative_to(root)
+    except ValueError as exc:
+        raise KitError(f"{label} escapes the project root: {path}") from exc
+    _project_path(root, relative, label)
+    if path.exists() and not force:
+        return False
+    if path.is_symlink():
+        raise KitError(f"Refusing to write through symlink: {relative.as_posix()}")
+    if path.exists() and not path.is_file():
+        raise KitError(f"Generated target is not a regular file: {relative.as_posix()}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8", newline="\n")
+    return True
+
+
 def adapter_path(root: Path, profile: dict[str, Any]) -> Path | None:
     if "adapter" not in profile:
         return None
@@ -912,30 +969,36 @@ def init_project(
     with_adapter: bool = False,
     with_mcp: bool = False,
     minimal: bool = False,
+    no_skills: bool = False,
 ) -> list[str]:
+    root = root.resolve()
+    if minimal and no_skills:
+        raise KitError("--minimal and --no-skills are mutually exclusive")
     targets = {
         root / ".ai" / "project.toml": project_template(with_adapter),
         root / ".claude" / "CLAUDE.md": integration_claude(kit_path),
     }
     if with_adapter:
         targets[root / ".ai" / "adapter.py"] = adapter_template()
+    mcp_path = root / ".mcp.json"
+    mcp_content: str | None = None
     if with_mcp:
-        targets[root / ".mcp.json"] = mcp_config(kit_path)
+        mcp_content = _merged_mcp_config(root, kit_path, force)
+        if mcp_content is not None:
+            targets[mcp_path] = mcp_content
     created: list[str] = []
     for path, content in targets.items():
-        if path.exists() and not force:
-            continue
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8", newline="\n")
-        created.append(str(path.relative_to(root)).replace(os.sep, "/"))
-    skill_targets = _skill_targets(root)
-    if minimal:
-        integration_path = root / ".claude" / "skills" / "rtl-dv-kit" / "SKILL.md"
-        skill_targets = {integration_path: integration_skill()}
-    for path, content in skill_targets.items():
-        if path.exists() and not force:
-            continue
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8", newline="\n")
-        created.append(str(path.relative_to(root)).replace(os.sep, "/"))
+        # A merged MCP file is safe to update even without --force because the
+        # merge has preserved every project-owned server and key.
+        overwrite = force or (path == mcp_path and mcp_content is not None)
+        if _write_project_text(root, path, content, overwrite, str(path.relative_to(root))):
+            created.append(str(path.relative_to(root)).replace(os.sep, "/"))
+    if not no_skills:
+        skill_targets = _skill_targets(root)
+        if minimal:
+            integration_path = root / ".claude" / "skills" / "rtl-dv-kit" / "SKILL.md"
+            skill_targets = {integration_path: integration_skill()}
+        for path, content in skill_targets.items():
+            if _write_project_text(root, path, content, force, str(path.relative_to(root))):
+                created.append(str(path.relative_to(root)).replace(os.sep, "/"))
     return created

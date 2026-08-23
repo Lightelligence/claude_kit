@@ -76,8 +76,10 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--kit-path", default="third_party/claude_kit", help="Pinned kit path written into project files")
     init.add_argument("--force", action="store_true", help="Overwrite existing generated integration files")
     init.add_argument("--with-adapter", action="store_true", help="Also create an optional project adapter template")
-    init.add_argument("--with-mcp", action="store_true", help="Also create an optional .mcp.json for the read-only bridge")
-    init.add_argument("--minimal", action="store_true", help="Only materialize the integration skill; use sync for all skills")
+    init.add_argument("--with-mcp", action="store_true", help="Add or refresh only the claude-kit entry in .mcp.json")
+    skill_mode = init.add_mutually_exclusive_group()
+    skill_mode.add_argument("--minimal", action="store_true", help="Only materialize the integration skill; use sync for all skills")
+    skill_mode.add_argument("--no-skills", action="store_true", help="Do not write any project-side Claude Code skill files")
     init.set_defaults(handler=handle_init)
 
     sync = subparsers.add_parser("sync", help="Materialize the kit's Claude Code skills into a project")
@@ -166,7 +168,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def handle_init(args: argparse.Namespace) -> int:
     root = _root(args.project_root)
-    created = init_project(root, args.kit_path, args.force, args.with_adapter, args.with_mcp, args.minimal)
+    created = init_project(root, args.kit_path, args.force, args.with_adapter, args.with_mcp, args.minimal, args.no_skills)
     _json_print({"project_root": str(root), "created": created, "status": "passed"})
     return 0
 

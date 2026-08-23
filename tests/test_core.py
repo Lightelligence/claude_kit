@@ -210,6 +210,71 @@ class CoreTests(unittest.TestCase):
             self.assertIn(".claude/skills/rtl-dv-kit/SKILL.md", created)
             self.assertNotIn(".claude/skills/rtl-design/SKILL.md", created)
 
+    def test_init_no_skills_keeps_project_skill_layer_untouched(self) -> None:
+        from claude_kit.core import init_project
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            created = init_project(root, no_skills=True)
+            self.assertIn(".ai/project.toml", created)
+            self.assertIn(".claude/CLAUDE.md", created)
+            self.assertFalse(any(path.startswith(".claude/skills/") for path in created))
+            self.assertFalse((root / ".claude" / "skills").exists())
+
+    def test_init_merges_mcp_without_removing_project_servers(self) -> None:
+        from claude_kit.core import init_project
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            mcp_path = root / ".mcp.json"
+            mcp_path.write_text(
+                json.dumps({"mcpServers": {"project-server": {"command": "project-tool"}}}),
+                encoding="utf-8",
+            )
+            created = init_project(root, with_mcp=True, no_skills=True)
+            config = json.loads(mcp_path.read_text(encoding="utf-8"))
+            self.assertIn("project-server", config["mcpServers"])
+            self.assertIn("claude-kit", config["mcpServers"])
+            self.assertIn(".mcp.json", created)
+
+            unchanged = init_project(root, with_mcp=True, no_skills=True)
+            self.assertNotIn(".mcp.json", unchanged)
+
+    def test_init_rejects_conflicting_mcp_entry_without_force(self) -> None:
+        from claude_kit.core import init_project
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / ".mcp.json").write_text(
+                json.dumps({"mcpServers": {"claude-kit": {"command": "old-kit"}}}),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(KitError, "different claude-kit server"):
+                init_project(root, with_mcp=True, no_skills=True)
+            init_project(root, with_mcp=True, force=True, no_skills=True)
+            config = json.loads((root / ".mcp.json").read_text(encoding="utf-8"))
+            self.assertEqual(config["mcpServers"]["claude-kit"]["command"], "python")
+
+    def test_init_does_not_write_through_external_symlink(self) -> None:
+        from claude_kit.core import init_project
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            outside = Path(directory).parent / f"claude-kit-outside-{Path(directory).name}.md"
+            try:
+                outside.write_text("keep me", encoding="utf-8")
+                link = root / ".claude" / "CLAUDE.md"
+                link.parent.mkdir(parents=True)
+                link.symlink_to(outside)
+            except OSError as exc:
+                self.skipTest(f"symlink creation unavailable: {exc}")
+            try:
+                with self.assertRaisesRegex(KitError, "symlink|project root"):
+                    init_project(root, force=True, no_skills=True)
+                self.assertEqual(outside.read_text(encoding="utf-8"), "keep me")
+            finally:
+                outside.unlink(missing_ok=True)
+
     def test_init_with_adapter_enables_profile_contract(self) -> None:
         from claude_kit.core import init_project
 
