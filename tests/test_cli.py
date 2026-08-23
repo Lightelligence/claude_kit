@@ -34,6 +34,9 @@ class CliTests(unittest.TestCase):
         skills = self.run_cli("list", "skills", "--json")
         self.assertEqual(skills.returncode, 0, skills.stderr)
         self.assertIn("rtl-design", {item["id"] for item in json.loads(skills.stdout)})
+        skills_text = self.run_cli("list", "skills")
+        self.assertEqual(skills_text.returncode, 0, skills_text.stderr)
+        self.assertIn("rtl-design\tPlan and implement", skills_text.stdout)
         evidence = self.run_cli(
             "evidence", "check", "--project-root", str(FIXTURE),
             "--file", "out/evidence.json", "--strict", "--json",
@@ -57,6 +60,13 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["workflow"]["id"], "debug")
         self.assertIn("debugger", payload["roles"])
         self.assertIn("source_revision", payload["missing_facts"])
+        text_plan = self.run_cli(
+            "plan",
+            "--project-root", str(FIXTURE),
+            "--task", "debug APB timeout in simulation",
+        )
+        self.assertEqual(text_plan.returncode, 0, text_plan.stderr)
+        self.assertIn("checks: inspect(available)", text_plan.stdout)
 
     def test_artifact_read_is_bounded_and_project_relative(self) -> None:
         result = self.run_cli(

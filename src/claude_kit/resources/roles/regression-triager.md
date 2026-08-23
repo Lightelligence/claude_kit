@@ -1,7 +1,7 @@
 ---
 id: regression-triager
 version: 1
-scope: dv
+scope: rtl-dv
 capabilities: [read, plan, review, run_project_checks]
 ---
 

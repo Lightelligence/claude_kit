@@ -219,7 +219,7 @@ def handle_list(args: argparse.Namespace) -> int:
         _json_print(result)
     else:
         for item in result:
-            summary = item.get("summary") or item.get("title") or ""
+            summary = item.get("summary") or item.get("description") or item.get("title") or ""
             print(f"{item['id']}\t{summary}")
     return 0
 
@@ -237,6 +237,8 @@ def handle_plan(args: argparse.Namespace) -> int:
         print(f"recommended_packs: {', '.join(result['recommended_packs']) or '<none>'}")
         print(f"skills: {', '.join(result['skills']) or '<none>'}")
         print(f"available_commands: {', '.join(item['name'] for item in result['available_commands']) or '<none>'}")
+        checks = ", ".join(f"{item['name']}({item['status']})" for item in result["check_plan"]) or "<none>"
+        print(f"checks: {checks}")
         print(f"missing_facts: {', '.join(result['missing_facts']) or '<none>'}")
         for warning in result["warnings"]:
             print(f"warning: {warning}")

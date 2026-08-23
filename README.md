@@ -405,7 +405,7 @@ auto_push = false
 | artifacts | 日志、报告、波形和 coverage 位置 |
 | policies | 网络、证据、commit 和 push 策略 |
 
-`source_revision` 可以作为 profile 根级的可选固定事实；如果项目根目录本身是 Git worktree，`plan` 会优先读取当前 `HEAD`，并报告 tracked worktree 是否有未提交修改。planner 只读 Git 状态，不执行网络操作，也不会替项目提交或推送。
+`source_revision` 可以作为 profile 根级的可选固定事实；如果项目根目录本身是 Git worktree，`plan` 会优先读取当前 `HEAD`，并报告 worktree 是否有未提交或未跟踪修改。planner 只读 Git 状态，不执行网络操作，也不会替项目提交或推送。
 
 TOML 的 `packs` 是根级字段，必须放在任何 `[project]`、`[roots]` 或其他 table 之前；如果把它写在 `[roles]` 或 `[roots]` 下面，TOML 会把它解析成该 table 的子字段，CLI 就不会使用它作为默认 pack。
 

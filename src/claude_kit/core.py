@@ -353,7 +353,7 @@ def workflow_catalog() -> list[dict[str, Any]]:
     if not isinstance(payload, dict) or payload.get("schema_version") != 1:
         raise KitError(f"Workflow catalog requires schema_version 1: {path}")
     workflows = payload.get("workflows")
-    if not isinstance(workflows, list):
+    if not isinstance(workflows, list) or not workflows:
         raise KitError(f"Workflow catalog requires a workflows list: {path}")
     result: list[dict[str, Any]] = []
     seen: set[str] = set()
@@ -363,6 +363,15 @@ def workflow_catalog() -> list[dict[str, Any]]:
         identifier = workflow["id"]
         if identifier in seen:
             raise KitError(f"Duplicate workflow id: {identifier}")
+        for field in ("roles", "skills", "preferred_commands", "required_facts", "pack_hints", "keywords", "steps", "completion"):
+            if field in workflow and (not isinstance(workflow[field], list) or not all(isinstance(item, str) for item in workflow[field])):
+                raise KitError(f"Workflow {identifier} field {field} must be a list of strings: {path}")
+        protocol_hints = workflow.get("protocol_hints")
+        if protocol_hints is not None and (
+            not isinstance(protocol_hints, dict)
+            or not all(isinstance(key, str) and isinstance(value, str) for key, value in protocol_hints.items())
+        ):
+            raise KitError(f"Workflow {identifier} protocol_hints must map strings to strings: {path}")
         seen.add(identifier)
         result.append({**workflow, "path": str(path.relative_to(resource_root())).replace(os.sep, "/")})
     return result
@@ -421,7 +430,7 @@ def _git_facts(root: Path) -> dict[str, Any]:
             if candidate:
                 revision = candidate
         status_result = subprocess.run(
-            ["git", "-C", str(project_root), "status", "--porcelain", "--untracked-files=no"],
+            ["git", "-C", str(project_root), "status", "--porcelain", "--untracked-files=all"],
             capture_output=True,
             text=True,
             timeout=5,
