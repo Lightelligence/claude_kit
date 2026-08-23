@@ -810,6 +810,15 @@ claude-kit mcp serve \
 
 默认只提供只读工具。只有明确使用 --allow-exec 才会暴露 run_check，且 tool call 仍必须提交 confirm = true。
 
+stdio bridge 同时兼容两种 MCP 消息 framing：Python MCP SDK/Claude Code 使用的
+newline-delimited JSON，以及旧客户端使用的 `Content-Length` framing。server 会
+根据收到的第一条消息选择相同的 framing 返回响应；项目不需要额外安装 MCP
+Python SDK 才能运行 kit。修改 bridge 后可用下面的测试覆盖两种连接方式：
+
+~~~bash
+python -m unittest tests.test_mcp -v
+~~~
+
 ## Context 和 manifest
 
 Resolved context 由以下来源合并：

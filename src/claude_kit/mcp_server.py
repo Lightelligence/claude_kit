@@ -26,32 +26,49 @@ from .core import (
 )
 
 
-def _read_message() -> dict[str, Any] | None:
+def _read_message() -> tuple[dict[str, Any] | None, str]:
+    first_line = sys.stdin.buffer.readline()
+    if not first_line:
+        return None, "content-length"
+
+    # The MCP Python SDK stdio transport uses one JSON-RPC object per line.
+    # Keep accepting the older Content-Length framing for existing clients.
+    if first_line.lstrip().startswith(b"{"):
+        value = json.loads(first_line.decode("utf-8"))
+        return (value if isinstance(value, dict) else None), "newline"
+
     headers: dict[str, str] = {}
+    line = first_line
     while True:
-        line = sys.stdin.buffer.readline()
-        if not line:
-            return None
         if line in (b"\n", b"\r\n"):
             break
         if b":" not in line:
+            line = sys.stdin.buffer.readline()
+            if not line:
+                return None, "content-length"
             continue
         key, value = line.decode("ascii", errors="replace").split(":", 1)
         headers[key.strip().lower()] = value.strip()
+        line = sys.stdin.buffer.readline()
+        if not line:
+            return None, "content-length"
     length = int(headers.get("content-length", "0"))
     if length <= 0:
-        return None
+        return None, "content-length"
     payload = sys.stdin.buffer.read(length)
     if not payload:
-        return None
+        return None, "content-length"
     value = json.loads(payload.decode("utf-8"))
-    return value if isinstance(value, dict) else None
+    return (value if isinstance(value, dict) else None), "content-length"
 
 
-def _write_message(value: dict[str, Any]) -> None:
+def _write_message(value: dict[str, Any], framing: str) -> None:
     payload = json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-    sys.stdout.buffer.write(f"Content-Length: {len(payload)}\r\n\r\n".encode("ascii"))
-    sys.stdout.buffer.write(payload)
+    if framing == "newline":
+        sys.stdout.buffer.write(payload + b"\n")
+    else:
+        sys.stdout.buffer.write(f"Content-Length: {len(payload)}\r\n\r\n".encode("ascii"))
+        sys.stdout.buffer.write(payload)
     sys.stdout.buffer.flush()
 
 
@@ -250,7 +267,7 @@ def _call_tool(
 
 def serve(root: Path, explicit_profile: str | None = None, allow_exec: bool = False) -> None:
     while True:
-        request = _read_message()
+        request, framing = _read_message()
         if request is None:
             return
         request_id = request.get("id")
@@ -283,11 +300,11 @@ def serve(root: Path, explicit_profile: str | None = None, allow_exec: bool = Fa
             else:
                 raise KitError(f"Unsupported method: {method}")
             if request_id is not None:
-                _write_message({"jsonrpc": "2.0", "id": request_id, "result": result})
+                _write_message({"jsonrpc": "2.0", "id": request_id, "result": result}, framing)
         except (KitError, OSError, ValueError, json.JSONDecodeError) as exc:
             if request_id is not None:
                 _write_message({
                     "jsonrpc": "2.0",
                     "id": request_id,
                     "error": {"code": -32000, "message": str(exc)},
-                })
+                }, framing)

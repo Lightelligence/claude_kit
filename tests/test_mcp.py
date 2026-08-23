@@ -17,6 +17,10 @@ def frame(value: dict) -> bytes:
     return f"Content-Length: {len(payload)}\r\n\r\n".encode("ascii") + payload
 
 
+def newline_frame(value: dict) -> bytes:
+    return json.dumps(value, separators=(",", ":")).encode("utf-8") + b"\n"
+
+
 def read_frame(stream) -> dict:
     headers = {}
     while True:
@@ -29,7 +33,47 @@ def read_frame(stream) -> dict:
     return json.loads(payload.decode("utf-8"))
 
 
+def read_newline_frames(payload: bytes) -> list[dict]:
+    return [json.loads(line) for line in payload.splitlines() if line.strip()]
+
+
 class McpTests(unittest.TestCase):
+    def test_newline_stdio_bridge_lists_tools(self) -> None:
+        process = subprocess.Popen(
+            [sys.executable, str(ENTRY), "mcp", "serve", "--project-root", str(FIXTURE)],
+            cwd=ROOT,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        request = b"".join(
+            [
+                newline_frame({
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "initialize",
+                    "params": {
+                        "protocolVersion": "2025-06-18",
+                        "capabilities": {},
+                        "clientInfo": {"name": "test", "version": "1"},
+                    },
+                }),
+                newline_frame({"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}}),
+                newline_frame({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}),
+            ]
+        )
+        try:
+            stdout, stderr = process.communicate(input=request, timeout=3)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            stdout, stderr = process.communicate()
+            self.fail(f"newline MCP bridge timed out; stderr={stderr.decode(errors='replace')}")
+        self.assertEqual(process.returncode, 0, stderr.decode(errors="replace"))
+        responses = read_newline_frames(stdout)
+        self.assertEqual([response["id"] for response in responses], [1, 2])
+        self.assertEqual(responses[0]["result"]["serverInfo"]["name"], "claude-kit")
+        self.assertIn("plan_task", {tool["name"] for tool in responses[1]["result"]["tools"]})
+
     def test_read_only_bridge_lists_tools_and_resolves_context(self) -> None:
         process = subprocess.Popen(
             [sys.executable, str(ENTRY), "mcp", "serve", "--project-root", str(FIXTURE)],
