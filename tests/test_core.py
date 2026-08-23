@@ -253,7 +253,7 @@ class CoreTests(unittest.TestCase):
                 init_project(root, with_mcp=True, no_skills=True)
             init_project(root, with_mcp=True, force=True, no_skills=True)
             config = json.loads((root / ".mcp.json").read_text(encoding="utf-8"))
-            self.assertEqual(config["mcpServers"]["claude-kit"]["command"], "python")
+            self.assertEqual(config["mcpServers"]["claude-kit"]["command"], "python3")
 
     def test_init_does_not_write_through_external_symlink(self) -> None:
         from claude_kit.core import init_project
@@ -289,7 +289,7 @@ class CoreTests(unittest.TestCase):
     def test_mcp_config_is_wrapped_and_points_to_pinned_kit(self) -> None:
         config = json.loads(mcp_config("third_party\\claude_kit"))
         server = config["mcpServers"]["claude-kit"]
-        self.assertEqual(server["command"], "python")
+        self.assertEqual(server["command"], "python3")
         self.assertEqual(server["args"][0], "third_party/claude_kit/bin/claude-kit")
         self.assertIn("--profile", server["args"])
 
@@ -299,6 +299,29 @@ class CoreTests(unittest.TestCase):
             self.assertGreaterEqual(len(created), 7)
             self.assertTrue((Path(directory) / ".claude/skills/rtl-design/SKILL.md").is_file())
             self.assertTrue((Path(directory) / ".claude/skills/rtl-dv-evidence/SKILL.md").is_file())
+
+    def test_sync_rejects_skills_symlink_that_escapes_project(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            outside = root.parent / f"claude-kit-skills-outside-{root.name}"
+            try:
+                outside.mkdir()
+                link = root / ".claude" / "skills"
+                link.parent.mkdir(parents=True)
+                link.symlink_to(outside, target_is_directory=True)
+            except OSError as exc:
+                self.skipTest(f"symlink creation unavailable: {exc}")
+            try:
+                with self.assertRaisesRegex(KitError, "project root"):
+                    sync_project_skills(root)
+                self.assertFalse((outside / "rtl-dv-kit").exists())
+            finally:
+                for child in outside.iterdir():
+                    if child.is_file() or child.is_symlink():
+                        child.unlink()
+                    elif child.is_dir():
+                        child.rmdir()
+                outside.rmdir()
 
     def test_adapter_check_imports_only_explicit_project_adapter(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -797,7 +797,7 @@ def mcp_config(kit_path: str) -> str:
         "mcpServers": {
             "claude-kit": {
                 "type": "stdio",
-                "command": "python",
+                "command": "python3",
                 "args": [
                     f"{normalized_kit_path}/bin/claude-kit",
                     "mcp",
@@ -952,13 +952,11 @@ def _skill_targets(root: Path) -> dict[Path, str]:
 
 
 def sync_project_skills(root: Path, force: bool = False) -> list[str]:
+    root = root.resolve()
     created: list[str] = []
     for path, content in _skill_targets(root).items():
-        if path.exists() and not force:
-            continue
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8", newline="\n")
-        created.append(str(path.relative_to(root)).replace(os.sep, "/"))
+        if _write_project_text(root, path, content, force, str(path.relative_to(root))):
+            created.append(str(path.relative_to(root)).replace(os.sep, "/"))
     return created
 
 
