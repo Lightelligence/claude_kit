@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "workflows": [
+    {
+      "id": "rtl-change",
+      "version": 1,
+      "scope": "rtl",
+      "summary": "Plan a bounded RTL architecture, implementation and focused verification change.",
+      "roles": ["rtl-architect", "rtl-designer", "reviewer", "evidence-reviewer"],
+      "skills": ["rtl-dv-context", "rtl-design", "rtl-dv-evidence"],
+      "preferred_commands": ["inspect", "lint", "compile", "simulate"],
+      "required_facts": ["target", "simulator", "source_revision"],
+      "pack_hints": ["common"],
+      "keywords": ["rtl", "module", "模块", "pipeline", "流水线", "state machine", "状态机", "handshake", "握手", "fifo", "队列", "reset", "复位", "refactor", "重构"],
+      "steps": [
+        "Freeze the requested behavior, invariant and acceptance condition.",
+        "Resolve the smallest relevant RTL, interface, test and protocol context.",
+        "Implement one coherent change inside the writable scope.",
+        "Run the cheapest relevant check, then expand only when evidence supports it.",
+        "Record reset, boundary, error, backpressure and unrun-simulation risks."
+      ],
+      "completion": [
+        "Changed paths are inside permissions.writable.",
+        "The focused check has an exit result and artifact or an explicit blocked/skipped reason.",
+        "No simulation is described as passed unless it actually ran."
+      ]
+    },
+    {
+      "id": "dv-change",
+      "version": 1,
+      "scope": "dv",
+      "summary": "Plan a focused DV testbench, assertion, scoreboard or coverage change.",
+      "roles": ["dv-architect", "dv-engineer", "reviewer", "evidence-reviewer"],
+      "skills": ["rtl-dv-context", "dv-engineering", "rtl-dv-regression", "rtl-dv-evidence"],
+      "preferred_commands": ["inspect", "lint", "compile", "simulate", "regression"],
+      "required_facts": ["target", "test_selector", "simulator", "source_revision"],
+      "pack_hints": ["common"],
+      "keywords": ["dv", "验证", "test", "测试", "testbench", "测试平台", "sequence", "序列", "driver", "驱动", "monitor", "监视器", "scoreboard", "记分板", "coverage", "覆盖率", "assertion", "断言", "regression", "回归"],
+      "steps": [
+        "Translate requirements into positive, boundary, negative, reset and recovery scenarios.",
+        "Map each scenario to stimulus, observation, checking and coverage evidence.",
+        "Preserve clear driver, monitor, scoreboard, reference-model and assertion responsibilities.",
+        "Run one focused test before requesting a wider regression.",
+        "Separate DUT failures, sampling gaps, environment failures and coverage gaps."
+      ],
+      "completion": [
+        "The selected test and source revision are recorded.",
+        "Expected behavior and failure diagnostics are explicit.",
+        "Coverage and assertion gaps remain visible instead of being inferred away."
+      ]
+    },
+    {
+      "id": "debug",
+      "version": 1,
+      "scope": "rtl-dv",
+      "summary": "Triage a compile, elaboration, simulation, assertion, scoreboard, timeout or waveform failure.",
+      "roles": ["debugger", "waveform-debugger", "regression-triager", "reviewer", "evidence-reviewer"],
+      "skills": ["rtl-dv-context", "rtl-dv-debugging", "rtl-dv-regression", "rtl-dv-evidence"],
+      "preferred_commands": ["inspect", "lint", "compile", "simulate", "collect_artifacts"],
+      "required_facts": ["target", "test_selector", "simulator", "source_revision"],
+      "pack_hints": ["common"],
+      "keywords": ["debug", "调试", "failure", "failed", "失败", "error", "错误", "timeout", "超时", "assertion", "断言", "scoreboard", "记分板", "waveform", "波形", "fsdb", "compile error", "编译错误", "仿真失败", "elaboration"],
+      "steps": [
+        "Bind the log or waveform to the current source, test, seed, simulator and command.",
+        "Classify the failure and isolate the first causal error.",
+        "Reduce to the smallest reproducible test, transaction, cycle or state transition.",
+        "State a falsifiable root-cause hypothesis and the observation that distinguishes it.",
+        "Rerun the minimal reproduction before expanding validation."
+      ],
+      "completion": [
+        "The first causal failure and its evidence are identified.",
+        "The minimal reproduction has a before/after result or an explicit external blocker.",
+        "Secondary cascades are not presented as independent root causes."
+      ]
+    },
+    {
+      "id": "protocol-vip",
+      "version": 1,
+      "scope": "rtl-dv",
+      "summary": "Plan protocol or VIP mapping, connectivity and smoke validation.",
+      "roles": ["vip-integration", "rtl-architect", "dv-engineer", "evidence-reviewer"],
+      "skills": ["rtl-dv-context", "protocol-vip", "rtl-dv-evidence"],
+      "preferred_commands": ["inspect", "lint", "compile", "simulate"],
+      "required_facts": ["target", "simulator", "source_revision"],
+      "pack_hints": ["vip.generic"],
+      "protocol_hints": {
+        "axi4-lite": "protocols.axi4lite",
+        "axi-lite": "protocols.axi4lite",
+        "axi-stream": "protocols.axi_stream",
+        "axi stream": "protocols.axi_stream",
+        "axi": "protocols.axi4",
+        "ahb": "protocols.ahb",
+        "apb": "protocols.apb",
+        "chi": "protocols.chi",
+        "pcie": "protocols.pcie",
+        "ucie": "protocols.ucie",
+        "ethernet": "protocols.ethernet",
+        "i2c": "protocols.i2c",
+        "jtag": "protocols.jtag",
+        "spi": "protocols.spi",
+        "uart": "protocols.uart"
+      },
+      "keywords": ["vip", "protocol", "协议", "interface mapping", "接口映射", "connectivity", "连接", "agent", "monitor"],
+      "steps": [
+        "Confirm the exact protocol version and layer.",
+        "Map every interface instance, clock, reset, direction, width and endpoint.",
+        "Check reset, legal transfer, backpressure, error and recovery behavior.",
+        "Separate VIP warnings, protocol violations, scoreboard mismatches and environment failures.",
+        "Record the selected pack and any project-specific mapping assumptions."
+      ],
+      "completion": [
+        "The protocol pack and version assumption are explicit.",
+        "Every instance has a reviewed mapping and smoke result or a named gap.",
+        "Third-party VIP and generated files remain within their declared boundary."
+      ]
+    },
+    {
+      "id": "review",
+      "version": 1,
+      "scope": "rtl-dv",
+      "summary": "Perform a read-only RTL/DV correctness and evidence review.",
+      "roles": ["reviewer", "evidence-reviewer"],
+      "skills": ["rtl-dv-context", "rtl-dv-review", "rtl-dv-evidence"],
+      "preferred_commands": ["inspect"],
+      "required_facts": ["source_revision"],
+      "pack_hints": ["common"],
+      "keywords": ["review", "审查", "审核", "评审", "audit", "sign-off", "signoff", "签核", "inspect", "检查", "diff", "差异"],
+      "steps": [
+        "Confirm the requested scope and intended behavior.",
+        "Review the diff and surrounding reset, handshake, queue, width, error and recovery logic.",
+        "Check tests, assertions, coverage, artifacts and protected paths.",
+        "Report only actionable findings with priority, evidence, impact and correction direction.",
+        "Keep unrun checks and residual risks explicit."
+      ],
+      "completion": [
+        "Every finding is tied to a path and concrete evidence.",
+        "No sign-off is claimed when required checks are skipped.",
+        "The review is read-only unless the user explicitly changes the task."
+      ]
+    },
+    {
+      "id": "handoff",
+      "version": 1,
+      "scope": "rtl-dv",
+      "summary": "Prepare a reproducible RTL/DV handoff, evidence package or sign-off record.",
+      "roles": ["evidence-reviewer", "reviewer"],
+      "skills": ["rtl-dv-context", "rtl-dv-evidence", "rtl-dv-review"],
+      "preferred_commands": ["inspect", "collect_artifacts"],
+      "required_facts": ["source_revision"],
+      "pack_hints": ["common"],
+      "keywords": ["handoff", "移交", "evidence", "证据", "deliver", "delivery", "交付", "sign-off", "signoff", "签核", "report", "报告"],
+      "steps": [
+        "Freeze project, source revision, target, test, seed, simulator and working directory.",
+        "Enumerate changed files and the reason for each change.",
+        "Attach exact commands, statuses, exit results and artifact paths.",
+        "Separate passed, failed, skipped, blocked and unknown checks.",
+        "Run strict evidence validation and list residual risks and coverage gaps."
+      ],
+      "completion": [
+        "The evidence file matches the current project and task.",
+        "Every claimed check has execution evidence or an explicit exception.",
+        "Strict evidence validation passes."
+      ]
+    }
+  ]
+}

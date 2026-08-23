@@ -342,6 +342,231 @@ def skill_catalog() -> list[dict[str, str]]:
     return result
 
 
+def workflow_catalog() -> list[dict[str, Any]]:
+    """Return reusable RTL/DV workflow plans without project-specific facts."""
+
+    path = resource_root() / "workflows" / "catalog.json"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise KitError(f"Invalid workflow catalog {path}: {exc}") from exc
+    if not isinstance(payload, dict) or payload.get("schema_version") != 1:
+        raise KitError(f"Workflow catalog requires schema_version 1: {path}")
+    workflows = payload.get("workflows")
+    if not isinstance(workflows, list):
+        raise KitError(f"Workflow catalog requires a workflows list: {path}")
+    result: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for workflow in workflows:
+        if not isinstance(workflow, dict) or not isinstance(workflow.get("id"), str) or not workflow["id"].strip():
+            raise KitError(f"Workflow entries require a non-empty id: {path}")
+        identifier = workflow["id"]
+        if identifier in seen:
+            raise KitError(f"Duplicate workflow id: {identifier}")
+        seen.add(identifier)
+        result.append({**workflow, "path": str(path.relative_to(resource_root())).replace(os.sep, "/")})
+    return result
+
+
+def _select_workflow(task: str, requested: str | None) -> tuple[dict[str, Any], str]:
+    workflows = workflow_catalog()
+    requested_value = (requested or "auto").strip()
+    if requested_value and requested_value != "auto":
+        return _find_by_id(workflows, requested_value, "workflow"), "explicit"
+    text = task.casefold()
+    scores: list[tuple[int, int, dict[str, Any]]] = []
+    for index, workflow in enumerate(workflows):
+        keywords = workflow.get("keywords", [])
+        score = sum(1 for keyword in keywords if isinstance(keyword, str) and keyword.casefold() in text)
+        scores.append((score, -index, workflow))
+    best_score, _, best = max(scores, key=lambda value: (value[0], value[1]))
+    if best_score <= 0:
+        best = _find_by_id(workflows, "rtl-change", "workflow")
+        return best, "defaulted to rtl-change because no workflow keyword matched"
+    return best, "selected from task keywords"
+
+
+def _protocol_pack_recommendations(task: str) -> list[str]:
+    text = task.casefold()
+    recommendations: list[str] = []
+    for workflow in workflow_catalog():
+        hints = workflow.get("protocol_hints", {})
+        if not isinstance(hints, dict):
+            continue
+        for keyword, pack in sorted(hints.items(), key=lambda item: len(str(item[0])), reverse=True):
+            if isinstance(keyword, str) and isinstance(pack, str) and keyword.casefold() in text and pack not in recommendations:
+                recommendations.append(pack)
+                break
+    return recommendations
+
+
+def _git_facts(root: Path) -> dict[str, Any]:
+    """Read a local Git identity without making Git or network state part of the kit."""
+
+    project_root = root.resolve()
+    if not (project_root / ".git").exists():
+        return {"source_revision": None, "worktree_dirty": None}
+    revision: str | None = None
+    dirty: bool | None = None
+    try:
+        revision_result = subprocess.run(
+            ["git", "-C", str(project_root), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        if revision_result.returncode == 0:
+            candidate = revision_result.stdout.strip()
+            if candidate:
+                revision = candidate
+        status_result = subprocess.run(
+            ["git", "-C", str(project_root), "status", "--porcelain", "--untracked-files=no"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        if status_result.returncode == 0:
+            dirty = bool(status_result.stdout.strip())
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return {"source_revision": revision, "worktree_dirty": dirty}
+
+
+def resolve_plan(
+    root: Path,
+    profile_path: Path,
+    profile: dict[str, Any],
+    workflow: str | None,
+    roles: list[str] | None,
+    packs: list[str] | None,
+    task: str,
+) -> dict[str, Any]:
+    """Resolve an explicit or task-routed workflow into an executable plan.
+
+    The planner is intentionally read-only. It selects generic roles and
+    checks, reports missing project facts, and leaves command execution to
+    ``check``/the project wrapper.
+    """
+
+    if not isinstance(task, str) or not task.strip():
+        raise KitError("plan task must be a non-empty string")
+    selected, selection_reason = _select_workflow(task, workflow)
+
+    role_ids = _as_list(roles) if roles is not None else _as_list(selected.get("roles", []))
+    if not role_ids:
+        role_config = profile.get("roles", {})
+        defaults = role_config.get("defaults", []) if isinstance(role_config, dict) else role_config
+        role_ids = _as_list(defaults)
+    for identifier in role_ids:
+        _find_by_id(role_catalog(), identifier, "role")
+
+    pack_ids = _as_list(packs) if packs is not None else _as_list(profile.get("packs", []))
+    for identifier in pack_ids:
+        _find_by_id(pack_catalog(), identifier, "pack")
+    recommended_packs: list[str] = []
+    for identifier in [*_as_list(selected.get("pack_hints", [])), *_protocol_pack_recommendations(task)]:
+        if identifier not in recommended_packs:
+            recommended_packs.append(identifier)
+    for identifier in recommended_packs:
+        _find_by_id(pack_catalog(), identifier, "pack")
+
+    skill_ids = _as_list(selected.get("skills", []))
+    skill_sources: list[dict[str, str]] = []
+    for identifier in skill_ids:
+        entry = _find_by_id(skill_catalog(), identifier, "skill")
+        source = _source_entry(resource_root() / entry["path"], resource_root())
+        skill_sources.append({
+            "id": identifier,
+            "version": str(entry.get("version", "1")),
+            **source,
+        })
+
+    build = profile.get("build", {}) if isinstance(profile.get("build"), dict) else {}
+    commands = build.get("commands", {}) if isinstance(build.get("commands"), dict) else {}
+    preferred_commands = _as_list(selected.get("preferred_commands", []))
+    available_commands: list[dict[str, Any]] = []
+    missing_commands: list[str] = []
+    for name in preferred_commands:
+        command = commands.get(name)
+        if isinstance(command, dict):
+            available_commands.append({"name": name, "definition": redact_profile(command)})
+        else:
+            missing_commands.append(name)
+
+    required_facts = _as_list(selected.get("required_facts", []))
+    git_facts = _git_facts(root)
+    explicit_revision = profile.get("source_revision")
+    source_revision = explicit_revision if isinstance(explicit_revision, str) and explicit_revision.strip() else git_facts["source_revision"]
+    fact_values: dict[str, Any] = {
+        "target": build.get("target"),
+        "test_selector": build.get("test_selector"),
+        "simulator": build.get("simulator"),
+        "source_revision": source_revision,
+        "worktree_dirty": git_facts["worktree_dirty"],
+        "adapter": profile.get("adapter"),
+        "artifacts": profile.get("artifacts", {}),
+        "roots": profile.get("roots", {}),
+    }
+    missing_facts = [
+        name for name in required_facts
+        if fact_values.get(name) is None or fact_values.get(name) == ""
+    ]
+    warnings: list[str] = []
+    if missing_commands:
+        warnings.append("Project profile does not declare preferred commands: " + ", ".join(missing_commands))
+    unselected_recommendations = [name for name in recommended_packs if name not in pack_ids]
+    if unselected_recommendations:
+        warnings.append("Protocol/VIP packs recommended by this task but not selected: " + ", ".join(unselected_recommendations))
+    if missing_facts:
+        warnings.append("Bind these runtime facts before execution: " + ", ".join(missing_facts))
+    if fact_values["worktree_dirty"] is True:
+        warnings.append("The project worktree has uncommitted tracked changes; bind evidence to the exact diff before sign-off")
+
+    workflow_view = {
+        key: selected[key]
+        for key in ("id", "version", "scope", "summary", "steps", "completion")
+        if key in selected
+    }
+    return {
+        "schema_version": 1,
+        "kind": "rtl-dv-workflow-plan",
+        "project": profile.get("project", {}).get("id") if isinstance(profile.get("project"), dict) else None,
+        "profile": str(profile_path.relative_to(root)).replace(os.sep, "/"),
+        "task": task,
+        "workflow": workflow_view,
+        "selection": {"requested": workflow or "auto", "reason": selection_reason},
+        "roles": role_ids,
+        "packs": pack_ids,
+        "recommended_packs": recommended_packs,
+        "skills": skill_ids,
+        "skill_sources": skill_sources,
+        "required_facts": required_facts,
+        "check_plan": [
+            {
+                "name": name,
+                "status": "available" if isinstance(commands.get(name), dict) else "missing",
+                "definition": redact_profile(commands[name]) if isinstance(commands.get(name), dict) else None,
+            }
+            for name in preferred_commands
+        ],
+        "facts": redact_profile(fact_values),
+        "missing_facts": missing_facts,
+        "available_commands": available_commands,
+        "missing_commands": missing_commands,
+        "permissions": redact_profile(profile.get("permissions", {})),
+        "artifacts": redact_profile(profile.get("artifacts", {})),
+        "evidence": {
+            "required": bool((profile.get("policies") or {}).get("require_evidence", False))
+            if isinstance(profile.get("policies"), dict) else False,
+            "strict_check": "claude-kit evidence check --strict",
+        },
+        "warnings": warnings,
+        "source": _source_entry(resource_root() / selected["path"], resource_root()),
+    }
+
+
 def _find_by_id(entries: Iterable[dict[str, Any]], identifier: str, kind: str) -> dict[str, Any]:
     entries = list(entries)
     for entry in entries:
@@ -366,6 +591,7 @@ def resolve_context(
     roles: list[str] | None,
     packs: list[str] | None,
     task: str,
+    skills: list[str] | None = None,
 ) -> tuple[str, dict[str, Any]]:
     if not isinstance(task, str):
         raise KitError("task must be a string")
@@ -373,6 +599,7 @@ def resolve_context(
     defaults = role_config.get("defaults", []) if isinstance(role_config, dict) else role_config
     role_ids = _as_list(roles) if roles is not None else _as_list(defaults)
     pack_ids = _as_list(packs) if packs is not None else _as_list(profile.get("packs", []))
+    skill_ids = _as_list(skills) if skills is not None else []
     resources = resource_root()
     sources: list[dict[str, str]] = []
     sections: list[str] = []
@@ -402,6 +629,16 @@ def resolve_context(
                     raise KitError(f"Pack {identifier} entrypoint does not exist: {relative}")
                 sources.append(_source_entry(path, resources))
                 sections.append(f"\n### {identifier}: {relative}\n\n{path.read_text(encoding='utf-8').strip()}\n")
+
+    if not skill_ids:
+        sections.append("## Skills\n\nNo skill guidance selected; use the plan output to choose a skill when needed.")
+    else:
+        sections.append("## Skills")
+        for identifier in skill_ids:
+            entry = _find_by_id(skill_catalog(), identifier, "skill")
+            path = resources / entry["path"]
+            sources.append(_source_entry(path, resources))
+            sections.append(f"\n### {identifier}\n\n{path.read_text(encoding='utf-8').strip()}\n")
 
     redacted_profile = _redact(profile)
     context = "\n".join([
@@ -436,6 +673,7 @@ def resolve_context(
         "profile": str(profile_path.relative_to(root)).replace(os.sep, "/"),
         "roles": role_ids,
         "packs": pack_ids,
+        "skills": skill_ids,
         "task": task,
         "sources": sources,
         "warnings": [],
@@ -780,6 +1018,8 @@ This project uses the reusable RTL/DV Claude kit.
 
 - Read the project profile at .ai/project.toml before making changes.
 - Use the repo-local CLI through the pinned kit path: {kit_path}.
+- Run `plan --task "..."` to select the smallest RTL/DV workflow, roles, skills and checks before `context` or edits.
+- Pass only the selected `--skill` entries to `context` when their guidance is needed; do not materialize every skill into the prompt.
 - Keep changes inside the profile permissions.
 - Prefer read-only inspect/context/log commands before editing.
 - Record commands, results, skipped checks and unresolved risks.

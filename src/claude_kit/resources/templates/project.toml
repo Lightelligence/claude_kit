@@ -23,6 +23,9 @@ defaults = ["rtl-designer", "dv-engineer", "reviewer"]
 [build]
 system = "project-wrapper"
 simulator = "project-configured"
+# Optional runtime facts used by `claude-kit plan`:
+# target = "top_or_target"
+# test_selector = "focused_test_or_suite"
 
 [build.commands]
 

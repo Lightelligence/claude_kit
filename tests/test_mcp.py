@@ -52,9 +52,12 @@ class McpTests(unittest.TestCase):
             names = {tool["name"] for tool in tools}
             self.assertIn("resolve_context", names)
             self.assertIn("read_artifact", names)
+            self.assertIn("list_skills", names)
             self.assertNotIn("run_check", names)
             evidence_tool = next(tool for tool in tools if tool["name"] == "review_evidence")
             self.assertIn("strict", evidence_tool["inputSchema"]["properties"])
+            self.assertIn("list_workflows", names)
+            self.assertIn("plan_task", names)
 
             process.stdin.write(frame({
                 "jsonrpc": "2.0",
@@ -79,6 +82,40 @@ class McpTests(unittest.TestCase):
             artifact_text = artifact["result"]["content"][0]["text"]
             artifact_payload = json.loads(artifact_text)
             self.assertTrue(artifact_payload["truncated"])
+
+            process.stdin.write(frame({
+                "jsonrpc": "2.0",
+                "id": 5,
+                "method": "tools/call",
+                "params": {
+                    "name": "plan_task",
+                    "arguments": {"workflow": "debug", "task": "debug APB timeout in simulation"},
+                },
+            }))
+            process.stdin.flush()
+            plan_response = read_frame(process.stdout)
+            plan = json.loads(plan_response["result"]["content"][0]["text"])
+            self.assertEqual(plan["workflow"]["id"], "debug")
+            self.assertIn("debugger", plan["roles"])
+
+            process.stdin.write(frame({
+                "jsonrpc": "2.0",
+                "id": 6,
+                "method": "tools/call",
+                "params": {
+                    "name": "resolve_context",
+                    "arguments": {
+                        "roles": ["reviewer"],
+                        "packs": ["common"],
+                        "skills": ["rtl-dv-context"],
+                        "task": "review APB",
+                    },
+                },
+            }))
+            process.stdin.flush()
+            context_response = read_frame(process.stdout)
+            context_text = json.loads(context_response["result"]["content"][0]["text"])["context"]
+            self.assertIn("RTL/DV Context", context_text)
         finally:
             process.terminate()
             process.wait(timeout=5)

@@ -25,6 +25,8 @@ from .core import (
     run_project_command,
     skill_catalog,
     sync_project_skills,
+    resolve_plan,
+    workflow_catalog,
 )
 
 
@@ -93,15 +95,26 @@ def build_parser() -> argparse.ArgumentParser:
     doctor_parser.add_argument("--json", action="store_true", help="Print JSON")
     doctor_parser.set_defaults(handler=handle_doctor)
 
-    listing = subparsers.add_parser("list", help="List roles or packs")
-    listing.add_argument("kind", choices=("roles", "packs", "skills"))
+    listing = subparsers.add_parser("list", help="List roles, packs, skills or workflows")
+    listing.add_argument("kind", choices=("roles", "packs", "skills", "workflows"))
     listing.add_argument("--json", action="store_true", help="Print JSON")
     listing.set_defaults(handler=handle_list)
+
+    plan = subparsers.add_parser("plan", help="Resolve a reusable RTL/DV workflow plan")
+    _add_project_options(plan)
+    plan.add_argument("--workflow", default="auto", help="Workflow id or auto task routing")
+    plan.add_argument("--role", action="append", dest="roles", help="Override role id; repeat for multiple roles")
+    plan.add_argument("--pack", action="append", dest="packs", help="Select pack id; repeat for multiple packs")
+    plan.add_argument("--task", default="", help="Task text")
+    plan.add_argument("--task-file", type=Path, help="Read task text from a file")
+    plan.add_argument("--json", action="store_true", help="Print JSON")
+    plan.set_defaults(handler=handle_plan)
 
     context = subparsers.add_parser("context", help="Resolve profile, roles and packs into Claude context")
     _add_project_options(context)
     context.add_argument("--role", action="append", dest="roles", help="Role id; repeat for multiple roles")
     context.add_argument("--pack", action="append", dest="packs", help="Pack id; repeat for multiple packs")
+    context.add_argument("--skill", action="append", dest="skills", help="Skill id; repeat for multiple skills")
     context.add_argument("--task", default="", help="Task text")
     context.add_argument("--task-file", type=Path, help="Read task text from a file")
     context.add_argument("--output", type=Path, help="Write Markdown context to this path")
@@ -112,6 +125,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_project_options(manifest)
     manifest.add_argument("--role", action="append", dest="roles")
     manifest.add_argument("--pack", action="append", dest="packs")
+    manifest.add_argument("--skill", action="append", dest="skills")
     manifest.add_argument("--task", default="")
     manifest.set_defaults(handler=handle_manifest)
 
@@ -197,6 +211,8 @@ def handle_list(args: argparse.Namespace) -> int:
         result = role_catalog()
     elif args.kind == "packs":
         result = pack_catalog()
+    elif args.kind == "workflows":
+        result = workflow_catalog()
     else:
         result = skill_catalog()
     if args.json:
@@ -205,6 +221,25 @@ def handle_list(args: argparse.Namespace) -> int:
         for item in result:
             summary = item.get("summary") or item.get("title") or ""
             print(f"{item['id']}\t{summary}")
+    return 0
+
+
+def handle_plan(args: argparse.Namespace) -> int:
+    root, profile_path, profile, task = _context_inputs(args)
+    result = resolve_plan(root, profile_path, profile, args.workflow, args.roles, args.packs, task)
+    if args.json:
+        _json_print(result)
+    else:
+        workflow = result["workflow"]
+        print(f"workflow: {workflow['id']} ({result['selection']['reason']})")
+        print(f"roles: {', '.join(result['roles']) or '<none>'}")
+        print(f"packs: {', '.join(result['packs']) or '<none>'}")
+        print(f"recommended_packs: {', '.join(result['recommended_packs']) or '<none>'}")
+        print(f"skills: {', '.join(result['skills']) or '<none>'}")
+        print(f"available_commands: {', '.join(item['name'] for item in result['available_commands']) or '<none>'}")
+        print(f"missing_facts: {', '.join(result['missing_facts']) or '<none>'}")
+        for warning in result["warnings"]:
+            print(f"warning: {warning}")
     return 0
 
 
@@ -219,7 +254,7 @@ def _context_inputs(args: argparse.Namespace) -> tuple[Path, Path, dict[str, Any
 
 def handle_context(args: argparse.Namespace) -> int:
     root, profile_path, profile, task = _context_inputs(args)
-    context, manifest = resolve_context(root, profile_path, profile, args.roles, args.packs, task)
+    context, manifest = resolve_context(root, profile_path, profile, args.roles, args.packs, task, args.skills)
     if args.output:
         path = _project_output(root, args.output)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -235,7 +270,7 @@ def handle_context(args: argparse.Namespace) -> int:
 
 def handle_manifest(args: argparse.Namespace) -> int:
     root, profile_path, profile, task = _context_inputs(args)
-    _, manifest = resolve_context(root, profile_path, profile, args.roles, args.packs, task)
+    _, manifest = resolve_context(root, profile_path, profile, args.roles, args.packs, task, args.skills)
     _json_print(manifest)
     return 0
 

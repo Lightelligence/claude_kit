@@ -11,8 +11,9 @@ claude_kit 把通用 RTL/DV roles、protocol/VIP packs、项目 profile、repo-l
 - profile 解析和校验，支持 TOML/JSON；
 - 项目根目录发现和路径权限检查；
 - context resolver 和可审计 manifest；
-- 9 个通用 RTL/DV roles，包括 waveform-debugger；
-- 7 个可按需同步或触发的通用 skills；
+- 10 个通用 RTL/DV roles，包括 waveform-debugger 和 regression-triager；
+- 8 个可按需同步或触发的通用 skills；
+- 6 个可按任务路由的 RTL/DV workflows；
 - common、AXI4、AXI4-Lite、AXI4-Stream、APB、AHB、Wishbone、Ethernet、PCIe、UCIe、SPI、UART、JTAG、I2C、CHI 和 generic VIP packs；
 - repo-local CLI；
 - 只读 project inspect；
@@ -21,6 +22,7 @@ claude_kit 把通用 RTL/DV roles、protocol/VIP packs、项目 profile、repo-l
 - profile、manifest、artifact 和 evidence schema；
 - 可选 project adapter template；
 - 默认只读的 stdio MCP bridge；
+- `plan` workflow planner：把任务映射到 roles、skills、protocol/VIP packs、项目命令和 evidence gates；
 - project init 模板；
 - fixture 和自动化测试。
 
@@ -54,10 +56,11 @@ Claude Code
 
 1. 通用能力放在 kit，项目差异放在 project profile/adapter。
 2. Claude Code 通过 CLI 和文件化 context 获得结构化上下文。
-3. MCP 只是 Claude Code 的接口层，不是 RTL/DV 能力的核心。
-4. 没有 MCP 时，CLI 和 profile 工作流仍然完整可用。
-5. kit 不耦合 ETX runner、bsub 或其他调度平台。
-6. kit 不包含任何项目 RTL/DV、SV、Bazel 文件、波形、数据库或生成文件。
+3. 先由 planner 选择最小 workflow/context，再由 CLI 或 MCP 提供可审计事实。
+4. MCP 只是 Claude Code 的接口层，不是 RTL/DV 能力的核心。
+5. 没有 MCP 时，CLI 和 profile 工作流仍然完整可用。
+6. kit 不耦合 ETX runner、bsub 或其他调度平台。
+7. kit 不包含任何项目 RTL/DV、SV、Bazel 文件、波形、数据库或生成文件。
 
 这里的 MCP bridge 指 Claude Code 的 MCP 接口，不等同于消费项目中可能名为 MCP 的 SystemVerilog、UVM 或 DV 文件。项目自己的 DV MCP、VIP 连接和 build 文件仍留在项目仓库。
 
@@ -72,6 +75,7 @@ Claude Code
 - [Protocol/VIP packs](#protocolvip-packs)
 - [CLI 参考](#cli-参考)
 - [Context 和 manifest](#context-和-manifest)
+- [Workflow planner](#workflow-planner)
 - [典型 RTL/DV 工作流](#典型-rtldv-工作流)
 - [MCP bridge](#mcp-bridge)
 - [安全边界](#安全边界)
@@ -205,6 +209,8 @@ src/claude_kit/resources/
 ├── roles/
 ├── skills/
 ├── packs/
+├── workflows/
+│   └── catalog.json
 ├── schemas/
 │   ├── project.schema.json
 │   ├── manifest.schema.json
@@ -393,11 +399,13 @@ auto_push = false
 | roots | RTL、DV、testbench、vendor、generated 的范围 |
 | roles | 默认 role 选择；项目特有规则放在项目 `.claude/CLAUDE.md` 或 `.ai/overrides/` |
 | packs | 项目真正启用的协议/VIP pack |
-| build | build、lint、compile、simulation 入口 |
+| build | build、lint、compile、simulation 入口；`target` 和 `test_selector` 供 planner 绑定运行事实 |
 | vip | 项目真实接口名、实例数量和 mapping |
 | permissions | writable、read-only、forbidden 路径 |
 | artifacts | 日志、报告、波形和 coverage 位置 |
 | policies | 网络、证据、commit 和 push 策略 |
+
+`source_revision` 可以作为 profile 根级的可选固定事实；如果项目根目录本身是 Git worktree，`plan` 会优先读取当前 `HEAD`，并报告 tracked worktree 是否有未提交修改。planner 只读 Git 状态，不执行网络操作，也不会替项目提交或推送。
 
 TOML 的 `packs` 是根级字段，必须放在任何 `[project]`、`[roots]` 或其他 table 之前；如果把它写在 `[roles]` 或 `[roots]` 下面，TOML 会把它解析成该 table 的子字段，CLI 就不会使用它作为默认 pack。
 
@@ -480,6 +488,7 @@ Adapter 不应该：
 | vip-integration | protocol/VIP mapping、连接、配置和 smoke |
 | debugger | compile、elaboration、simulation、assertion、scoreboard 和 timeout debug |
 | waveform-debugger | 波形、transaction、时序和状态机分析 |
+| regression-triager | 从 focused check 到 regression 的选择、分类、复现和结果比较 |
 | reviewer | 只读 RTL/DV review |
 | evidence-reviewer | 交付前 evidence、日志和未验证声明检查 |
 
@@ -507,6 +516,7 @@ skills 是可由 Claude Code 按任务触发或由项目按需同步到 `.claude
 | dv-engineering | 规划 test、sequence、scoreboard、assertion 和 coverage |
 | protocol-vip | 应用对应 protocol/VIP pack 并验证连接 smoke |
 | rtl-dv-debugging | 根据日志、断言、scoreboard 或 timeout 证据定位问题 |
+| rtl-dv-regression | 通过项目 wrapper 选择 focused-to-regression 检查并保留可复现证据 |
 | rtl-dv-review | 做只读 RTL/DV review 和交付前检查 |
 | rtl-dv-evidence | 记录可复现的 checks、artifacts、skipped/blocked 和 risks |
 
@@ -566,6 +576,8 @@ claude-kit doctor
 claude-kit list roles
 claude-kit list packs
 claude-kit list skills
+claude-kit list workflows
+claude-kit plan
 claude-kit context
 claude-kit manifest
 claude-kit inspect
@@ -583,7 +595,7 @@ claude-kit mcp serve
 claude-kit version
 ~~~
 
-显示 kit 版本。当前版本为 0.1.0。
+显示 kit 版本。当前版本为 0.2.0。
 
 ### init
 
@@ -625,9 +637,69 @@ claude-kit list packs
 claude-kit list skills
 claude-kit list roles --json
 claude-kit list packs --json
+claude-kit list workflows --json
 ~~~
 
-列出 role、pack 或 skill 的 ID、版本、摘要和来源。
+列出 role、pack、skill 或 workflow 的 ID、版本、摘要和来源。`workflows`
+还会显示默认 roles、skills、preferred checks、关键词和 protocol hints。
+
+### plan
+
+`plan` 是 RTL/DV 任务的只读入口。它不修改源码、不启动 simulator，也不
+执行 profile command；它只把任务路由到可复用 workflow，并把项目侧事实和
+命令缺口列出来。
+
+最常用的调用：
+
+~~~bash
+claude-kit plan \
+  --project-root . \
+  --task "修复 AXI4 response channel 的 backpressure timeout" \
+  --json
+~~~
+
+planner 会：
+
+1. 根据关键词选择 `rtl-change`、`dv-change`、`debug`、`protocol-vip`、
+   `review` 或 `handoff`；也可以通过 `--workflow debug` 显式指定；
+2. 校验 workflow 需要的 role、skill 和 pack 是否存在；
+3. 使用显式 `--role`/`--pack` 覆盖 role/pack，未指定时使用 workflow 和
+   profile defaults；
+4. 根据任务中的 AXI/APB/PCIe 等关键词给出 protocol pack recommendation；
+5. 显示 profile 中已登记的 `inspect`、`lint`、`compile`、`simulate`、
+   `regression` 和 `collect_artifacts` 命令，不会猜测或拼接 simulator 命令；
+6. 检查 `target`、`test_selector`、`simulator` 和 `source_revision` 等运行事实；
+7. 返回 skill 文件路径/hash、权限、artifact 位置、evidence 要求和 warnings。
+
+文本输出适合人工快速查看，`--json` 适合 Claude Code、脚本或交付记录。
+`missing_facts`、`missing_commands` 和 `warnings` 不是失败本身，但在真正
+运行检查前必须逐项处理或明确记录为 blocked/skipped。
+
+典型的 planner → context → check 顺序：
+
+~~~bash
+claude-kit plan \
+  --project-root . \
+  --task "增加 APB wait-state 的负向测试" \
+  --json > out/plan.json
+
+claude-kit context \
+  --project-root . \
+  --role dv-engineer \
+  --pack common \
+  --pack protocols.apb \
+  --skill dv-engineering \
+  --skill rtl-dv-regression \
+  --task "增加 APB wait-state 的负向测试" \
+  --output out/claude/context.md \
+  --manifest out/claude/context-manifest.json
+
+claude-kit check inspect --project-root .
+claude-kit check compile --project-root . --confirm
+~~~
+
+`plan` 默认只读。它可以在没有 MCP、没有 simulator license、没有 ETX
+runner 的环境下运行；真正的检查仍必须由项目 profile 的 wrapper 负责。
 
 ### context
 
@@ -636,12 +708,16 @@ claude-kit context \
   --project-root . \
   --role rtl-designer \
   --pack protocols.axi4 \
+  --skill rtl-design \
   --task "修复 response channel 的 backpressure 问题" \
   --output out/claude/context.md \
   --manifest out/claude/context-manifest.json
 ~~~
 
-role 和 pack 可以重复多次。没有显式选择时，使用 profile 中的 defaults。
+role、pack 和 skill 都可以重复多次。没有显式选择 role/pack 时，使用
+profile 中的 defaults；skill 默认不自动塞入 context，以免不必要地扩大
+上下文，应该按 `plan` 返回的 workflow 选择需要的 skill。`--skill` 会把
+对应的 SKILL.md 内容和 hash 写入 context/manifest。
 `--task-file` 也可以提供任务说明；为避免越权读取，它必须位于 project root 内。
 
 ### manifest
@@ -651,10 +727,11 @@ claude-kit manifest \
   --project-root . \
   --role reviewer \
   --pack common \
+  --skill rtl-dv-review \
   --task "审查当前变更"
 ~~~
 
-只输出机器可读的 resolved context manifest，包括 profile、role、pack、任务和来源文件 hash。
+只输出机器可读的 resolved context manifest，包括 profile、role、pack、skill、任务和来源文件 hash。
 
 ### inspect
 
@@ -745,13 +822,15 @@ generic role guidance
   + explicit user request
 ~~~
 
-当前 CLI resolver 自动合并的是 role、pack、profile 和 task；项目 `.claude/CLAUDE.md`、`.ai/overrides/` 以及用户请求由 Claude Code 的规则层继续提供，不会被 kit 偷猜或隐式读取。这样可以保持 manifest 的来源边界清楚。
+当前 CLI resolver 自动合并的是 role、pack、显式 skill、profile 和 task；项目
+`.claude/CLAUDE.md`、`.ai/overrides/` 以及用户请求由 Claude Code 的规则层
+继续提供，不会被 kit 偷猜或隐式读取。这样可以保持 manifest 的来源边界清楚。
 
 Context 包含：
 
 1. Project facts：根目录、路径分类、工具和命令；
 2. Task instructions：本次任务目标、限制和验收条件；
-3. Role/pack guidance：工作顺序、领域检查项和风险；
+3. Role/pack/skill guidance：工作顺序、领域检查项和风险；
 4. Evidence contract：命令、产物、未运行检查和未决风险。
 
 Manifest 记录：
@@ -763,6 +842,7 @@ Manifest 记录：
   "profile": ".ai/project.toml",
   "roles": ["rtl-designer"],
   "packs": ["protocols.axi4"],
+  "skills": ["rtl-design"],
   "task": "task text",
   "sources": [
     {
@@ -776,6 +856,33 @@ Manifest 记录：
 
 Manifest 不包含完整源码，也不应包含 password、token、secret、private key 或 license 内容。
 
+## Workflow planner
+
+workflow catalog 位于 `src/claude_kit/resources/workflows/catalog.json`，是
+通用的任务编排层，不是项目 build system。每个 workflow 定义：
+
+- 适用 scope 和关键词；
+- 默认 roles、skills 和 pack hints；
+- preferred project command 名称；
+- 需要绑定的运行事实；
+- 步骤、completion criteria 和 protocol hints。
+
+当前 workflow：
+
+| Workflow | 适用场景 | 默认重点 |
+| --- | --- | --- |
+| rtl-change | RTL 设计、重构、接口、pipeline、FIFO、reset | rtl-architect + rtl-designer |
+| dv-change | testbench、sequence、scoreboard、assertion、coverage | dv-architect + dv-engineer |
+| debug | compile/elaboration/simulation/assertion/timeout/waveform | debugger + waveform-debugger + regression-triager |
+| protocol-vip | protocol mapping、VIP connectivity 和 smoke | vip-integration + protocol pack |
+| review | 只读 correctness、diff 和 evidence review | reviewer + evidence-reviewer |
+| handoff | evidence、交付、sign-off 前整理 | evidence-reviewer + reviewer |
+
+planner 的角色是“选路和发现缺口”，不是替用户做设计决策。项目 profile
+仍然是 target、test、simulator、命令、权限和 artifact 的唯一事实来源；
+workflow 里不存在项目绝对路径、VIP class、license、scheduler 或 simulator
+宏。显式 `--workflow` 用于关键词不足或任务跨越多个领域的情况。
+
 ## 典型 RTL/DV 工作流
 
 ### 新项目接入
@@ -787,32 +894,35 @@ Manifest 不包含完整源码，也不应包含 password、token、secret、pri
 5. 选择 roles 和 protocol/VIP packs。
 6. 配置 writable/read-only/forbidden。
 7. 运行 doctor --strict。
-8. 用 reviewer 对 profile 做一次只读检查。
-9. 运行 context/inspect smoke。
-10. 再决定是否启用 MCP。
+8. 运行 `plan --task "接入后的第一个 RTL/DV smoke"`，确认 workflow、缺失事实和命令缺口。
+9. 用 reviewer 对 profile 做一次只读检查。
+10. 运行 context/inspect smoke。
+11. 再决定是否启用 MCP。
 
 ### RTL 新增或修改
 
 推荐 rtl-architect 加 rtl-designer：
 
-1. 读取 profile、模块、接口、相关 test 和项目规则。
-2. 建立状态机、数据通路、握手和 reset 模型。
-3. 写明不变量、延迟、ordering、backpressure 和 error 语义。
-4. 只修改 writable 路径。
-5. 先运行最小 lint/compile，再运行相关单元仿真。
-6. 检查参数、位宽、signedness、queue 边界和恢复路径。
-7. 记录未覆盖 corner case 和未运行检查。
+1. 运行 `plan --workflow rtl-change --task "..."`。
+2. 读取 profile、模块、接口、相关 test 和项目规则。
+3. 建立状态机、数据通路、握手和 reset 模型。
+4. 写明不变量、延迟、ordering、backpressure 和 error 语义。
+5. 只修改 writable 路径。
+6. 先运行最小 lint/compile，再运行相关单元仿真。
+7. 检查参数、位宽、signedness、queue 边界和恢复路径。
+8. 记录未覆盖 corner case 和未运行检查。
 
 ### DV 新增或修改
 
 推荐 dv-architect 加 dv-engineer：
 
-1. 读取 DUT interface、transaction、寄存器和现有 bench。
-2. 区分 driver、monitor、sequencer、scoreboard、reference model 和 coverage。
-3. 规划 positive、boundary、negative、reset 和 recovery 场景。
-4. 明确比较时点、排序、ID、mask、延迟和容忍范围。
-5. 先运行单 test，再根据证据扩大回归。
-6. 检查 assertion、functional coverage 和 scoreboard evidence。
+1. 运行 `plan --workflow dv-change --task "..."`。
+2. 读取 DUT interface、transaction、寄存器和现有 bench。
+3. 区分 driver、monitor、sequencer、scoreboard、reference model 和 coverage。
+4. 规划 positive、boundary、negative、reset 和 recovery 场景。
+5. 明确比较时点、排序、ID、mask、延迟和容忍范围。
+6. 先运行单 test，再根据证据扩大回归。
+7. 检查 assertion、functional coverage 和 scoreboard evidence。
 
 test 结束不等于验证完成；必须说明关键 corner case 和覆盖缺口。
 
@@ -820,24 +930,26 @@ test 结束不等于验证完成；必须说明关键 corner case 和覆盖缺�
 
 推荐 vip-integration 加对应 protocol pack：
 
-1. 选择协议版本和 pack。
-2. 在 profile/adapter 中记录真实 VIP 版本、接口、实例数量和 simulator 入口。
-3. 检查每个实例的 clock、reset、方向和 mapping。
-4. 运行 reset、单笔传输、backpressure、error 和 recovery smoke。
-5. 再覆盖并发、随机延迟、outstanding、重试和 lane/width 场景。
-6. 将 VIP warning、protocol violation、scoreboard mismatch 和环境错误分开。
+1. 运行 `plan --workflow protocol-vip --task "..."`，确认 protocol hint。
+2. 选择协议版本和 pack。
+3. 在 profile/adapter 中记录真实 VIP 版本、接口、实例数量和 simulator 入口。
+4. 检查每个实例的 clock、reset、方向和 mapping。
+5. 运行 reset、单笔传输、backpressure、error 和 recovery smoke。
+6. 再覆盖并发、随机延迟、outstanding、重试和 lane/width 场景。
+7. 将 VIP warning、protocol violation、scoreboard mismatch 和环境错误分开。
 
 ### 编译或仿真失败
 
 使用 debugger：
 
-1. 保存精确命令、cwd、退出码和第一处错误。
-2. 区分环境、compile、link、runtime、assertion、scoreboard 和 timeout。
-3. 确认日志属于当前 source/test/seed。
-4. 缩小到单 test、单 seed、单 transaction 或最小复现。
-5. 提出可证伪的根因假设。
-6. 修复后先重跑最小复现，再扩大检查。
-7. 保留前后结果和 artifact 路径。
+1. 运行 `plan --workflow debug --task "..."`。
+2. 保存精确命令、cwd、退出码和第一处错误。
+3. 区分环境、compile、elaboration/link、runtime、protocol、assertion、scoreboard 和 timeout。
+4. 确认日志属于当前 source/test/seed。
+5. 缩小到单 test、单 seed、单 transaction 或最小复现。
+6. 提出可证伪的根因假设。
+7. 修复后先重跑最小复现，再扩大检查。
+8. 保留前后结果和 artifact 路径。
 
 kit 可以调用项目 wrapper，但不负责远程调度、license 申请或资源分配。
 
@@ -883,6 +995,9 @@ MCP bridge 是 CLI/context resolver 的适配层，不是另一个工作流引�
 - get_project_profile；
 - list_roles；
 - list_packs；
+- list_skills；
+- list_workflows；
+- plan_task；
 - resolve_context；
 - inspect_design；
 - read_artifact；
@@ -893,6 +1008,17 @@ MCP bridge 是 CLI/context resolver 的适配层，不是另一个工作流引�
 - run_check。
 
 run_check 仍要求 tool arguments 中显式传入 confirm = true，并且只运行 profile 已登记的命令。
+
+`plan_task` 的 `task` 是必填项，`workflow` 默认为 `auto`，可选的 `roles`
+和 `packs` 用于覆盖默认选择。它返回与 CLI `plan --json` 相同的核心结构，
+包括 `workflow`、`roles`、`skills`、`skill_sources`、`recommended_packs`、
+`check_plan`、`missing_facts`、`missing_commands`、`permissions`、
+`artifacts`、`evidence` 和 `warnings`。
+
+`resolve_context` 仍然是显式上下文读取接口；除 `roles` 和 `packs` 外，
+可以传入 `skills` 数组，把选定的 SKILL.md 内容加入返回的 context，并在
+manifest 的 `sources` 中保留 hash。这样项目可以使用 `init --no-skills`，
+仍通过 MCP 按任务动态读取最小 skill，而不需要复制整套项目侧 skills。
 
 ### Claude Code 连接
 
@@ -982,6 +1108,7 @@ python -m unittest discover -s tests -v
 - doctor strict；
 - permission overlap；
 - context 和 manifest source hash；
+- workflow catalog、task routing、skill source hash 和 command plan；
 - inspect roots；
 - artifact 越界保护；
 - command confirmation；
@@ -990,7 +1117,7 @@ python -m unittest discover -s tests -v
 - evidence schema、artifact 引用和 read-only path；
 - CLI doctor/context/check/evidence；
 - CLI artifact read；
-- MCP tools/list、profile 脱敏、artifact read 和只读工具。
+- MCP tools/list、profile 脱敏、artifact read、workflow/skill listing、plan 和只读工具。
 
 ### 添加 role
 
@@ -1015,6 +1142,16 @@ python -m unittest discover -s tests -v
 3. 只写跨项目通用的 Claude Code 工作规则。
 4. 不在 skill 中硬编码项目路径、target、license 或调度平台。
 5. 更新 skill catalog、sync 测试和 README。
+
+### 添加 workflow
+
+1. 在 `src/claude_kit/resources/workflows/catalog.json` 添加唯一 workflow id。
+2. 只引用已经存在的通用 role、skill 和 pack；preferred command 使用 profile
+   约定的逻辑名称，不写 simulator argv、项目路径或 scheduler 参数。
+3. 为关键词路由、required facts、pack hints、步骤和 completion criteria
+   写清楚保守的默认行为。
+4. 添加 planner 的自动路由、显式选择、缺失命令/事实和 protocol hint 测试。
+5. 同步更新 README、CLI/MCP 行为说明；运行 compile、unittest 和 fixture smoke。
 
 ### 添加 CLI 命令
 
@@ -1053,14 +1190,20 @@ python -m unittest discover -s tests -v
 
 同一个路径不能同时 writable、read_only 或 forbidden。缩小 glob 范围，并再次运行 doctor。
 
-### 找不到 role 或 pack
+### 找不到 role、pack、skill 或 workflow
 
-检查 submodule commit、ID 大小写和 profile 引用：
+检查 submodule commit、ID 大小写和 profile/workflow 引用：
 
 ~~~bash
 claude-kit list roles
 claude-kit list packs
+claude-kit list skills
+claude-kit list workflows
 ~~~
+
+`plan --json` 会
+在 workflow 引用不存在的 skill、role 或 pack 时直接报错，而不是返回一个
+看似可执行的不完整计划。
 
 ### check 被拒绝
 
@@ -1068,7 +1211,17 @@ claude-kit list packs
 
 ### context 太长
 
-减少默认 packs，只选择当前任务需要的 role/pack；将项目事实放 profile，长篇协议知识放 pack，不要重复写入 CLAUDE.md。
+减少默认 packs，只选择当前任务需要的 role/pack/skill；将项目事实放
+profile，长篇协议知识放 pack，不要重复写入 CLAUDE.md。skill 默认不进入
+context，只有显式 `--skill` 或 MCP `resolve_context.skills` 才会加入。
+
+### plan 报 missing facts 或 commands
+
+这表示 planner 没有猜测项目运行环境。把真实的 `target`、`test_selector`
+和 `simulator` 填入 `[build]`，把 `inspect`、`lint`、`compile`、`simulate`、
+`regression` 或 `collect_artifacts` 映射到项目已有 wrapper；不要把通用
+simulator 命令硬编码进 kit。若命令暂时不可用，在 evidence 中记录为
+blocked/skipped，而不是删除 warning。
 
 ### MCP 不可用
 
@@ -1085,15 +1238,14 @@ CLI 可用后，再检查 MCP 的 command、args、project root、profile 和 st
 
 后续优先级：
 
-1. 稳定 profile、role、pack 和 manifest schema。
-2. 增加 profile 迁移和更细的 path capability。
-3. 增加 RTL module/instance/dependency index。
-4. 增加更丰富的 log、coverage 和 evidence parser。
-5. 增加项目 adapter interface 和 adapter contract test。
-6. 增加更多协议/VIP packs。
-7. 增加可选的 artifact-backed 长任务状态。
-8. 在真实 RTL/DV 项目上试用并减少项目侧配置。
-9. 保持 MCP 薄化，不把大型执行逻辑迁入 MCP。
+1. 增加 profile 迁移和更细的 path capability。
+2. 增加 RTL module/instance/dependency index。
+3. 增加更丰富的 log、coverage、waveform index 和 evidence parser。
+4. 增加项目 adapter interface 和 adapter contract test。
+5. 增加更多协议/VIP packs，并为 pack 增加版本/层级匹配提示。
+6. 增加可选的 artifact-backed 长任务状态和 regression result comparison。
+7. 在更多真实 RTL/DV 项目上试用并减少项目侧配置。
+8. 保持 MCP 薄化，不把大型执行逻辑迁入 MCP。
 
 每一步都必须保持：
 

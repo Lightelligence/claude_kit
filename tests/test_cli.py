@@ -41,6 +41,23 @@ class CliTests(unittest.TestCase):
         self.assertEqual(evidence.returncode, 0, evidence.stderr)
         self.assertEqual(json.loads(evidence.stdout)["status"], "passed")
 
+    def test_plan_routes_workflow_and_reports_gates(self) -> None:
+        workflows = self.run_cli("list", "workflows", "--json")
+        self.assertEqual(workflows.returncode, 0, workflows.stderr)
+        self.assertIn("debug", {item["id"] for item in json.loads(workflows.stdout)})
+        plan = self.run_cli(
+            "plan",
+            "--project-root", str(FIXTURE),
+            "--task", "debug APB timeout in simulation",
+            "--pack", "protocols.apb",
+            "--json",
+        )
+        self.assertEqual(plan.returncode, 0, plan.stderr)
+        payload = json.loads(plan.stdout)
+        self.assertEqual(payload["workflow"]["id"], "debug")
+        self.assertIn("debugger", payload["roles"])
+        self.assertIn("source_revision", payload["missing_facts"])
+
     def test_artifact_read_is_bounded_and_project_relative(self) -> None:
         result = self.run_cli(
             "artifact", "read", "--project-root", str(FIXTURE),
@@ -72,6 +89,8 @@ class CliTests(unittest.TestCase):
                 "reviewer",
                 "--pack",
                 "protocols.apb",
+                "--skill",
+                "rtl-dv-context",
                 "--task",
                 "check APB",
                 "--output",
@@ -81,7 +100,9 @@ class CliTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("check APB", output.read_text(encoding="utf-8"))
-            self.assertEqual(json.loads(manifest.read_text(encoding="utf-8"))["project"], "minimal_fixture")
+            manifest_payload = json.loads(manifest.read_text(encoding="utf-8"))
+            self.assertEqual(manifest_payload["project"], "minimal_fixture")
+            self.assertEqual(manifest_payload["skills"], ["rtl-dv-context"])
 
     def test_task_file_is_project_relative(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -35,3 +35,5 @@ jobs:
           claude-kit list roles --json
           claude-kit list packs --json
           claude-kit list skills --json
+          claude-kit list workflows --json
+          claude-kit plan --project-root tests/fixtures/minimal_project --task "debug APB timeout" --json

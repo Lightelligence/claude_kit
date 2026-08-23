@@ -19,7 +19,10 @@ from .core import (
     resolve_context,
     role_catalog,
     run_project_command,
+    skill_catalog,
     validate_profile,
+    resolve_plan,
+    workflow_catalog,
 )
 
 
@@ -70,6 +73,30 @@ def _tool_definitions(allow_exec: bool) -> list[dict[str, Any]]:
             "inputSchema": {"type": "object", "properties": {}},
         },
         {
+            "name": "list_skills",
+            "description": "List reusable Claude Code RTL/DV skills.",
+            "inputSchema": {"type": "object", "properties": {}},
+        },
+        {
+            "name": "list_workflows",
+            "description": "List reusable RTL/DV workflow plans and their routing hints.",
+            "inputSchema": {"type": "object", "properties": {}},
+        },
+        {
+            "name": "plan_task",
+            "description": "Resolve a task into roles, skills, packs, project checks and evidence gates without executing commands.",
+            "inputSchema": {
+                "type": "object",
+                "required": ["task"],
+                "properties": {
+                    "task": {"type": "string"},
+                    "workflow": {"type": "string", "description": "Workflow id or auto"},
+                    "roles": {"type": "array", "items": {"type": "string"}},
+                    "packs": {"type": "array", "items": {"type": "string"}},
+                },
+            },
+        },
+        {
             "name": "resolve_context",
             "description": "Resolve a task context from the project profile, roles and packs.",
             "inputSchema": {
@@ -78,6 +105,7 @@ def _tool_definitions(allow_exec: bool) -> list[dict[str, Any]]:
                     "task": {"type": "string"},
                     "roles": {"type": "array", "items": {"type": "string"}},
                     "packs": {"type": "array", "items": {"type": "string"}},
+                    "skills": {"type": "array", "items": {"type": "string"}},
                 },
             },
         },
@@ -149,8 +177,28 @@ def _call_tool(
         return _text_result(role_catalog())
     if name == "list_packs":
         return _text_result(pack_catalog())
+    if name == "list_skills":
+        return _text_result(skill_catalog())
+    if name == "list_workflows":
+        return _text_result(workflow_catalog())
 
     profile_path, profile = load_profile(root, explicit_profile)
+    if name == "plan_task":
+        task = arguments.get("task")
+        if not isinstance(task, str):
+            raise KitError("plan_task task must be a string")
+        workflow = arguments.get("workflow", "auto")
+        if not isinstance(workflow, str):
+            raise KitError("plan_task workflow must be a string")
+        return _text_result(resolve_plan(
+            root,
+            profile_path,
+            profile,
+            workflow,
+            arguments.get("roles"),
+            arguments.get("packs"),
+            task,
+        ))
     if name == "get_project_profile":
         issues = validate_profile(root, profile)
         return _text_result({
@@ -172,6 +220,7 @@ def _call_tool(
             arguments.get("roles"),
             arguments.get("packs"),
             task,
+            arguments.get("skills"),
         )
         return _text_result({"context": context, "manifest": manifest})
     if name == "inspect_design":

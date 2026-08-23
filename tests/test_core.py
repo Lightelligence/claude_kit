@@ -25,6 +25,8 @@ from claude_kit.core import (
     sync_project_skills,
     validate_profile,
     validate_evidence,
+    resolve_plan,
+    workflow_catalog,
 )
 
 
@@ -41,6 +43,48 @@ class CoreTests(unittest.TestCase):
         self.assertIn("protocols.axi4lite", {item["id"] for item in pack_catalog()})
         self.assertIn("rtl-design", {item["id"] for item in skill_catalog()})
         self.assertIn("rtl-dv-evidence", {item["id"] for item in skill_catalog()})
+
+    def test_workflow_catalog_resolves_task_plan(self) -> None:
+        self.assertIn("debug", {item["id"] for item in workflow_catalog()})
+        profile_path, profile = load_profile(FIXTURE)
+        plan = resolve_plan(
+            FIXTURE,
+            profile_path,
+            profile,
+            "auto",
+            None,
+            ["protocols.apb"],
+            "debug APB timeout in simulation",
+        )
+        self.assertEqual(plan["workflow"]["id"], "debug")
+        self.assertIn("debugger", plan["roles"])
+        self.assertIn("protocols.apb", plan["recommended_packs"])
+        self.assertIn("source_revision", plan["missing_facts"])
+        self.assertIn("rtl-dv-debugging", plan["skills"])
+        self.assertTrue(plan["skill_sources"])
+        self.assertEqual(plan["check_plan"][0]["name"], "inspect")
+        self.assertEqual(plan["kind"], "rtl-dv-workflow-plan")
+        chinese_plan = resolve_plan(
+            FIXTURE,
+            profile_path,
+            profile,
+            "auto",
+            None,
+            None,
+            "调试 APB 超时",
+        )
+        self.assertEqual(chinese_plan["workflow"]["id"], "debug")
+        for workflow in workflow_catalog():
+            resolved = resolve_plan(
+                FIXTURE,
+                profile_path,
+                profile,
+                workflow["id"],
+                None,
+                None,
+                workflow["summary"],
+            )
+            self.assertEqual(resolved["workflow"]["id"], workflow["id"])
 
     def test_project_schema_describes_runtime_profile_contract(self) -> None:
         schema_path = ROOT / "src" / "claude_kit" / "resources" / "schemas" / "project.schema.json"
@@ -70,10 +114,14 @@ class CoreTests(unittest.TestCase):
             ["reviewer"],
             ["common", "protocols.apb"],
             "review APB reset behavior",
+            ["rtl-dv-context", "rtl-dv-review"],
         )
         self.assertIn("review APB reset behavior", context)
         self.assertIn("APB Guidance", context)
+        self.assertIn("RTL/DV Context", context)
+        self.assertIn("RTL/DV Review", context)
         self.assertEqual(manifest["project"], "minimal_fixture")
+        self.assertEqual(manifest["skills"], ["rtl-dv-context", "rtl-dv-review"])
         self.assertTrue(manifest["sources"])
         self.assertTrue(all(item["sha256"] for item in manifest["sources"]))
         _, default_manifest = resolve_context(FIXTURE, profile_path, profile, None, None, "use profile defaults")
