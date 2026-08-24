@@ -4,6 +4,7 @@ This file is shared by projects that pin claude_kit.
 
 - The project profile is the source of truth for roots, commands, permissions and artifacts.
 - For RTL/DV projects, `hw/**` is a normal implementation scope when `[roots].hw` and `permissions.writable` declare it; do not assume other paths are writable.
+- Use `permissions.writable` for ordinary edits. For deliberate cleanup, declare the exact obsolete path under `permissions.deletable` and record the evidence change as `{\"path\": \"...\", \"operation\": \"delete\"}`; read-only and forbidden scopes still override both.
 - Start with read-only inspection and context resolution.
 - Run the repo-local `claude-kit plan --task "..."` first when selecting an RTL/DV workflow; treat its missing facts and warnings as gates.
 - Load only the selected skill guidance with `claude-kit context --skill <id>` or the equivalent MCP `resolve_context.skills` request.
