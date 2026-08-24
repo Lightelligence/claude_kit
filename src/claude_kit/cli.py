@@ -11,6 +11,7 @@ from .core import (
     DEFAULT_ARTIFACT_MAX_BYTES,
     KitError,
     check_adapter,
+    command_menu,
     doctor,
     evidence_template,
     find_project_root,
@@ -22,6 +23,7 @@ from .core import (
     resolve_context,
     review_evidence_file,
     role_catalog,
+    run_project_commands,
     run_project_command,
     skill_catalog,
     sync_project_skills,
@@ -100,6 +102,11 @@ def build_parser() -> argparse.ArgumentParser:
     listing.add_argument("--json", action="store_true", help="Print JSON")
     listing.set_defaults(handler=handle_list)
 
+    checks = subparsers.add_parser("checks", help="Show the project check selection menu")
+    _add_project_options(checks)
+    checks.add_argument("--json", action="store_true", help="Print JSON")
+    checks.set_defaults(handler=handle_checks)
+
     plan = subparsers.add_parser("plan", help="Resolve a reusable RTL/DV workflow plan")
     _add_project_options(plan)
     plan.add_argument("--workflow", default="auto", help="Workflow id or auto task routing")
@@ -150,6 +157,19 @@ def build_parser() -> argparse.ArgumentParser:
     check.add_argument("--timeout", type=int, default=3600)
     check.set_defaults(handler=handle_check)
 
+    check_batch = subparsers.add_parser(
+        "check-batch",
+        help="Run an engineer-selected list of allowlisted project checks",
+    )
+    _add_project_options(check_batch)
+    check_batch.add_argument("names", nargs="*", help="Check names under build.commands")
+    check_batch.add_argument("--check", dest="selected", action="append", help="Additional check name; repeat for multi-select")
+    check_batch.add_argument("--confirm", action="store_true", help="Confirm the selected check list")
+    check_batch.add_argument("--timeout", type=int, default=3600)
+    check_batch.add_argument("--stop-on-error", action="store_true")
+    check_batch.add_argument("--report", type=Path, help="Optional project-relative JSON report path")
+    check_batch.set_defaults(handler=handle_check_batch)
+
     adapter = subparsers.add_parser("adapter", help="Validate the optional project adapter")
     adapter_subparsers = adapter.add_subparsers(dest="adapter_command", required=True)
     adapter_check = adapter_subparsers.add_parser("check", help="Import and inspect the adapter contract")
@@ -161,7 +181,7 @@ def build_parser() -> argparse.ArgumentParser:
     mcp_subparsers = mcp.add_subparsers(dest="mcp_command", required=True)
     serve = mcp_subparsers.add_parser("serve", help="Serve MCP over stdio")
     _add_project_options(serve)
-    serve.add_argument("--allow-exec", action="store_true", help="Expose run_check to the bridge")
+    serve.add_argument("--allow-exec", action="store_true", help="Expose run_check and run_checks to the bridge")
     serve.set_defaults(handler=handle_mcp)
 
     evidence = subparsers.add_parser("evidence", help="Create or validate task evidence")
@@ -224,6 +244,21 @@ def handle_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def handle_checks(args: argparse.Namespace) -> int:
+    root = _root(args.project_root)
+    _, profile = load_profile(root, args.profile)
+    result = command_menu(profile)
+    if args.json:
+        _json_print(result)
+    else:
+        for item in result:
+            selection = item["selection"]
+            if item["requires_confirmation"]:
+                selection += ";approval-required"
+            print(f"{item['name']}\t{item['category']}\t{item['status']}\t{selection}")
+    return 0
+
+
 def handle_plan(args: argparse.Namespace) -> int:
     root, profile_path, profile, task = _context_inputs(args)
     result = resolve_plan(root, profile_path, profile, args.workflow, args.roles, args.packs, task)
@@ -239,6 +274,12 @@ def handle_plan(args: argparse.Namespace) -> int:
         print(f"available_commands: {', '.join(item['name'] for item in result['available_commands']) or '<none>'}")
         checks = ", ".join(f"{item['name']}({item['status']})" for item in result["check_plan"]) or "<none>"
         print(f"checks: {checks}")
+        menu = ", ".join(
+            f"{item['name']}[{item['category']},{item['selection']}]"
+            for item in result["check_plan"]
+        ) or "<none>"
+        print(f"check_menu: {menu}")
+        print("check_selection: engineer_selects; multi_select=true; execution=sequential_reports")
         print(f"missing_facts: {', '.join(result['missing_facts']) or '<none>'}")
         for warning in result["warnings"]:
             print(f"warning: {warning}")
@@ -313,6 +354,26 @@ def handle_check(args: argparse.Namespace) -> int:
     root = _root(args.project_root)
     _, profile = load_profile(root, args.profile)
     result = run_project_command(root, profile, args.name, args.confirm, args.timeout)
+    _json_print(result)
+    return 0 if result["status"] == "passed" else 1
+
+
+def handle_check_batch(args: argparse.Namespace) -> int:
+    root = _root(args.project_root)
+    _, profile = load_profile(root, args.profile)
+    names = [*args.names, *(args.selected or [])]
+    result = run_project_commands(
+        root,
+        profile,
+        names,
+        confirm=args.confirm,
+        timeout=args.timeout,
+        stop_on_error=args.stop_on_error,
+    )
+    if args.report:
+        path = _project_output(root, args.report)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
     _json_print(result)
     return 0 if result["status"] == "passed" else 1
 

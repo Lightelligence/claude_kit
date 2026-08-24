@@ -220,6 +220,21 @@ def validate_profile(root: Path, profile: dict[str, Any]) -> list[dict[str, str]
         confirmation = command.get("confirmation")
         if confirmation is not None and confirmation not in ("required", "optional"):
             add("error", f"build.commands.{name}.confirmation must be required or optional")
+        category = command.get("category")
+        if category is not None and (not isinstance(category, str) or not category.strip()):
+            add("error", f"build.commands.{name}.category must be a non-empty string")
+        command_artifacts = command.get("artifacts", command.get("artifact"))
+        if command_artifacts is not None:
+            try:
+                artifact_paths = _as_list(command_artifacts)
+            except KitError:
+                add("error", f"build.commands.{name}.artifacts must be a string or list of strings")
+                artifact_paths = []
+            for artifact in artifact_paths:
+                try:
+                    _project_path(root, artifact, f"build.commands.{name}.artifacts")
+                except KitError:
+                    add("error", f"build.commands.{name}.artifacts must stay inside the project root: {artifact}")
 
     roles = profile.get("roles", {})
     if not isinstance(roles, (dict, list)):
@@ -443,6 +458,96 @@ def _git_facts(root: Path) -> dict[str, Any]:
     return {"source_revision": revision, "worktree_dirty": dirty}
 
 
+QUICK_CHECK_CATEGORIES = frozenset({"inspect", "syntax", "lint", "compile", "filelist"})
+EXPLICIT_CHECK_CATEGORIES = frozenset({"simulation", "regression", "coverage", "synthesis", "cdc"})
+
+
+def command_category(name: str, command: dict[str, Any] | None = None) -> str:
+    """Classify a project wrapper without knowing its project-specific name."""
+
+    command = command or {}
+    candidates = [
+        command.get("category"),
+        command.get("kind"),
+        name,
+    ]
+    aliases = (
+        ("simulation", ("simulation", "simulate", "_sim")),
+        ("regression", ("regression", "regress", "_regress")),
+        ("coverage", ("coverage", "cover", "_cov")),
+        ("synthesis", ("synthesis", "synth", "_syn")),
+        ("cdc", ("cdc",)),
+        ("filelist", ("filelist", "flist", "file_list")),
+        ("syntax", ("syntax", "parse", "syntax_check")),
+        ("lint", ("lint",)),
+        ("compile", ("compile", "comp", "build", "elaborate")),
+        ("inspect", ("inspect", "read_only", "inventory")),
+        ("artifacts", ("artifact", "collect")),
+    )
+    for candidate in candidates:
+        if not isinstance(candidate, str):
+            continue
+        normalized = candidate.strip().lower().replace("-", "_").replace(" ", "_")
+        if not normalized:
+            continue
+        for category, tokens in aliases:
+            if normalized in tokens or any(token in normalized for token in tokens):
+                return category
+    return "other"
+
+
+def command_selection_policy(name: str, command: dict[str, Any] | None = None) -> dict[str, Any]:
+    command = command or {}
+    category = command_category(name, command)
+    if category in EXPLICIT_CHECK_CATEGORIES:
+        return {
+            "category": category,
+            "selection": "explicit",
+            "recommended": False,
+            "requires_confirmation": True,
+        }
+    if category in QUICK_CHECK_CATEGORIES:
+        return {
+            "category": category,
+            "selection": "suggested",
+            "recommended": True,
+            "requires_confirmation": _requires_explicit_confirmation(command),
+        }
+    return {
+        "category": category,
+        "selection": "optional",
+        "recommended": False,
+        "requires_confirmation": _requires_explicit_confirmation(command),
+    }
+
+
+def command_menu(
+    profile: dict[str, Any],
+    preferred_commands: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Return a selectable, project-neutral check menu."""
+
+    build = profile.get("build", {}) if isinstance(profile.get("build"), dict) else {}
+    commands = build.get("commands", {}) if isinstance(build.get("commands"), dict) else {}
+    preferred = preferred_commands or []
+    ordered_names: list[str] = []
+    for name in [*preferred, *sorted(str(item) for item in commands)]:
+        if name not in ordered_names:
+            ordered_names.append(name)
+    result: list[dict[str, Any]] = []
+    for name in ordered_names:
+        command = commands.get(name)
+        definition = command if isinstance(command, dict) else None
+        policy = command_selection_policy(name, definition)
+        result.append({
+            "name": name,
+            "status": "available" if definition is not None else "missing",
+            **policy,
+            "definition": redact_profile(definition) if definition is not None else None,
+        })
+    return result
+
+
 def resolve_plan(
     root: Path,
     profile_path: Path,
@@ -552,14 +657,12 @@ def resolve_plan(
         "skills": skill_ids,
         "skill_sources": skill_sources,
         "required_facts": required_facts,
-        "check_plan": [
-            {
-                "name": name,
-                "status": "available" if isinstance(commands.get(name), dict) else "missing",
-                "definition": redact_profile(commands[name]) if isinstance(commands.get(name), dict) else None,
-            }
-            for name in preferred_commands
-        ],
+        "check_plan": command_menu(profile, preferred_commands),
+        "check_selection": {
+            "mode": "engineer_selects",
+            "multi_select": True,
+            "execution": "selected checks run sequentially and return per-check reports",
+        },
         "facts": redact_profile(fact_values),
         "missing_facts": missing_facts,
         "available_commands": available_commands,
@@ -942,6 +1045,18 @@ def _requires_explicit_confirmation(command: dict[str, Any]) -> bool:
     return normalized_kind in {"simulation", "regression"}
 
 
+def _command_metadata(name: str, command: dict[str, Any]) -> dict[str, Any]:
+    metadata: dict[str, Any] = {
+        "command": name,
+        "category": command_category(name, command),
+        "kind": command.get("kind"),
+    }
+    artifacts = command.get("artifacts", command.get("artifact"))
+    if artifacts is not None:
+        metadata["artifacts"] = redact_profile(artifacts)
+    return metadata
+
+
 def run_project_command(
     root: Path,
     profile: dict[str, Any],
@@ -962,6 +1077,7 @@ def run_project_command(
     argv = command.get("argv")
     if not isinstance(argv, list) or not argv or not all(isinstance(item, str) and item for item in argv):
         raise KitError(f"Invalid argv for command: {name}")
+    metadata = _command_metadata(name, command)
     confirmation = command.get("confirmation")
     if confirmation not in (None, "required", "optional"):
         raise KitError(f"Invalid confirmation policy for command: {name}")
@@ -987,8 +1103,8 @@ def run_project_command(
         )
     except subprocess.TimeoutExpired as exc:
         return {
+            **metadata,
             "status": "failed",
-            "command": name,
             "argv": argv,
             "cwd": cwd.relative_to(root).as_posix(),
             "returncode": None,
@@ -999,8 +1115,8 @@ def run_project_command(
         }
     except OSError as exc:
         return {
+            **metadata,
             "status": "failed",
-            "command": name,
             "argv": argv,
             "cwd": cwd.relative_to(root).as_posix(),
             "returncode": None,
@@ -1009,13 +1125,55 @@ def run_project_command(
             "launch_error": True,
         }
     return {
+        **metadata,
         "status": "passed" if completed.returncode == 0 else "failed",
-        "command": name,
         "argv": argv,
         "cwd": cwd.relative_to(root).as_posix(),
         "returncode": completed.returncode,
         "stdout": completed.stdout,
         "stderr": completed.stderr,
+    }
+
+
+def run_project_commands(
+    root: Path,
+    profile: dict[str, Any],
+    names: list[str],
+    confirm: bool = False,
+    timeout: int = 3600,
+    stop_on_error: bool = False,
+) -> dict[str, Any]:
+    """Run an engineer-selected check list and preserve a report per item."""
+
+    if not isinstance(names, list) or not names or not all(isinstance(name, str) and name for name in names):
+        raise KitError("At least one non-empty check name is required")
+    if len(set(names)) != len(names):
+        raise KitError("Selected check names must be unique")
+    results: list[dict[str, Any]] = []
+    for name in names:
+        try:
+            result = run_project_command(root, profile, name, confirm, timeout)
+        except KitError as exc:
+            result = {
+                "command": name,
+                "category": command_category(name),
+                "status": "blocked",
+                "error": str(exc),
+            }
+        results.append(result)
+        if stop_on_error and result.get("status") != "passed":
+            break
+    counts = {status: sum(1 for result in results if result.get("status") == status) for status in ("passed", "failed", "blocked")}
+    return {
+        "status": "passed" if counts["failed"] == 0 and counts["blocked"] == 0 and len(results) == len(names) else "failed",
+        "selected": names,
+        "results": results,
+        "summary": {
+            "selected": len(names),
+            "executed_or_blocked": len(results),
+            **counts,
+            "not_run": len(names) - len(results),
+        },
     }
 
 

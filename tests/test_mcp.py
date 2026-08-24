@@ -102,6 +102,7 @@ class McpTests(unittest.TestCase):
             self.assertIn("strict", evidence_tool["inputSchema"]["properties"])
             self.assertIn("list_workflows", names)
             self.assertIn("plan_task", names)
+            self.assertIn("list_checks", names)
 
             process.stdin.write(frame({
                 "jsonrpc": "2.0",
@@ -141,6 +142,17 @@ class McpTests(unittest.TestCase):
             plan = json.loads(plan_response["result"]["content"][0]["text"])
             self.assertEqual(plan["workflow"]["id"], "debug")
             self.assertIn("debugger", plan["roles"])
+
+            process.stdin.write(frame({
+                "jsonrpc": "2.0",
+                "id": 7,
+                "method": "tools/call",
+                "params": {"name": "list_checks", "arguments": {}},
+            }))
+            process.stdin.flush()
+            checks_response = read_frame(process.stdout)
+            checks = json.loads(checks_response["result"]["content"][0]["text"])
+            self.assertTrue(any(item["name"] == "inspect" for item in checks))
 
             process.stdin.write(frame({
                 "jsonrpc": "2.0",
@@ -189,6 +201,7 @@ class McpTests(unittest.TestCase):
             process.stdin.flush()
             tools = read_frame(process.stdout)["result"]["tools"]
             self.assertIn("run_check", {tool["name"] for tool in tools})
+            self.assertIn("run_checks", {tool["name"] for tool in tools})
 
             process.stdin.write(frame({
                 "jsonrpc": "2.0",
@@ -209,6 +222,20 @@ class McpTests(unittest.TestCase):
             process.stdin.flush()
             allowed = read_frame(process.stdout)
             self.assertIn('"status": "passed"', allowed["result"]["content"][0]["text"])
+
+            process.stdin.write(frame({
+                "jsonrpc": "2.0",
+                "id": 5,
+                "method": "tools/call",
+                "params": {
+                    "name": "run_checks",
+                    "arguments": {"names": ["inspect", "confirmed"], "confirm": True},
+                },
+            }))
+            process.stdin.flush()
+            batch = read_frame(process.stdout)
+            batch_payload = json.loads(batch["result"]["content"][0]["text"])
+            self.assertEqual(batch_payload["summary"]["passed"], 2)
         finally:
             process.terminate()
             process.wait(timeout=5)

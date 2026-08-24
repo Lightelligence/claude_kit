@@ -455,11 +455,17 @@ Each command should declare:
 
 - argv;
 - cwd;
+- optional category (`syntax`, `lint`, `compile`, `simulation`, `regression`, `coverage`, `synthesis`, `cdc`, or a project-defined category);
 - kind;
 - whether it is read-only;
 - confirmation requirements;
 - artifact locations;
 - logs to retain on failure.
+
+The optional category makes the check menu explicit and readable. If it is
+omitted, the kit infers a category from `kind` and the command name. Suggested
+quick checks are shown separately from explicit expensive or specialist checks;
+the kit never executes a menu entry merely because it is recommended.
 
 Commands that need a license, special environment, or remote resources should be owned by the project wrapper. The kit enforces allowlists, cwd, and evidence boundaries around that wrapper.
 
@@ -699,9 +705,10 @@ The planner:
 2. verifies that the referenced roles, skills, and packs exist;
 3. uses explicit role and pack selections as overrides, otherwise using workflow and profile defaults;
 4. recommends protocol packs from terms such as AXI, APB, PCIe, or Ethernet;
-5. reports profile commands such as inspect, lint, compile, simulate, regression, and collect_artifacts without guessing simulator commands;
-6. checks target, test_selector, simulator, and source_revision facts;
-7. returns skill paths and hashes, permissions, artifact locations, evidence requirements, and warnings.
+5. reports every profile command in an engineer-selectable check menu, classifying wrappers such as inspect, syntax, lint, compile, simulation, regression, coverage, synthesis, CDC, filelist, and artifact collection without guessing simulator commands;
+6. marks quick checks as suggested and simulation/regression/coverage/synthesis/CDC as explicit selections that are never auto-run;
+7. checks target, test_selector, simulator, and source_revision facts;
+8. returns skill paths and hashes, permissions, artifact locations, evidence requirements, selection rules, and warnings.
 
 Text output is convenient for a human. json output is suitable for Claude Code, scripts, and delivery records. missing_facts, missing_commands, and warnings are not necessarily planner failures, but they must be resolved or explicitly recorded as blocked/skipped before execution.
 
@@ -726,6 +733,11 @@ claude-kit context \
 
 claude-kit check inspect --project-root .
 claude-kit check compile --project-root . --confirm
+
+claude-kit checks --project-root . --json
+claude-kit check-batch --project-root . \
+  --check lint --check compile --confirm \
+  --report out/reports/dv-checks.json
 ~~~
 
 plan remains useful with no MCP, no simulator license, and no ETX runner. Actual checks are still owned by profile wrappers.
@@ -817,6 +829,41 @@ Only commands registered in profile build.commands may run:
 - cwd must stay inside the project root;
 - output includes status, argv, cwd, exit code, stdout, and stderr;
 - startup failures and timeouts preserve the failure reason.
+
+### checks and check-batch
+
+`checks` displays the project-owned selection menu. It includes every declared
+wrapper, its normalized category, whether it is suggested or explicit, and
+whether confirmation is required. The menu is read-only; it never starts a
+command.
+
+`check-batch` accepts multiple names through repeated `--check` options or
+positional names. It runs the selected checks sequentially, continues after a
+failure by default, and returns a report for every selected item plus aggregate
+counts. Use `--stop-on-error` only when the engineer wants fail-fast behavior.
+The optional `--report` path writes the same JSON report under the project root.
+Simulation, regression, coverage, synthesis and CDC entries remain explicit
+choices and require `--confirm` when executed. A typical project profile can
+declare the wrapper details without putting them in the kit:
+
+~~~toml
+[build.commands.project_lint]
+argv = ["./tools/project-cli", "lint"]
+cwd = "."
+kind = "verification"
+category = "lint"
+artifacts = ["out/reports/lint.json"]
+
+[build.commands.project_simulate]
+argv = ["./tools/project-cli", "simulate", "--test", "smoke"]
+cwd = "."
+kind = "simulation"
+category = "simulation"
+artifacts = ["out/reports/smoke.log"]
+~~~
+
+The first entry is suggested; the second is shown as an explicit choice and
+still requires engineer approval before execution.
 
 ### adapter check
 
@@ -1038,9 +1085,15 @@ The default bridge provides:
 - read_artifact;
 - review_evidence.
 
-With allow-exec, it additionally exposes run_check. run_check still requires confirm = true and can execute only an allowlisted profile command.
+`list_checks` is also read-only. It returns the same engineer-selectable,
+multi-select check menu used by the CLI.
 
-plan_task requires task. workflow defaults to auto. roles and packs can override profile defaults. The result includes workflow, roles, skills, skill_sources, recommended_packs, check_plan, missing_facts, missing_commands, permissions, artifacts, evidence, and warnings.
+With allow-exec, it additionally exposes `run_check` and `run_checks`.
+`run_checks` accepts a list of selected names, executes them sequentially, and
+returns per-check reports and aggregate counts. Both tools require
+`confirm = true` and can execute only allowlisted profile commands.
+
+plan_task requires task. workflow defaults to auto. roles and packs can override profile defaults. The result includes workflow, roles, skills, skill_sources, recommended_packs, check_plan, check_selection, missing_facts, missing_commands, permissions, artifacts, evidence, and warnings.
 
 resolve_context is an explicit context-reading endpoint. Besides roles and packs, it accepts a skills array. Selected SKILL.md content and hashes are returned in the context and manifest. This lets a project use init no-skills while still requesting a minimal skill dynamically through MCP.
 

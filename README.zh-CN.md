@@ -439,11 +439,16 @@ doctor 对尚不存在但可能由项目后续创建的 roots 报 warning；doct
 
 - argv；
 - cwd；
+- 可选 category（`syntax`、`lint`、`compile`、`simulation`、`regression`、`coverage`、`synthesis`、`cdc` 或项目自定义 category）；
 - kind；
 - 是否只读；
 - 是否需要确认；
 - 产物位置；
 - 失败时保留的日志。
+
+可选 category 用于让 check menu 直接表达意图。省略时，kit 会从 `kind` 和
+命令名推断 category。quick checks 会和 expensive/specialist checks 分开显示；
+命令只是因为 `recommended` 被展示，也不会因此自动执行。
 
 需要 license、专用环境或远程资源的命令，应由项目 wrapper 负责；kit 只做 allowlist、cwd 和证据边界检查。
 
@@ -687,10 +692,14 @@ planner 会：
 3. 使用显式 `--role`/`--pack` 覆盖 role/pack，未指定时使用 workflow 和
    profile defaults；
 4. 根据任务中的 AXI/APB/PCIe 等关键词给出 protocol pack recommendation；
-5. 显示 profile 中已登记的 `inspect`、`lint`、`compile`、`simulate`、
-   `regression` 和 `collect_artifacts` 命令，不会猜测或拼接 simulator 命令；
-6. 检查 `target`、`test_selector`、`simulator` 和 `source_revision` 等运行事实；
-7. 返回 skill 文件路径/hash、权限、artifact 位置、evidence 要求和 warnings。
+5. 把 profile 中所有命令放进 engineer 可选择的 check menu，按 inspect、
+   syntax、lint、compile、simulation、regression、coverage、synthesis、CDC、
+   filelist 和 artifact collection 等类别归类，不会猜测或拼接 simulator 命令；
+6. 将快速检查标为 suggested，将 simulation/regression/coverage/synthesis/CDC
+   标为 explicit selection，任何类别都不会自动执行；
+7. 检查 `target`、`test_selector`、`simulator` 和 `source_revision` 等运行事实；
+8. 返回 skill 文件路径/hash、权限、artifact 位置、evidence 要求、selection
+   规则和 warnings。
 
 文本输出适合人工快速查看，`--json` 适合 Claude Code、脚本或交付记录。
 `missing_facts`、`missing_commands` 和 `warnings` 不是失败本身，但在真正
@@ -717,6 +726,11 @@ claude-kit context \
 
 claude-kit check inspect --project-root .
 claude-kit check compile --project-root . --confirm
+
+claude-kit checks --project-root . --json
+claude-kit check-batch --project-root . \
+  --check lint --check compile --confirm \
+  --report out/reports/dv-checks.json
 ~~~
 
 `plan` 默认只读。它可以在没有 MCP、没有 simulator license、没有 ETX
@@ -810,6 +824,38 @@ claude-kit check lint --project-root . --confirm
 - argv 不经过 shell 拼接；
 - cwd 必须位于项目根目录内；
 - 输出包含状态、argv、cwd、退出码、stdout 和 stderr；超时或启动失败时会保留失败原因并返回空的退出码。
+
+### checks 和 check-batch
+
+`checks` 显示项目声明的 check selection menu，包括每个 wrapper 的标准化
+category、是 suggested 还是 explicit，以及是否需要确认。它是只读命令，
+不会启动任何检查。
+
+`check-batch` 接受多个位置参数或重复的 `--check`，按顺序执行已选择的命令；
+默认在某项失败后继续，并为每项返回独立 report 和 aggregate counts。只有
+engineer 明确需要 fail-fast 时才使用 `--stop-on-error`。可选的 `--report`
+会把同一份 JSON report 写到 project root 内。simulation、regression、
+coverage、synthesis 和 CDC 仍然是显式选择，执行时需要 `--confirm`。
+项目可以在 profile 中声明 wrapper 细节，而不需要把项目命令写进 kit：
+
+~~~toml
+[build.commands.project_lint]
+argv = ["./tools/project-cli", "lint"]
+cwd = "."
+kind = "verification"
+category = "lint"
+artifacts = ["out/reports/lint.json"]
+
+[build.commands.project_simulate]
+argv = ["./tools/project-cli", "simulate", "--test", "smoke"]
+cwd = "."
+kind = "simulation"
+category = "simulation"
+artifacts = ["out/reports/smoke.log"]
+~~~
+
+第一项会被标为 suggested；第二项会被标为 explicit，执行前仍需要 engineer
+明确批准。
 
 ### adapter check
 
@@ -1035,16 +1081,22 @@ MCP bridge 是 CLI/context resolver 的适配层，不是另一个工作流引�
 - read_artifact；
 - review_evidence。
 
+`list_checks` 也是只读工具，返回和 CLI 相同的 engineer 可选择、多选的
+check menu。
+
 使用 --allow-exec 后才增加：
 
-- run_check。
+- run_check；
+- run_checks。
 
-run_check 仍要求 tool arguments 中显式传入 confirm = true，并且只运行 profile 已登记的命令。
+`run_check` 和 `run_checks` 都要求 tool arguments 显式传入 `confirm = true`，
+并且只能运行 profile 已登记的命令。`run_checks` 接受选中的 names array，
+按顺序执行，并返回每项 report 和 aggregate counts。
 
 `plan_task` 的 `task` 是必填项，`workflow` 默认为 `auto`，可选的 `roles`
 和 `packs` 用于覆盖默认选择。它返回与 CLI `plan --json` 相同的核心结构，
 包括 `workflow`、`roles`、`skills`、`skill_sources`、`recommended_packs`、
-`check_plan`、`missing_facts`、`missing_commands`、`permissions`、
+`check_plan`、`check_selection`、`missing_facts`、`missing_commands`、`permissions`、
 `artifacts`、`evidence` 和 `warnings`。
 
 `resolve_context` 仍然是显式上下文读取接口；除 `roles` 和 `packs` 外，

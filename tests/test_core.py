@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from claude_kit.core import (
     KitError,
     check_adapter,
+    command_menu,
     doctor,
     inspect_project,
     load_profile,
@@ -20,6 +21,7 @@ from claude_kit.core import (
     role_catalog,
     pack_catalog,
     review_evidence_file,
+    run_project_commands,
     run_project_command,
     skill_catalog,
     sync_project_skills,
@@ -87,11 +89,68 @@ class CoreTests(unittest.TestCase):
             )
             self.assertEqual(resolved["workflow"]["id"], workflow["id"])
 
+    def test_check_menu_classifies_project_specific_wrappers(self) -> None:
+        profile = {
+            "project": {"id": "menu_fixture"},
+            "build": {
+                "commands": {
+                    "soc_lint": {"argv": ["python", "-c", "print('lint')"], "kind": "verification"},
+                    "soc_comp": {"argv": ["python", "-c", "print('compile')"], "kind": "build"},
+                    "soc_sim": {"argv": ["python", "-c", "print('sim')"], "kind": "simulation"},
+                    "soc_regress": {"argv": ["python", "-c", "print('regress')"], "kind": "regression"},
+                    "soc_coverage": {"argv": ["python", "-c", "print('coverage')"], "kind": "coverage"},
+                    "soc_syn": {"argv": ["python", "-c", "print('syn')"], "kind": "synthesis"},
+                    "soc_cdc": {"argv": ["python", "-c", "print('cdc')"], "kind": "cdc"},
+                }
+            },
+        }
+        menu = {item["name"]: item for item in command_menu(profile)}
+        self.assertEqual(menu["soc_lint"]["category"], "lint")
+        self.assertEqual(menu["soc_comp"]["category"], "compile")
+        for name in ("soc_sim", "soc_regress", "soc_coverage", "soc_syn", "soc_cdc"):
+            self.assertEqual(menu[name]["selection"], "explicit")
+            self.assertFalse(menu[name]["recommended"])
+
+    def test_selected_checks_run_sequentially_with_per_check_reports(self) -> None:
+        _, profile = load_profile(FIXTURE)
+        result = run_project_commands(FIXTURE, profile, ["inspect", "confirmed"], confirm=True)
+        self.assertEqual(result["status"], "passed")
+        self.assertEqual(result["summary"]["passed"], 2)
+        self.assertEqual([item["command"] for item in result["results"]], ["inspect", "confirmed"])
+
+    def test_batch_blocks_unconfirmed_expensive_check_and_continues(self) -> None:
+        profile = {
+            "project": {"id": "batch_gate"},
+            "build": {
+                "commands": {
+                    "simulate": {
+                        "argv": ["python", "-c", "print('simulation')"],
+                        "cwd": ".",
+                        "kind": "simulation",
+                    },
+                    "inspect": {
+                        "argv": ["python", "-c", "print('inspect')"],
+                        "cwd": ".",
+                        "kind": "read_only",
+                    },
+                }
+            },
+        }
+        result = run_project_commands(FIXTURE, profile, ["simulate", "inspect"])
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["summary"]["blocked"], 1)
+        self.assertEqual(result["summary"]["passed"], 1)
+        self.assertEqual(result["results"][0]["status"], "blocked")
+        self.assertEqual(result["results"][1]["status"], "passed")
+
     def test_project_schema_describes_runtime_profile_contract(self) -> None:
         schema_path = ROOT / "src" / "claude_kit" / "resources" / "schemas" / "project.schema.json"
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         self.assertEqual(schema["properties"]["schema_version"]["const"], 1)
         self.assertIn("commands", schema["properties"]["build"]["properties"])
+        command_schema = schema["properties"]["build"]["properties"]["commands"]["additionalProperties"]["properties"]
+        self.assertIn("category", command_schema)
+        self.assertIn("artifacts", command_schema)
         self.assertIn("required_functions", schema["properties"]["adapter"]["oneOf"][1]["properties"])
         self.assertEqual(schema["properties"]["packs"]["type"], "array")
 

@@ -53,7 +53,9 @@ When `.mcp.json` contains the generated `claude-kit` entry, Claude Code starts t
 | Summarize configured RTL/DV roots | `inspect --json` | `inspect_design` |
 | Read a bounded log or report | `artifact read ...` | `read_artifact` |
 | Validate an evidence JSON file | `evidence check ...` | `review_evidence` |
+| Show the engineer-selectable check menu | `checks` | `list_checks` |
 | Run a project-owned command | `check <name>` | `run_check` only when the bridge was explicitly started with `--allow-exec` |
+| Run several selected checks and collect reports | `check-batch ...` | `run_checks` only with `--allow-exec` |
 
 The CLI and MCP bridge share the same profile, path validation, catalogs, and evidence rules. The MCP bridge is an interface for Claude Code; it is not a separate planner or build system.
 
@@ -98,7 +100,7 @@ The kit is allowed to read and write `hw/**` when the project profile declares i
 
 The following are read-only or planning operations:
 
-- `doctor`, `list`, `plan`, `context`, `manifest`, `inspect`, and `artifact read`;
+- `doctor`, `list`, `plan`, `checks`, `context`, `manifest`, `inspect`, and `artifact read`;
 - the default MCP tools;
 - profile and catalog reads from Claude Code.
 
@@ -363,6 +365,42 @@ The kit:
 
 Do not invent simulator arguments at the CLI. Put project-specific behavior in a project wrapper and declare that wrapper in the profile.
 
+### `checks` and `check-batch`
+
+Use `checks` after an RTL/DV change to show the complete, project-defined
+selection menu without executing anything:
+
+```bash
+python3 "$CLAUDE_KIT_BIN" checks --project-root .
+python3 "$CLAUDE_KIT_BIN" checks --project-root . --json
+```
+
+Each entry reports a normalized `category`, its `selection` policy, whether it
+is `recommended`, and whether explicit confirmation is required. `syntax`,
+`lint`, `compile`, `inspect`, and `filelist` are suggested when the profile
+declares them. `simulation`, `regression`, `coverage`, `synthesis`, and `cdc`
+are explicit engineer choices and are never auto-selected by the kit. The
+category is inferred from the profile command's optional `category`, `kind`, or
+project command name; the kit does not need to know a project's wrapper names.
+
+Use `check-batch` for the engineer's multi-selection. It executes selected
+commands sequentially and returns one report per item plus aggregate counts.
+It continues after a failure by default; add `--stop-on-error` for fail-fast
+behavior. `--report` writes the same JSON under the project root.
+
+```bash
+python3 "$CLAUDE_KIT_BIN" check-batch \
+  --project-root . \
+  --check lint \
+  --check compile \
+  --confirm \
+  --report out/check-batch.json
+```
+
+Do not include simulation or regression in the selected list unless the
+engineer explicitly approves the workload. The project wrapper remains
+responsible for Bazel, simulator, license, remote-runner, and artifact details.
+
 ### `adapter check`
 
 Validate the optional project adapter without invoking its project behavior.
@@ -503,6 +541,7 @@ Important result fields:
 - `workflow`: selected route and completion criteria;
 - `roles`, `skills`, `packs`: selected reusable guidance;
 - `check_plan`: available or missing profile command definitions;
+- `check_selection`: engineer-selects mode, multi-select support, and sequential report behavior;
 - `missing_facts`: target, test selector, simulator, source revision, or other facts still needed;
 - `permissions`: whether `hw/**` and other paths are writable;
 - `artifacts` and `evidence`: where results should be collected and how they must be recorded;
@@ -639,6 +678,48 @@ Do not call run_check yet. First show the profile definition for the command
 named inspect, its cwd, argv, confirmation policy, expected artifacts, and the
 reason it is safe to run. Wait for my explicit approval.
 ```
+
+### `list_checks`
+
+Purpose: return the same read-only, engineer-selectable check menu exposed by
+the `checks` CLI command.
+
+Arguments:
+
+```json
+{}
+```
+
+Use it after the implementation or DV environment change is complete. Show the
+menu and ask the engineer which names to select. Do not treat `recommended`
+entries as permission to execute them automatically, and do not add explicit
+simulation, regression, coverage, synthesis, or CDC entries without selection.
+
+### `run_checks`
+
+Purpose: execute an engineer-selected list of profile commands sequentially and
+return per-check reports and aggregate counts.
+
+Availability: disabled in the default MCP bridge. It is exposed only when the
+server is started with `--allow-exec`.
+
+Arguments:
+
+```json
+{
+  "names": ["lint", "compile"],
+  "confirm": true,
+  "timeout": 3600,
+  "stop_on_error": false
+}
+```
+
+`names` must contain unique command names declared under `[build.commands]`.
+The result preserves the order of selection and includes `passed`, `failed`,
+`blocked`, and `not_run` counts. `confirm=true` acknowledges this selected
+batch; simulation and regression commands still have their individual
+confirmation gate. Ask for explicit approval before adding an expensive
+workload, or delegate it to the project-approved `commander` flow.
 
 ## 6. Claude Code recipes
 

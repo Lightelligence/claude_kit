@@ -18,6 +18,8 @@ from .core import (
     review_evidence_file,
     resolve_context,
     role_catalog,
+    command_menu,
+    run_project_commands,
     run_project_command,
     skill_catalog,
     validate_profile,
@@ -114,6 +116,11 @@ def _tool_definitions(allow_exec: bool) -> list[dict[str, Any]]:
             },
         },
         {
+            "name": "list_checks",
+            "description": "List all profile-declared checks as an engineer-selectable menu with categories and approval requirements.",
+            "inputSchema": {"type": "object", "properties": {}},
+        },
+        {
             "name": "resolve_context",
             "description": "Resolve a task context from the project profile, roles and packs.",
             "inputSchema": {
@@ -166,6 +173,20 @@ def _tool_definitions(allow_exec: bool) -> list[dict[str, Any]]:
                 "properties": {
                     "name": {"type": "string"},
                     "confirm": {"type": "boolean"},
+                },
+            },
+        })
+        tools.append({
+            "name": "run_checks",
+            "description": "Run an engineer-selected list of profile-declared checks sequentially and return per-check reports; confirm=true is required.",
+            "inputSchema": {
+                "type": "object",
+                "required": ["names", "confirm"],
+                "properties": {
+                    "names": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+                    "confirm": {"type": "boolean"},
+                    "timeout": {"type": "integer", "minimum": 1},
+                    "stop_on_error": {"type": "boolean"},
                 },
             },
         })
@@ -226,6 +247,8 @@ def _call_tool(
                 "issues": issues,
             },
         })
+    if name == "list_checks":
+        return _text_result(command_menu(profile))
     if name == "resolve_context":
         task = arguments.get("task", "")
         if not isinstance(task, str):
@@ -262,6 +285,25 @@ def _call_tool(
         if not isinstance(name_value, str):
             raise KitError("run_check requires a command name")
         return _text_result(run_project_command(root, profile, name_value, True))
+    if name == "run_checks":
+        if not allow_exec:
+            raise KitError("run_checks is disabled; start the bridge with --allow-exec")
+        if _bool_argument(arguments, "confirm") is not True:
+            raise KitError("run_checks requires confirm=true")
+        names = arguments.get("names")
+        if not isinstance(names, list) or not all(isinstance(item, str) for item in names):
+            raise KitError("run_checks requires names as an array of strings")
+        timeout = arguments.get("timeout", 3600)
+        if isinstance(timeout, bool) or not isinstance(timeout, int) or timeout <= 0:
+            raise KitError("run_checks timeout must be a positive integer")
+        return _text_result(run_project_commands(
+            root,
+            profile,
+            names,
+            confirm=True,
+            timeout=timeout,
+            stop_on_error=_bool_argument(arguments, "stop_on_error"),
+        ))
     raise KitError(f"Unknown tool: {name}")
 
 

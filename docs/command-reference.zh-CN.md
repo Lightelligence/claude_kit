@@ -53,7 +53,9 @@ claude
 | 查看配置的 RTL/DV 目录摘要 | `inspect --json` | `inspect_design` |
 | 读取受大小限制的日志/报告 | `artifact read ...` | `read_artifact` |
 | 校验 evidence JSON | `evidence check ...` | `review_evidence` |
+| 查看 engineer 可选择的 check menu | `checks` | `list_checks` |
 | 执行项目命令 | `check <name>` | 只有显式开启 `--allow-exec` 后才有 `run_check` |
+| 执行多个选中的 check 并收集报告 | `check-batch ...` | 只有 `--allow-exec` 后才有 `run_checks` |
 
 CLI 和 MCP bridge 共享同一套 profile、路径校验、catalog 和 evidence 规则。MCP bridge 只是 Claude Code 的接口层，不是另外一套 planner 或 build system。
 
@@ -102,7 +104,7 @@ forbidden = [".git/**", "secrets/**", "**/*.key"]
 
 默认只读或规划操作包括：
 
-- `doctor`、`list`、`plan`、`context`、`manifest`、`inspect`、`artifact read`；
+- `doctor`、`list`、`plan`、`checks`、`context`、`manifest`、`inspect`、`artifact read`；
 - 默认 MCP tools；
 - Claude Code 对 profile 和 catalogs 的读取。
 
@@ -366,6 +368,40 @@ kit 会：
 
 不要在 CLI 中自行拼 simulator 参数。项目专有行为应该放在项目 wrapper 中，并在 profile 中声明。
 
+### `checks` 和 `check-batch`
+
+RTL/DV 改动完成后，先使用 `checks` 查看项目定义的完整选择菜单；该命令
+只读，不会执行任何 workload：
+
+```bash
+python3 "$CLAUDE_KIT_BIN" checks --project-root .
+python3 "$CLAUDE_KIT_BIN" checks --project-root . --json
+```
+
+每项会显示标准化 `category`、`selection` policy、是否 `recommended`，以及
+是否需要显式确认。profile 中声明的 `syntax`、`lint`、`compile`、`inspect`、
+`filelist` 通常会被标为 suggested；`simulation`、`regression`、`coverage`、
+`synthesis`、`cdc` 只作为 engineer 的 explicit choice，不会被 kit 自动选中。
+category 可以来自 command 的可选 `category`、`kind` 或项目命令名；kit 不需要
+知道某个项目 wrapper 的具体命名。
+
+工程师完成多选后，使用 `check-batch` 按选择顺序执行，并返回每项 report 和
+aggregate counts。默认某项失败后仍继续；需要 fail-fast 时加
+`--stop-on-error`。`--report` 会在项目根目录内保存同样的 JSON：
+
+```bash
+python3 "$CLAUDE_KIT_BIN" check-batch \
+  --project-root . \
+  --check lint \
+  --check compile \
+  --confirm \
+  --report out/check-batch.json
+```
+
+除非 engineer 已明确批准，不要把 simulation 或 regression 加入选择列表。
+Bazel、simulator、license、远程 runner 和 artifact 的细节仍由项目 wrapper
+负责。
+
 ### `adapter check`
 
 只校验可选 adapter，不调用其项目行为：
@@ -504,6 +540,7 @@ skill 是指导内容，不是 executable tool。应该先发现 ID，再按当�
 - `workflow`：选定 route 和 completion criteria；
 - `roles`、`skills`、`packs`：选定的 reusable guidance；
 - `check_plan`：profile command 是否 available；
+- `check_selection`：engineer-selects、多选和按序返回 report 的策略；
 - `missing_facts`：仍缺少的 target、test selector、simulator、source revision 等事实；
 - `permissions`：`hw/**` 等路径是否可写；
 - `artifacts`、`evidence`：结果位置和证据要求；
@@ -637,6 +674,44 @@ profile 选定的协议 pack，以及上一轮 plan_task 推荐的最小 skills�
 暂时不要调用 run_check。先展示 profile 中名为 inspect 的命令定义、cwd、argv、
 confirmation policy、预期 artifact，以及为什么它是安全的。等待我的明确批准。
 ```
+
+### `list_checks`
+
+功能：返回和 CLI `checks` 相同的只读 check menu，供 engineer 选择。
+
+参数：
+
+```json
+{}
+```
+
+在 RTL 或 DV environment 改动完成后使用它展示菜单，然后询问 engineer 需要
+选择哪些 names。`recommended` 只是建议，不是自动执行授权；simulation、
+regression、coverage、synthesis、CDC 也不能因为出现在菜单中就自动加入。
+
+### `run_checks`
+
+功能：按 engineer 选择的顺序执行多个 profile command，并返回每项 report 与
+aggregate counts。
+
+可用性：默认 MCP bridge 不提供此 tool；只有使用 `--allow-exec` 启动 server
+时才会暴露。
+
+参数：
+
+```json
+{
+  "names": ["lint", "compile"],
+  "confirm": true,
+  "timeout": 3600,
+  "stop_on_error": false
+}
+```
+
+`names` 必须是 `[build.commands]` 中已登记且不重复的命令名。返回结果保留选择
+顺序，并统计 `passed`、`failed`、`blocked`、`not_run`。`confirm=true` 表示确认
+执行这一批；simulation 和 regression 仍有各自的显式确认 gate。加入 expensive
+workload 前先询问，或在获得明确委托后交给项目批准的 `commander` 流程。
 
 ## 6. Claude Code 常用 prompt
 

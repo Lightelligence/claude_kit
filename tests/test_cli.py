@@ -69,6 +69,24 @@ class CliTests(unittest.TestCase):
         self.assertEqual(text_plan.returncode, 0, text_plan.stderr)
         self.assertIn("checks: inspect(available)", text_plan.stdout)
 
+    def test_checks_menu_and_multi_check_report(self) -> None:
+        menu = self.run_cli("checks", "--project-root", str(FIXTURE), "--json")
+        self.assertEqual(menu.returncode, 0, menu.stderr)
+        menu_payload = json.loads(menu.stdout)
+        inspect = next(item for item in menu_payload if item["name"] == "inspect")
+        self.assertEqual(inspect["category"], "inspect")
+        batch = self.run_cli(
+            "check-batch",
+            "--project-root", str(FIXTURE),
+            "--check", "inspect",
+            "--check", "confirmed",
+            "--confirm",
+        )
+        self.assertEqual(batch.returncode, 0, batch.stderr)
+        payload = json.loads(batch.stdout)
+        self.assertEqual(payload["summary"]["passed"], 2)
+        self.assertEqual(len(payload["results"]), 2)
+
     def test_artifact_read_is_bounded_and_project_relative(self) -> None:
         result = self.run_cli(
             "artifact", "read", "--project-root", str(FIXTURE),
