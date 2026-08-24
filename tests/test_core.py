@@ -110,6 +110,11 @@ class CoreTests(unittest.TestCase):
         for name in ("soc_sim", "soc_regress", "soc_coverage", "soc_syn", "soc_cdc"):
             self.assertEqual(menu[name]["selection"], "explicit")
             self.assertFalse(menu[name]["recommended"])
+        preferred = command_menu(profile, ["lint", "compile", "simulate", "regression"])
+        self.assertEqual(
+            [item["name"] for item in preferred[:4]],
+            ["soc_lint", "soc_comp", "soc_sim", "soc_regress"],
+        )
 
     def test_mcp_backed_check_is_profiled_but_not_shell_executed(self) -> None:
         profile = {

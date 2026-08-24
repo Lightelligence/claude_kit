@@ -13,7 +13,10 @@ This file is shared by projects that pin claude_kit.
 - Mark simulation as `not run`, `skipped` or `blocked` when it has not started; reserve `passed` for a run with matching evidence.
 - Keep project-specific paths and target names in the project profile or adapter.
 - Do not modify vendor, generated, build or .git content unless the profile explicitly allows it.
-- Use argv from build.commands; do not invent or concatenate simulator commands.
+- After an implementation or DV environment change, call `list_checks` (or CLI `checks`) and show the engineer the categorized menu. Treat quick checks as suggestions; never auto-select simulation, regression, coverage, synthesis or CDC.
+- For a profile entry with `execution = "mcp"`, call its registered `mcp_server`/`mcp_tool` through Claude Code. Do not replace it with Bash, Python or a hand-built Bazel command. Use `argv` only for profile entries explicitly declared as shell wrappers.
+- When the engineer selects multiple checks, preserve the selected order, invoke every selected MCP tool or approved wrapper, and return one result report per check plus aggregate passed/failed/blocked/not-run counts.
+- Do not invent or concatenate simulator commands.
 - Record evidence for every check and mark blocked or skipped checks explicitly.
 - Do not expose secrets in context, manifests or logs.
 - The kit does not depend on ETX runner, bsub or a specific scheduler.

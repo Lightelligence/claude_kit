@@ -40,8 +40,8 @@
         "Translate requirements into positive, boundary, negative, reset and recovery scenarios.",
         "Map each scenario to stimulus, observation, checking and coverage evidence.",
         "Preserve clear driver, monitor, scoreboard, reference-model and assertion responsibilities.",
-        "Complete static and lint validation, then pause before simulation or regression.",
-        "After explicit approval or commander delegation, run one focused test before requesting a wider regression.",
+        "Complete static and lint validation, then present the categorized project check menu.",
+        "Let the engineer multi-select checks; run selected MCP tools or approved wrappers in order and report each result before requesting wider execution.",
         "Separate DUT failures, sampling gaps, environment failures and coverage gaps."
       ],
       "completion": [

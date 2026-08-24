@@ -16,14 +16,17 @@ run or explicitly delegates that execution to the commander.
   simulator, working directory and artifact locations.
 - Show the exact profile command, expected runtime/resource cost and intended
   evidence before starting an expensive run.
-- Confirm that the command is declared under `build.commands` and that its
-  `kind` and confirmation policy are compatible with the requested run.
+- Confirm that the selected check is declared under `build.commands`, that its
+  `kind` and confirmation policy are compatible with the requested run, and
+  whether it is an MCP endpoint or an argv wrapper.
 
 ## Execution loop
 
-1. Start with the smallest approved focused simulation or regression slice.
-2. Preserve the exact command, exit status, first causal failure, logs and
-   expected artifacts.
+1. Start with the smallest approved focused simulation or regression slice by
+   calling the registered project MCP tool when the profile marks it
+   MCP-backed; otherwise use the declared wrapper.
+2. Preserve the selected server/tool or exact command, exit status, first causal
+   failure, logs and expected artifacts.
 3. Classify the result as passed, failed, blocked or environment-limited;
    match the status to actual evidence.
 4. Request approval again before expanding to a wider regression or changing
@@ -32,8 +35,9 @@ run or explicitly delegates that execution to the commander.
 ## Boundaries
 
 - A new DV test alone is not execution approval.
-- Use only profile-declared project wrappers; never construct simulator or
-  scheduler commands from strings.
+- Use only profile-declared project MCP tools or wrappers; never construct
+  simulator or scheduler commands from strings or bypass the registered MCP
+  execution boundary.
 - Keep logs, waveforms, reports and coverage artifacts; do not clean them up
   during triage.
 - Report simulation as `not run` when this role was not explicitly activated.

@@ -530,6 +530,20 @@ def command_selection_policy(name: str, command: dict[str, Any] | None = None) -
     }
 
 
+def _preferred_command_name(preferred: str, commands: dict[str, Any]) -> str | None:
+    if isinstance(commands.get(preferred), dict):
+        return preferred
+    category = command_category(preferred)
+    if category == "other":
+        return None
+    matches = sorted(
+        str(name)
+        for name, command in commands.items()
+        if isinstance(command, dict) and command_category(str(name), command) == category
+    )
+    return matches[0] if matches else None
+
+
 def command_menu(
     profile: dict[str, Any],
     preferred_commands: list[str] | None = None,
@@ -540,7 +554,11 @@ def command_menu(
     commands = build.get("commands", {}) if isinstance(build.get("commands"), dict) else {}
     preferred = preferred_commands or []
     ordered_names: list[str] = []
-    for name in [*preferred, *sorted(str(item) for item in commands)]:
+    preferred_names = [
+        _preferred_command_name(name, commands) or name
+        for name in preferred
+    ]
+    for name in [*preferred_names, *sorted(str(item) for item in commands)]:
         if name not in ordered_names:
             ordered_names.append(name)
     result: list[dict[str, Any]] = []
@@ -618,12 +636,16 @@ def resolve_plan(
     preferred_commands = _as_list(selected.get("preferred_commands", []))
     available_commands: list[dict[str, Any]] = []
     missing_commands: list[str] = []
-    for name in preferred_commands:
-        command = commands.get(name)
-        if isinstance(command, dict):
-            available_commands.append({"name": name, "definition": redact_profile(command)})
+    for requested_name in preferred_commands:
+        name = _preferred_command_name(requested_name, commands)
+        command = commands.get(name) if name is not None else None
+        if isinstance(command, dict) and name is not None:
+            item = {"name": name, "definition": redact_profile(command)}
+            if name != requested_name:
+                item["requested"] = requested_name
+            available_commands.append(item)
         else:
-            missing_commands.append(name)
+            missing_commands.append(requested_name)
 
     required_facts = _as_list(selected.get("required_facts", []))
     git_facts = _git_facts(root)
