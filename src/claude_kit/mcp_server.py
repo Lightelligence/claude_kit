@@ -19,8 +19,10 @@ from .core import (
     resolve_context,
     role_catalog,
     command_menu,
+    discover_regression_artifacts,
     run_project_commands,
     run_project_command,
+    read_regression_artifact,
     skill_catalog,
     validate_profile,
     resolve_plan,
@@ -151,6 +153,32 @@ def _tool_definitions(allow_exec: bool) -> list[dict[str, Any]]:
             },
         },
         {
+            "name": "discover_regression_artifacts",
+            "description": "Find compile and simulation artifacts only below the profile's configured regression root; never selects a latest run or scans other projects.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "kind": {"type": "string", "enum": ["compile", "simulation", "all"]},
+                    "target": {"type": "string"},
+                    "test": {"type": "string"},
+                    "run_id": {"type": "string"},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": 200},
+                },
+            },
+        },
+        {
+            "name": "read_regression_artifact",
+            "description": "Read a bounded UTF-8 compile or simulation log below the configured regression root.",
+            "inputSchema": {
+                "type": "object",
+                "required": ["path"],
+                "properties": {
+                    "path": {"type": "string"},
+                    "max_bytes": {"type": "integer", "minimum": 0, "maximum": MAX_ARTIFACT_BYTES},
+                },
+            },
+        },
+        {
             "name": "review_evidence",
             "description": "Validate a project-relative evidence JSON file.",
             "inputSchema": {
@@ -271,6 +299,25 @@ def _call_tool(
             raise KitError("read_artifact requires path")
         max_bytes = arguments.get("max_bytes", DEFAULT_ARTIFACT_MAX_BYTES)
         return _text_result(read_artifact(root, path, max_bytes))
+    if name == "discover_regression_artifacts":
+        kind = arguments.get("kind", "all")
+        if not isinstance(kind, str):
+            raise KitError("discover_regression_artifacts kind must be a string")
+        limit = arguments.get("limit", 50)
+        return _text_result(discover_regression_artifacts(
+            profile,
+            kind=kind,
+            target=arguments.get("target"),
+            test=arguments.get("test"),
+            run_id=arguments.get("run_id"),
+            limit=limit,
+        ))
+    if name == "read_regression_artifact":
+        path = arguments.get("path")
+        if not isinstance(path, str):
+            raise KitError("read_regression_artifact requires path")
+        max_bytes = arguments.get("max_bytes", DEFAULT_ARTIFACT_MAX_BYTES)
+        return _text_result(read_regression_artifact(profile, path, max_bytes))
     if name == "review_evidence":
         path = arguments.get("path")
         if not isinstance(path, str):

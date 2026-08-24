@@ -96,6 +96,8 @@ class McpTests(unittest.TestCase):
             names = {tool["name"] for tool in tools}
             self.assertIn("resolve_context", names)
             self.assertIn("read_artifact", names)
+            self.assertIn("discover_regression_artifacts", names)
+            self.assertIn("read_regression_artifact", names)
             self.assertIn("list_skills", names)
             self.assertNotIn("run_check", names)
             evidence_tool = next(tool for tool in tools if tool["name"] == "review_evidence")

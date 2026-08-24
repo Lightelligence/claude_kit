@@ -49,6 +49,19 @@ reports = "out/reports"
 waveforms = "out/waves"
 coverage = "out/coverage"
 
+# Optional external regression artifacts. The consumer checkout must provide
+# its own root and naming rules; do not copy another project's path or test
+# alias into this generic template.
+# [artifacts.regression]
+# root = "/nfs/regression/<user>/<checkout-name>"
+# compile_directory_pattern = "*__VCS_VCOMP"
+# compile_log_names = ["cmp.log"]
+# compile_lock_suffix = ".compile.lock"
+# simulation_directory_pattern = "*__vcs__*"
+# simulation_primary_log_names = ["sim.log", "run.log", "test.log"]
+# simulation_log_glob = "*.log"
+# simulation_lock_suffix = ".run.lock"
+
 [policies]
 require_evidence = true
 network = "disabled"

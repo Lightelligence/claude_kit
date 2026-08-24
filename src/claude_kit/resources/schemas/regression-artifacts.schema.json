@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Lightelligence/claude_kit/regression-artifacts.schema.json",
+  "type": "object",
+  "required": ["status", "project", "regression_root", "kind", "artifacts"],
+  "properties": {
+    "status": {"enum": ["passed", "not_found", "unavailable"]},
+    "project": {"type": ["string", "null"]},
+    "regression_root": {"type": "string", "minLength": 1},
+    "kind": {"enum": ["compile", "simulation", "all"]},
+    "filters": {"type": "object"},
+    "selection_required": {"type": "boolean"},
+    "match_count": {"type": "integer", "minimum": 0},
+    "truncated": {"type": "boolean"},
+    "limit": {"type": "integer", "minimum": 1},
+    "reason": {"type": "string"},
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "directory", "candidate_logs", "locked"],
+        "properties": {
+          "kind": {"enum": ["compile", "simulation"]},
+          "target": {"type": ["string", "null"]},
+          "test": {"type": ["string", "null"]},
+          "run_id": {"type": ["string", "null"]},
+          "directory": {"type": "string", "minLength": 1},
+          "primary_log": {"type": ["string", "null"]},
+          "candidate_logs": {"type": "array", "items": {"type": "string"}},
+          "lock_file": {"type": ["string", "null"]},
+          "locked": {"type": "boolean"}
+        }
+      }
+    }
+  }
+}

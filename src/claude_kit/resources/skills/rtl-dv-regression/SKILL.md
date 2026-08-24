@@ -29,6 +29,13 @@ that the user explicitly approved or delegated.
 6. Keep license, remote-runner, resource and missing-artifact problems explicit
    as blocked or environment results.
 
+When a profile declares an external regression root, call the read-only
+`discover_regression_artifacts` tool after a project MCP check returns. Bind
+the returned directory and log to the exact target, test and run id. If more
+than one run matches, ask the engineer to select one; do not choose by
+modification time. Read logs only through `read_regression_artifact` and keep
+lock files visible as an in-progress signal.
+
 Use project-owned MCP tools or wrappers and profile allowlists. Keep logs,
 waveforms, reports and coverage artifacts; do not perform cleanup as part of
 triage. For multiple selected checks, preserve order and return an individual

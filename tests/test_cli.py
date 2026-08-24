@@ -105,6 +105,36 @@ class CliTests(unittest.TestCase):
         self.assertNotEqual(rejected.returncode, 0)
         self.assertIn("project root", rejected.stderr)
 
+    def test_regression_artifact_commands_use_profile_root(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            regression = Path(directory) / "regression" / "checkout-a"
+            shutil.copytree(FIXTURE, project)
+            simulation = regression / "tb__vcs__smoke__7"
+            simulation.mkdir(parents=True)
+            log = simulation / "run.log"
+            log.write_text("smoke result\n", encoding="utf-8")
+            profile = project / ".ai" / "project.toml"
+            profile.write_text(
+                profile.read_text(encoding="utf-8")
+                + f'\n[artifacts.regression]\nroot = "{str(regression).replace(chr(92), "/")}"\n',
+                encoding="utf-8",
+            )
+            discovered = self.run_cli(
+                "artifact", "discover", "--project-root", str(project),
+                "--kind", "simulation", "--test", "smoke", "--run-id", "7", "--json",
+            )
+            self.assertEqual(discovered.returncode, 0, discovered.stderr)
+            payload = json.loads(discovered.stdout)
+            self.assertEqual(payload["match_count"], 1)
+            self.assertEqual(payload["artifacts"][0]["primary_log"], str(log.resolve()))
+            read = self.run_cli(
+                "artifact", "read-regression", "--project-root", str(project),
+                "--file", str(log), "--json",
+            )
+            self.assertEqual(read.returncode, 0, read.stderr)
+            self.assertIn("smoke result", json.loads(read.stdout)["text"])
+
     def test_context_writes_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             project = Path(directory) / "project"

@@ -6,6 +6,7 @@ import importlib.util
 import inspect
 import json
 import os
+import re
 import subprocess
 import tomllib
 from pathlib import Path
@@ -250,6 +251,15 @@ def validate_profile(root: Path, profile: dict[str, Any]) -> list[dict[str, str]
                     _project_path(root, artifact, f"build.commands.{name}.artifacts")
                 except KitError:
                     add("error", f"build.commands.{name}.artifacts must stay inside the project root: {artifact}")
+
+    artifacts = profile.get("artifacts", {})
+    if not isinstance(artifacts, dict):
+        add("error", "artifacts must be an object")
+    elif "regression" in artifacts:
+        try:
+            _regression_config(profile)
+        except KitError as exc:
+            add("error", str(exc))
 
     roles = profile.get("roles", {})
     if not isinstance(roles, (dict, list)):
@@ -895,6 +905,237 @@ def read_artifact(root: Path, relative_path: str, max_bytes: int = DEFAULT_ARTIF
         "bytes": len(data),
         "truncated": truncated,
         "text": text,
+    }
+
+
+_REGRESSION_KINDS = {"compile", "simulation", "all"}
+_REGRESSION_DEFAULTS = {
+    "compile_directory_pattern": "*__VCS_VCOMP",
+    "compile_log_names": ["cmp.log"],
+    "compile_lock_suffix": ".compile.lock",
+    "simulation_directory_pattern": "*__vcs__*",
+    "simulation_primary_log_names": ["sim.log", "run.log", "test.log"],
+    "simulation_log_glob": "*.log",
+    "simulation_lock_suffix": ".run.lock",
+}
+_SAFE_RUN_TOKEN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
+
+
+def _regression_pattern_list(value: Any, default: list[str], field: str) -> list[str]:
+    if value is None:
+        values = list(default)
+    else:
+        try:
+            values = _as_list(value)
+        except KitError as exc:
+            raise KitError(f"artifacts.regression.{field} must be a string or list of strings") from exc
+    if not values or any(not item.strip() for item in values):
+        raise KitError(f"artifacts.regression.{field} must contain non-empty strings")
+    for item in values:
+        path = Path(item)
+        if path.is_absolute() or ".." in path.parts or len(path.parts) != 1:
+            raise KitError(f"artifacts.regression.{field} must contain single-level file patterns: {item}")
+    return values
+
+
+def _regression_config(profile: dict[str, Any]) -> dict[str, Any]:
+    artifacts = profile.get("artifacts", {})
+    if not isinstance(artifacts, dict):
+        raise KitError("artifacts must be an object")
+    raw = artifacts.get("regression")
+    if not isinstance(raw, dict):
+        raise KitError("artifacts.regression must be an object")
+    configured_root = raw.get("root")
+    if not isinstance(configured_root, str) or not configured_root.strip():
+        raise KitError("artifacts.regression.root is required")
+    expanded_root = os.path.expanduser(os.path.expandvars(configured_root.strip()))
+    if re.search(r"\$(?:\{[^}]+\}|[A-Za-z_][A-Za-z0-9_]*)", expanded_root):
+        raise KitError(f"artifacts.regression.root contains an unresolved environment variable: {configured_root}")
+    root_path = Path(expanded_root)
+    if not root_path.is_absolute() or ".." in root_path.parts:
+        raise KitError("artifacts.regression.root must be an absolute path without '..'")
+
+    config = dict(_REGRESSION_DEFAULTS)
+    config.update(raw)
+    for field in ("compile_directory_pattern", "simulation_directory_pattern", "simulation_log_glob"):
+        value = config.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise KitError(f"artifacts.regression.{field} must be a non-empty string")
+        pattern_path = Path(value)
+        if pattern_path.is_absolute() or ".." in pattern_path.parts or len(pattern_path.parts) != 1:
+            raise KitError(f"artifacts.regression.{field} must be a single-level pattern: {value}")
+    for field, default in (
+        ("compile_log_names", _REGRESSION_DEFAULTS["compile_log_names"]),
+        ("simulation_primary_log_names", _REGRESSION_DEFAULTS["simulation_primary_log_names"]),
+    ):
+        config[field] = _regression_pattern_list(config.get(field), default, field)
+    for field in ("compile_lock_suffix", "simulation_lock_suffix"):
+        value = config.get(field)
+        if not isinstance(value, str) or not value.startswith(".") or "/" in value or "\\" in value:
+            raise KitError(f"artifacts.regression.{field} must be a filename suffix")
+    config["root"] = root_path.resolve()
+    return config
+
+
+def _validate_regression_filter(value: Any, field: str) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip() or not _SAFE_RUN_TOKEN.fullmatch(value):
+        raise KitError(f"{field} must contain only letters, numbers, '.', '_' or '-'")
+    return value
+
+
+def _regression_entry(
+    kind: str,
+    directory: Path,
+    config: dict[str, Any],
+    target: str | None,
+    test: str | None,
+    run_id: str | None,
+) -> dict[str, Any]:
+    if kind == "compile":
+        primary_candidates = [directory / name for name in config["compile_log_names"]]
+        candidate_logs = [path for path in primary_candidates if path.is_file()]
+        primary_log = candidate_logs[0] if candidate_logs else None
+        lock_path = directory.parent / f"{directory.name}{config['compile_lock_suffix']}"
+    else:
+        candidate_logs = sorted(
+            path for path in directory.glob(config["simulation_log_glob"])
+            if path.is_file() and not path.is_symlink()
+        )
+        primary_log = next(
+            (directory / name for name in config["simulation_primary_log_names"] if (directory / name).is_file()),
+            None,
+        )
+        lock_path = directory.parent / f"{directory.name}{config['simulation_lock_suffix']}"
+    return {
+        "kind": kind,
+        "target": target,
+        "test": test,
+        "run_id": run_id,
+        "directory": str(directory),
+        "primary_log": str(primary_log) if primary_log else None,
+        "candidate_logs": [str(path) for path in candidate_logs],
+        "lock_file": str(lock_path) if lock_path.is_file() else None,
+        "locked": lock_path.is_file(),
+    }
+
+
+def _simulation_directory_facts(name: str) -> tuple[str | None, str | None]:
+    marker = "__vcs__"
+    if marker not in name:
+        return None, None
+    suffix = name.split(marker, 1)[1]
+    if "__" not in suffix:
+        return suffix or None, None
+    test, run_id = suffix.rsplit("__", 1)
+    return test or None, run_id or None
+
+
+def discover_regression_artifacts(
+    profile: dict[str, Any],
+    kind: str = "all",
+    target: str | None = None,
+    test: str | None = None,
+    run_id: str | None = None,
+    limit: int = 50,
+) -> dict[str, Any]:
+    """Discover only the configured project's compile/simulation artifacts.
+
+    This is deliberately a bounded, top-level lookup. It never scans the
+    user's regression parent or selects a "latest" run on the engineer's
+    behalf. The caller receives all matching runs and must select one when
+    more than one result is returned.
+    """
+
+    if kind not in _REGRESSION_KINDS:
+        raise KitError(f"kind must be one of: {', '.join(sorted(_REGRESSION_KINDS))}")
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0 or limit > 200:
+        raise KitError("limit must be an integer between 1 and 200")
+    target = _validate_regression_filter(target, "target")
+    test = _validate_regression_filter(test, "test")
+    run_id = _validate_regression_filter(run_id, "run_id")
+    config = _regression_config(profile)
+    regression_root = config["root"]
+    project = profile.get("project", {})
+    project_id = project.get("id") if isinstance(project, dict) else None
+    response: dict[str, Any] = {
+        "status": "unavailable" if not regression_root.is_dir() else "not_found",
+        "project": project_id,
+        "regression_root": str(regression_root),
+        "kind": kind,
+        "filters": {"target": target, "test": test, "run_id": run_id},
+        "selection_required": False,
+        "artifacts": [],
+    }
+    if not regression_root.is_dir():
+        response["reason"] = "configured regression root does not exist in this execution environment"
+        return response
+
+    kinds = ("compile", "simulation") if kind == "all" else (kind,)
+    entries: list[dict[str, Any]] = []
+    for entry_kind in kinds:
+        pattern = config[f"{entry_kind}_directory_pattern"]
+        for directory in sorted(regression_root.iterdir(), key=lambda item: item.name):
+            if directory.is_symlink() or not directory.is_dir() or not fnmatch.fnmatchcase(directory.name, pattern):
+                continue
+            if entry_kind == "simulation":
+                actual_test, actual_run_id = _simulation_directory_facts(directory.name)
+                if test and actual_test != test:
+                    continue
+                if run_id and actual_run_id != run_id:
+                    continue
+                entry_test, entry_run_id = actual_test, actual_run_id
+            else:
+                entry_test, entry_run_id = test, run_id
+            entries.append(_regression_entry(entry_kind, directory, config, target, entry_test, entry_run_id))
+            if len(entries) >= limit:
+                break
+        if len(entries) >= limit:
+            break
+    response["artifacts"] = entries
+    response["match_count"] = len(entries)
+    response["status"] = "passed" if entries else "not_found"
+    response["selection_required"] = len(entries) > 1 and run_id is None
+    if len(entries) >= limit:
+        response["truncated"] = True
+        response["limit"] = limit
+    return response
+
+
+def read_regression_artifact(
+    profile: dict[str, Any],
+    path: str,
+    max_bytes: int = DEFAULT_ARTIFACT_MAX_BYTES,
+) -> dict[str, Any]:
+    """Read a bounded file below the configured regression root only."""
+
+    if not isinstance(path, str) or not path.strip():
+        raise KitError("regression artifact path must be a non-empty string")
+    if isinstance(max_bytes, bool) or not isinstance(max_bytes, int) or max_bytes < 0:
+        raise KitError("max_bytes must be a non-negative integer")
+    if max_bytes > MAX_ARTIFACT_BYTES:
+        raise KitError(f"max_bytes must not exceed {MAX_ARTIFACT_BYTES}")
+    config = _regression_config(profile)
+    regression_root = config["root"]
+    candidate = Path(path)
+    if not candidate.is_absolute():
+        candidate = regression_root / candidate
+    resolved = candidate.resolve()
+    try:
+        relative = resolved.relative_to(regression_root)
+    except ValueError as exc:
+        raise KitError(f"regression artifact path leaves the configured root: {path}") from exc
+    if not resolved.is_file():
+        raise KitError(f"Regression artifact does not exist: {path}")
+    data = resolved.read_bytes()
+    return {
+        "path": str(resolved),
+        "relative_path": relative.as_posix(),
+        "regression_root": str(regression_root),
+        "bytes": len(data),
+        "truncated": len(data) > max_bytes,
+        "text": data[:max_bytes].decode("utf-8", errors="replace"),
     }
 
 

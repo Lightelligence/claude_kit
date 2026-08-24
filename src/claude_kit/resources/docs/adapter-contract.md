@@ -10,6 +10,13 @@ Keep these concerns in the project:
 - project-specific artifact locations;
 - project-specific environment checks.
 
+If results live outside the checkout, declare the project's regression root
+and compile/simulation naming rules under `[artifacts.regression]` in the
+project profile. The kit provides bounded discovery and log-reading tools;
+the adapter or project MCP server remains responsible for mapping a real
+check run to its target, test, run id, and returned artifact paths. Do not put
+one checkout's absolute path or test alias into the generic kit.
+
 Keep these concerns in claude_kit:
 
 - generic roles and skills;

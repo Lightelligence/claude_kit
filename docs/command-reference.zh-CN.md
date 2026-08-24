@@ -52,6 +52,8 @@ claude
 | 加载选定的 role/pack/skill context | `context ...` | `resolve_context` |
 | 查看配置的 RTL/DV 目录摘要 | `inspect --json` | `inspect_design` |
 | 读取受大小限制的日志/报告 | `artifact read ...` | `read_artifact` |
+| 查找外部 compile/simulation 结果 | `artifact discover ...` | `discover_regression_artifacts` |
+| 读取外部 compile/simulation 日志 | `artifact read-regression ...` | `read_regression_artifact` |
 | 校验 evidence JSON | `evidence check ...` | `review_evidence` |
 | 查看 engineer 可选择的 check menu | `checks` | `list_checks` |
 | 执行项目命令 | `check <name>` | 只有显式开启 `--allow-exec` 后才有 `run_check` |
@@ -324,6 +326,47 @@ python3 "$CLAUDE_KIT_BIN" artifact read \
 ```
 
 默认上限是 100 KiB，硬上限是 1 MiB。结果会报告原始字节数和是否截断。路径必须留在项目根目录内。
+
+### `artifact discover`
+
+在当前 checkout 的 `[artifacts.regression]` root 下查找 compile 和 simulation
+结果目录。该操作只读，只做有界的顶层查找，不会扫描用户的 regression 父目录，
+也不会自动选择“最新一次”运行。
+
+```bash
+python3 "$CLAUDE_KIT_BIN" artifact discover \
+  --project-root . \
+  --kind simulation \
+  --test focused_test \
+  --run-id 42 \
+  --json
+```
+
+结果包含 `regression_root`、`directory`、`primary_log`、`candidate_logs`、
+`lock_file` 和 `locked`。省略 `--run-id` 可以查看所有匹配的 run；如果匹配多
+个结果，`selection_required` 会是 `true`。compile 使用 profile 中的目录 pattern
+和主日志名；simulation 使用 test/run filter，但不依赖固定 test alias。
+
+对应的 MCP tool 是 `discover_regression_artifacts`。应将它返回的真实路径交给
+`read_regression_artifact`，不要手工拼接路径。
+
+### `artifact read-regression`
+
+读取配置的外部 regression root 下的有限大小 UTF-8 日志：
+
+```bash
+python3 "$CLAUDE_KIT_BIN" artifact read-regression \
+  --project-root . \
+  --file /nfs/regression/<user>/<checkout-name>/sys_tb__VCS_VCOMP/cmp.log \
+  --max-bytes 100000 \
+  --json
+```
+
+可以使用 discovery 返回的绝对路径，也可以使用相对于 regression root 的路径。
+解析（包括 symlink）后路径必须仍位于该 root 下。这个命令只读取已有 artifact，
+不会启动或重跑 compile/simulation。
+
+对应的 MCP tool 是 `read_regression_artifact`。
 
 ### `evidence template`
 

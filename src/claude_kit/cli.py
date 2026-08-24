@@ -13,6 +13,7 @@ from .core import (
     check_adapter,
     command_menu,
     doctor,
+    discover_regression_artifacts,
     evidence_template,
     find_project_root,
     init_project,
@@ -20,6 +21,7 @@ from .core import (
     load_profile,
     pack_catalog,
     read_artifact,
+    read_regression_artifact,
     resolve_context,
     review_evidence_file,
     role_catalog,
@@ -149,6 +151,27 @@ def build_parser() -> argparse.ArgumentParser:
     artifact_read.add_argument("--max-bytes", type=int, default=DEFAULT_ARTIFACT_MAX_BYTES)
     artifact_read.add_argument("--json", action="store_true", help="Print JSON")
     artifact_read.set_defaults(handler=handle_artifact_read)
+    artifact_discover = artifact_subparsers.add_parser(
+        "discover",
+        help="Find compile/simulation artifacts below the profile's configured regression root",
+    )
+    _add_project_options(artifact_discover)
+    artifact_discover.add_argument("--kind", choices=("compile", "simulation", "all"), default="all")
+    artifact_discover.add_argument("--target")
+    artifact_discover.add_argument("--test")
+    artifact_discover.add_argument("--run-id")
+    artifact_discover.add_argument("--limit", type=int, default=50)
+    artifact_discover.add_argument("--json", action="store_true", help="Print JSON")
+    artifact_discover.set_defaults(handler=handle_artifact_discover)
+    artifact_read_regression = artifact_subparsers.add_parser(
+        "read-regression",
+        help="Read a bounded log below the configured regression root",
+    )
+    _add_project_options(artifact_read_regression)
+    artifact_read_regression.add_argument("--file", required=True, help="Absolute or regression-root-relative artifact path")
+    artifact_read_regression.add_argument("--max-bytes", type=int, default=DEFAULT_ARTIFACT_MAX_BYTES)
+    artifact_read_regression.add_argument("--json", action="store_true", help="Print JSON")
+    artifact_read_regression.set_defaults(handler=handle_artifact_read_regression)
 
     check = subparsers.add_parser("check", help="Run an allowlisted project command")
     _add_project_options(check)
@@ -339,6 +362,44 @@ def handle_inspect(args: argparse.Namespace) -> int:
 def handle_artifact_read(args: argparse.Namespace) -> int:
     root = _root(args.project_root)
     result = read_artifact(root, args.file.as_posix(), args.max_bytes)
+    if args.json:
+        _json_print(result)
+    else:
+        print(f"path: {result['path']}")
+        print(f"bytes: {result['bytes']}")
+        print(f"truncated: {str(result['truncated']).lower()}")
+        print("---")
+        print(result["text"], end="" if result["text"].endswith("\n") else "\n")
+    return 0
+
+
+def handle_artifact_discover(args: argparse.Namespace) -> int:
+    root = _root(args.project_root)
+    _, profile = load_profile(root, args.profile)
+    result = discover_regression_artifacts(
+        profile,
+        kind=args.kind,
+        target=args.target,
+        test=args.test,
+        run_id=args.run_id,
+        limit=args.limit,
+    )
+    if args.json:
+        _json_print(result)
+    else:
+        print(f"status: {result['status']}")
+        print(f"regression_root: {result['regression_root']}")
+        print(f"matches: {result.get('match_count', 0)}")
+        print(f"selection_required: {str(result.get('selection_required', False)).lower()}")
+        for item in result["artifacts"]:
+            print(f"{item['kind']}\t{item['directory']}\tlocked={str(item['locked']).lower()}\tlog={item['primary_log'] or '<none>'}")
+    return 0 if result["status"] in {"passed", "not_found"} else 1
+
+
+def handle_artifact_read_regression(args: argparse.Namespace) -> int:
+    root = _root(args.project_root)
+    _, profile = load_profile(root, args.profile)
+    result = read_regression_artifact(profile, args.file, args.max_bytes)
     if args.json:
         _json_print(result)
     else:

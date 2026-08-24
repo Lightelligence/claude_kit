@@ -13,6 +13,11 @@ This file is shared by projects that pin claude_kit.
 - Simulation and regression are explicit-consent steps. Ask for approval with the selected command, target, test, expected cost and artifacts, or use the `commander` role only when the user explicitly delegates that run.
 - Mark simulation as `not run`, `skipped` or `blocked` when it has not started; reserve `passed` for a run with matching evidence.
 - Keep project-specific paths and target names in the project profile or adapter.
+- When a project profile declares `[artifacts.regression]`, use the read-only
+  `discover_regression_artifacts` MCP tool to locate compile/simulation logs
+  and `read_regression_artifact` to inspect a bounded log. Do not scan a
+  regression parent directory or infer the newest run; require an explicit
+  target/test/run selection when multiple matches are returned.
 - Do not modify vendor, generated, build or .git content unless the profile explicitly allows it.
 - After an implementation or DV environment change, call `list_checks` (or CLI `checks`) and show the engineer the categorized menu. Treat quick checks as suggestions; never auto-select simulation, regression, coverage, synthesis or CDC.
 - For a profile entry with `execution = "mcp"`, call its registered `mcp_server`/`mcp_tool` through Claude Code. Do not replace it with Bash, Python or a hand-built Bazel command. Use `argv` only for profile entries explicitly declared as shell wrappers.

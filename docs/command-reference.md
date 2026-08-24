@@ -52,6 +52,8 @@ When `.mcp.json` contains the generated `claude-kit` entry, Claude Code starts t
 | Load selected role/pack/skill guidance | `context ...` | `resolve_context` |
 | Summarize configured RTL/DV roots | `inspect --json` | `inspect_design` |
 | Read a bounded log or report | `artifact read ...` | `read_artifact` |
+| Find external compile/simulation artifacts | `artifact discover ...` | `discover_regression_artifacts` |
+| Read an external compile/simulation log | `artifact read-regression ...` | `read_regression_artifact` |
 | Validate an evidence JSON file | `evidence check ...` | `review_evidence` |
 | Show the engineer-selectable check menu | `checks` | `list_checks` |
 | Run a project-owned command | `check <name>` | `run_check` only when the bridge was explicitly started with `--allow-exec` |
@@ -321,6 +323,53 @@ python3 "$CLAUDE_KIT_BIN" artifact read \
 ```
 
 The default maximum is 100 KiB; the hard maximum is 1 MiB. The result reports the original byte count and whether the text was truncated. The path must remain inside the project root.
+
+### `artifact discover`
+
+Discover compile and simulation result directories below the configured
+`[artifacts.regression]` root. This is read-only and performs only a bounded
+top-level lookup for the current checkout. It never scans the user's
+regression parent and never chooses a newest run.
+
+```bash
+python3 "$CLAUDE_KIT_BIN" artifact discover \
+  --project-root . \
+  --kind simulation \
+  --test focused_test \
+  --run-id 42 \
+  --json
+```
+
+The result includes `regression_root`, `directory`, `primary_log`,
+`candidate_logs`, `lock_file`, and `locked`. Omit `--run-id` to inspect all
+matching runs; when more than one result matches, `selection_required` is
+true. Compile discovery uses the configured compile directory pattern and
+primary log names; simulation discovery applies the test/run filters without
+requiring a fixed test alias.
+
+`discover_regression_artifacts` is the corresponding read-only MCP tool. Use
+the returned path with `read_regression_artifact` instead of constructing a
+path by hand.
+
+### `artifact read-regression`
+
+Read a bounded UTF-8 log below the configured external regression root:
+
+```bash
+python3 "$CLAUDE_KIT_BIN" artifact read-regression \
+  --project-root . \
+  --file /nfs/regression/<user>/<checkout-name>/sys_tb__VCS_VCOMP/cmp.log \
+  --max-bytes 100000 \
+  --json
+```
+
+Absolute paths returned by discovery and paths relative to the configured
+regression root are accepted. The resolved path must remain below that root,
+including after symlink resolution. This command only reads an existing
+artifact; it does not start or rerun compile or simulation.
+
+`read_regression_artifact` is the corresponding MCP tool. Use it for bounded
+log inspection after a project build MCP tool has returned a run report.
 
 ### `evidence template`
 

@@ -428,6 +428,40 @@ auto_push = false
 | artifacts | Log, report, waveform, and coverage locations |
 | policies | Network, evidence, commit, and push policy |
 
+### External regression artifacts
+
+Projects that keep licensed compile and simulation outputs outside the
+checkout may declare a bounded, project-owned regression root. The kit does
+not infer a user, checkout name, test alias, or latest run, and it never scans
+the parent directory for other projects.
+
+```toml
+[artifacts.regression]
+root = "/nfs/regression/<user>/<checkout-name>"
+compile_directory_pattern = "*__VCS_VCOMP"
+compile_log_names = ["cmp.log"]
+compile_lock_suffix = ".compile.lock"
+simulation_directory_pattern = "*__vcs__*"
+simulation_primary_log_names = ["sim.log", "run.log", "test.log"]
+simulation_log_glob = "*.log"
+simulation_lock_suffix = ".run.lock"
+```
+
+The checkout profile replaces the placeholders with its own runtime facts.
+The generic defaults describe a top-level VCS compile directory and
+test/run-specific simulation directories, but a project may override the
+patterns and log names. Discovery is read-only and bounded to the configured
+root. If multiple runs match, the result sets `selection_required` and
+returns every bounded match; it does not choose the newest directory.
+
+The MCP bridge exposes `discover_regression_artifacts` and
+`read_regression_artifact`. The first returns the checkout project id,
+regression root, compile/simulation directory, primary and candidate logs,
+run/test filters, and lock-file state. The second reads a bounded log only
+when its path resolves below the configured regression root. Project-owned
+build MCP servers should include the same artifact metadata in their check
+reports so Claude Code can connect a run id to its actual logs.
+
 source_revision is an optional root-level fixed fact. When the project root is a Git worktree, plan prefers the current HEAD and reports whether the worktree is dirty. The planner reads Git state but does not fetch, commit, or push.
 
 packs is a root-level TOML field. Put it before any TOML table such as project, roots, or roles. If it is placed below a table, TOML treats it as a field of that table and the CLI will not use it as the default pack list.

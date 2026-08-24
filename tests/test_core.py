@@ -13,10 +13,12 @@ from claude_kit.core import (
     check_adapter,
     command_menu,
     doctor,
+    discover_regression_artifacts,
     inspect_project,
     load_profile,
     mcp_config,
     read_artifact,
+    read_regression_artifact,
     resolve_context,
     role_catalog,
     pack_catalog,
@@ -180,6 +182,9 @@ class CoreTests(unittest.TestCase):
         self.assertIn("mcp_tool", command_schema)
         self.assertIn("required_functions", schema["properties"]["adapter"]["oneOf"][1]["properties"])
         self.assertEqual(schema["properties"]["packs"]["type"], "array")
+        artifact_schema = schema["properties"]["artifacts"]["additionalProperties"]
+        self.assertEqual(len(artifact_schema["oneOf"]), 2)
+        self.assertIn("root", artifact_schema["oneOf"][1]["properties"])
 
         evidence_schema = json.loads(
             (ROOT / "src" / "claude_kit" / "resources" / "schemas" / "evidence.schema.json").read_text(encoding="utf-8")
@@ -227,6 +232,70 @@ class CoreTests(unittest.TestCase):
         self.assertTrue(result["truncated"])
         with self.assertRaises(KitError):
             read_artifact(FIXTURE, "out/logs/README.md", 1_000_001)
+
+    def test_regression_artifacts_are_scoped_and_report_locks(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project_root = Path(directory) / "project"
+            regression_root = Path(directory) / "regression" / "checkout-a"
+            project_root.mkdir()
+            compile_dir = regression_root / "sys_tb__VCS_VCOMP"
+            simulation_dir = regression_root / "sys_tb__vcs__focused_test__42"
+            compile_dir.mkdir(parents=True)
+            simulation_dir.mkdir(parents=True)
+            (compile_dir / "cmp.log").write_text("compile ok\n", encoding="utf-8")
+            (simulation_dir / "run.log").write_text("simulation running\n", encoding="utf-8")
+            (regression_root / "sys_tb__VCS_VCOMP.compile.lock").touch()
+            (regression_root / "sys_tb__vcs__focused_test__42.run.lock").touch()
+            profile = {
+                "schema_version": 1,
+                "project": {"id": "checkout-a"},
+                "artifacts": {
+                    "regression": {
+                        "root": str(regression_root),
+                        "compile_directory_pattern": "*__VCS_VCOMP",
+                        "simulation_directory_pattern": "*__vcs__*",
+                        "simulation_primary_log_names": ["run.log"],
+                    }
+                },
+            }
+
+            compile_result = discover_regression_artifacts(profile, kind="compile")
+            self.assertEqual(compile_result["status"], "passed")
+            self.assertEqual(len(compile_result["artifacts"]), 1)
+            self.assertTrue(compile_result["artifacts"][0]["locked"])
+            self.assertTrue(compile_result["artifacts"][0]["primary_log"].endswith("cmp.log"))
+
+            simulation_result = discover_regression_artifacts(
+                profile,
+                kind="simulation",
+                test="focused_test",
+                run_id="42",
+            )
+            self.assertEqual(simulation_result["status"], "passed")
+            self.assertFalse(simulation_result["selection_required"])
+            simulation = simulation_result["artifacts"][0]
+            self.assertEqual(simulation["test"], "focused_test")
+            self.assertEqual(simulation["run_id"], "42")
+            self.assertTrue(simulation["locked"])
+            self.assertTrue(simulation["primary_log"].endswith("run.log"))
+            log = read_regression_artifact(profile, simulation["primary_log"])
+            self.assertEqual(log["text"].replace("\r\n", "\n"), "simulation running\n")
+            with self.assertRaises(KitError):
+                read_regression_artifact(profile, str(Path(directory) / "outside.log"))
+
+    def test_regression_discovery_does_not_select_a_latest_run(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            regression_root = Path(directory) / "regression"
+            for run_id in ("1", "2"):
+                (regression_root / f"tb__vcs__smoke__{run_id}").mkdir(parents=True)
+            profile = {
+                "project": {"id": "many-checkouts"},
+                "artifacts": {"regression": {"root": str(regression_root)}},
+            }
+            result = discover_regression_artifacts(profile, kind="simulation", test="smoke")
+            self.assertEqual(result["match_count"], 2)
+            self.assertTrue(result["selection_required"])
+            self.assertEqual({item["run_id"] for item in result["artifacts"]}, {"1", "2"})
 
     def test_explicit_profile_and_inspect_roots_cannot_escape(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

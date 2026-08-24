@@ -117,7 +117,34 @@
     },
     "artifacts": {
       "type": "object",
-      "additionalProperties": {"type": "string", "minLength": 1}
+      "additionalProperties": {
+        "oneOf": [
+          {"type": "string", "minLength": 1},
+          {
+            "type": "object",
+            "properties": {
+              "root": {"type": "string", "minLength": 1},
+              "compile_directory_pattern": {"type": "string", "minLength": 1},
+              "compile_log_names": {
+                "oneOf": [
+                  {"type": "string", "minLength": 1},
+                  {"type": "array", "items": {"type": "string", "minLength": 1}}
+                ]
+              },
+              "compile_lock_suffix": {"type": "string", "minLength": 1},
+              "simulation_directory_pattern": {"type": "string", "minLength": 1},
+              "simulation_primary_log_names": {
+                "oneOf": [
+                  {"type": "string", "minLength": 1},
+                  {"type": "array", "items": {"type": "string", "minLength": 1}}
+                ]
+              },
+              "simulation_log_glob": {"type": "string", "minLength": 1},
+              "simulation_lock_suffix": {"type": "string", "minLength": 1}
+            }
+          }
+        ]
+      }
     },
     "policies": {
       "type": "object",

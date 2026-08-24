@@ -411,6 +411,37 @@ auto_push = false
 | artifacts | 日志、报告、波形和 coverage 位置 |
 | policies | 网络、证据、commit 和 push 策略 |
 
+### 外部 regression 结果
+
+如果 licensed compile 和 simulation 的结果位于 checkout 外部，可以在
+项目 profile 中声明一个受限的 regression root。kit 不会推断 user、checkout
+name、test alias 或“最新一次”运行，也不会扫描父目录下的其它项目。
+
+```toml
+[artifacts.regression]
+root = "/nfs/regression/<user>/<checkout-name>"
+compile_directory_pattern = "*__VCS_VCOMP"
+compile_log_names = ["cmp.log"]
+compile_lock_suffix = ".compile.lock"
+simulation_directory_pattern = "*__vcs__*"
+simulation_primary_log_names = ["sim.log", "run.log", "test.log"]
+simulation_log_glob = "*.log"
+simulation_lock_suffix = ".run.lock"
+```
+
+各 checkout 在自己的 profile 中替换这些占位符。默认规则描述顶层 VCS
+compile 目录和带 test/run 标识的 simulation 目录；项目可以覆盖目录 pattern
+和日志名。发现操作是只读的，并且只限制在配置的 root 下。如果匹配到多个
+run，结果会设置 `selection_required` 并返回有限数量的全部匹配项，不会自动
+选择最新目录。
+
+MCP bridge 提供 `discover_regression_artifacts` 和
+`read_regression_artifact`。前者返回项目 id、regression root、compile/simulation
+目录、主日志和候选日志、test/run filter 以及 lock 状态。后者只允许读取解析
+后仍位于 regression root 下的有限大小日志。项目自己的 build MCP server 也应
+在 check report 中返回同样的 artifact metadata，让 Claude Code 能把 run id
+和真实日志对应起来。
+
 `source_revision` 可以作为 profile 根级的可选固定事实；如果项目根目录本身是 Git worktree，`plan` 会优先读取当前 `HEAD`，并报告 worktree 是否有未提交或未跟踪修改。planner 只读 Git 状态，不执行网络操作，也不会替项目提交或推送。
 
 TOML 的 `packs` 是根级字段，必须放在任何 `[project]`、`[roots]` 或其他 table 之前；如果把它写在 `[roles]` 或 `[roots]` 下面，TOML 会把它解析成该 table 的子字段，CLI 就不会使用它作为默认 pack。
