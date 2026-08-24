@@ -396,6 +396,7 @@ apb_interface = "apb_if"
 
 [permissions]
 writable = ["hw/**", "rtl/**", "dv/**", "tb/**", "docs/**", ".ai/overrides/**"]
+deletable = []
 read_only = ["third_party_vip/**", "generated/**", "out/**"]
 forbidden = [".git/**", "secrets/**", "**/*.key"]
 
@@ -423,7 +424,7 @@ auto_push = false
 | packs | Protocol/VIP packs actually enabled by the project |
 | build | Build, lint, compile, simulation, target, and test-selector facts |
 | vip | Real interface names, instance counts, and mapping facts |
-| permissions | Writable, read-only, and forbidden path scopes |
+| permissions | Writable, explicitly deletable, read-only, and forbidden path scopes |
 | artifacts | Log, report, waveform, and coverage locations |
 | policies | Network, evidence, commit, and push policy |
 
@@ -826,7 +827,7 @@ claude-kit evidence check \
   --json
 ~~~
 
-Evidence should identify project, task, source revision, changes, checks, skipped items, and risks. Each check has a status; passed checks should include the actual command and artifact where possible. Strict mode treats warnings as failures and checks that changed paths are inside profile writable paths.
+Evidence should identify project, task, source revision, changes, checks, skipped items, and risks. Each check has a status; passed checks should include the actual command and artifact where possible. Strict mode treats warnings as failures and checks that changed paths are inside profile permissions. Normal changes use `permissions.writable`; an intentional cleanup deletion can use an object such as `{\"path\": \"scripts/legacy_bootstrap.py\", \"operation\": \"delete\"}` when the profile declares the exact path under `permissions.deletable`. Read-only and forbidden patterns still override both scopes.
 
 ### check
 

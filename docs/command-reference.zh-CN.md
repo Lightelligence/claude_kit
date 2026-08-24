@@ -92,11 +92,12 @@ testbench = ["tb"]
 
 [permissions]
 writable = ["hw/**", "rtl/**", "dv/**", "tb/**", "docs/**", ".ai/overrides/**"]
+deletable = []
 read_only = ["third_party_vip/**", "generated/**", "out/**"]
 forbidden = [".git/**", "secrets/**", "**/*.key"]
 ```
 
-`roots.hw = ["hw"]` 告诉 `inspect_design` 和 context resolver 硬件树在哪里；`permissions.writable = ["hw/**"]` 授权在该目录下修改文件和记录 evidence。两者是独立声明，配置其中一个不会自动配置另一个。
+`roots.hw = ["hw"]` 告诉 `inspect_design` 和 context resolver 硬件树在哪里；`permissions.writable = ["hw/**"]` 授权在该目录下修改文件和记录 evidence。`permissions.deletable` 是更窄的、用于审计清理废弃文件的明确范围，不授权普通修改。两者是独立声明，配置其中一个不会自动配置另一个。
 
 只要项目 profile 声明 `hw/**` 为 writable，claude_kit 就允许读写该目录。仍然必须遵守 `read_only`、`forbidden`、symlink、project-root 和 evidence 校验。
 
@@ -346,7 +347,7 @@ python3 "$CLAUDE_KIT_BIN" evidence check \
   --json
 ```
 
-strict 会把 warning 当作 failure，并检查 passed check 是否有 command evidence、artifact 路径是否有效、changed paths 是否允许。像 `hw/rtl/foo.sv` 这样的修改，只有 profile 声明 `hw/**` writable 且没有被 read-only/forbidden 覆盖时才会通过。
+strict 会把 warning 当作 failure，并检查 passed check 是否有 command evidence、artifact 路径是否有效、changed paths 是否允许。像 `hw/rtl/foo.sv` 这样的修改，只有 profile 在 `permissions.writable` 声明 `hw/**` 且没有被 read-only/forbidden 覆盖时才会通过。审计删除必须使用带 `operation = "delete"` 的对象，并匹配 `permissions.deletable`（或已有 writable pattern）；read-only/forbidden 仍然优先。
 
 ### `check`
 

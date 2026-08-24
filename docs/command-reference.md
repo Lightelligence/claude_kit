@@ -88,11 +88,12 @@ testbench = ["tb"]
 
 [permissions]
 writable = ["hw/**", "rtl/**", "dv/**", "tb/**", "docs/**", ".ai/overrides/**"]
+deletable = []
 read_only = ["third_party_vip/**", "generated/**", "out/**"]
 forbidden = [".git/**", "secrets/**", "**/*.key"]
 ```
 
-`roots.hw = ["hw"]` tells `inspect_design` and context generation where the hardware tree is. `permissions.writable = ["hw/**"]` authorizes edits and evidence changes there. These are independent declarations: adding one does not implicitly add the other.
+`roots.hw = ["hw"]` tells `inspect_design` and context generation where the hardware tree is. `permissions.writable = ["hw/**"]` authorizes edits and evidence changes there. `permissions.deletable` is a narrower, explicit scope for audited cleanup of obsolete files; it does not authorize ordinary edits. These are independent declarations: adding one does not implicitly add the other.
 
 The kit is allowed to read and write `hw/**` when the project profile declares it as writable. It must still respect `read_only`, `forbidden`, symlink, project-root, and evidence checks.
 
@@ -343,7 +344,7 @@ python3 "$CLAUDE_KIT_BIN" evidence check \
   --json
 ```
 
-Strict validation checks that passed checks have evidence, artifact paths are valid, and changed paths are allowed. A change such as `hw/rtl/foo.sv` is accepted only when the profile authorizes `hw/**` and does not classify it as read-only or forbidden.
+Strict validation checks that passed checks have evidence, artifact paths are valid, and changed paths are allowed. A change such as `hw/rtl/foo.sv` is accepted only when the profile authorizes `hw/**` under `permissions.writable` and does not classify it as read-only or forbidden. An audited deletion must use an object with `operation = "delete"` and match `permissions.deletable` (or an existing writable pattern); read-only and forbidden patterns still override it.
 
 ### `check`
 

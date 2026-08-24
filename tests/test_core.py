@@ -262,6 +262,39 @@ class CoreTests(unittest.TestCase):
         issues = validate_evidence(FIXTURE, profile, evidence, strict=True)
         self.assertTrue(any("not covered by permissions.writable" in item["message"] for item in issues))
 
+    def test_evidence_accepts_explicit_deletion_scope(self) -> None:
+        profile = {
+            "project": {"id": "cleanup_fixture"},
+            "permissions": {
+                "writable": [".ai/**"],
+                "deletable": ["scripts/legacy_bootstrap.py"],
+            },
+        }
+        evidence = {
+            "schema_version": 1,
+            "project": "cleanup_fixture",
+            "task": "remove a superseded bootstrap helper",
+            "changes": [{"path": "scripts/legacy_bootstrap.py", "operation": "delete"}],
+            "checks": [{"name": "cleanup", "status": "passed", "command": ["git", "rm"]}],
+        }
+        issues = validate_evidence(FIXTURE, profile, evidence, strict=True)
+        self.assertFalse(issues, issues)
+
+        blocked_profile = {
+            "project": {"id": "cleanup_fixture"},
+            "permissions": {
+                "deletable": ["scripts/legacy_bootstrap.py"],
+                "read_only": ["scripts/legacy_bootstrap.py"],
+            },
+        }
+        blocked = validate_evidence(FIXTURE, blocked_profile, evidence, strict=True)
+        self.assertTrue(any("outside the writable scope" in item["message"] for item in blocked))
+
+        malformed = dict(evidence)
+        malformed["changes"] = [{"path": "scripts/legacy_bootstrap.py", "operation": "rename"}]
+        malformed_issues = validate_evidence(FIXTURE, profile, malformed, strict=True)
+        self.assertTrue(any("operation must be 'modify' or 'delete'" in item["message"] for item in malformed_issues))
+
     def test_evidence_accepts_writable_symlink_alias(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

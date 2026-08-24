@@ -379,6 +379,7 @@ apb_interface = "apb_if"
 
 [permissions]
 writable = ["hw/**", "rtl/**", "dv/**", "tb/**", "docs/**", ".ai/overrides/**"]
+deletable = []
 read_only = ["third_party_vip/**", "generated/**", "out/**"]
 forbidden = [".git/**", "secrets/**", "**/*.key"]
 
@@ -406,7 +407,7 @@ auto_push = false
 | packs | 项目真正启用的协议/VIP pack |
 | build | build、lint、compile、simulation 入口；`target` 和 `test_selector` 供 planner 绑定运行事实 |
 | vip | 项目真实接口名、实例数量和 mapping |
-| permissions | writable、read-only、forbidden 路径 |
+| permissions | writable、deletable、read-only、forbidden 路径 |
 | artifacts | 日志、报告、波形和 coverage 位置 |
 | policies | 网络、证据、commit 和 push 策略 |
 
@@ -822,7 +823,7 @@ claude-kit evidence check \
   --json
 ~~~
 
-evidence 至少说明 project、task、source revision、changes、checks、skipped 和 risks。每个 check 要有状态；passed check 应尽量带实际 command 和 artifact。严格模式会把 warning 当成失败，并检查 changed path 是否落在 profile 的 writable 范围。
+evidence 至少说明 project、task、source revision、changes、checks、skipped 和 risks。每个 check 要有状态；passed check 应尽量带实际 command 和 artifact。严格模式会把 warning 当成失败，并检查 changed path 是否落在 profile 的权限范围内。普通修改使用 `permissions.writable`；有明确审计的清理删除可以写成 `{\"path\": \"scripts/legacy_bootstrap.py\", \"operation\": \"delete\"}`，并在 profile 的 `permissions.deletable` 中声明精确路径。`read_only` 和 `forbidden` 对两种范围都优先生效。
 
 ### check
 

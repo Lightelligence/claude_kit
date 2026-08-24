@@ -39,6 +39,7 @@ simulator = "project-configured"
 
 [permissions]
 writable = ["hw/**", "rtl/**", "dv/**", "tb/**", "docs/**", ".ai/overrides/**"]
+deletable = []
 read_only = ["third_party_vip/**", "generated/**", "out/**"]
 forbidden = [".git/**", "secrets/**"]
 

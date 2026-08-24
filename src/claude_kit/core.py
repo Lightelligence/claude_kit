@@ -177,7 +177,7 @@ def validate_profile(root: Path, profile: dict[str, Any]) -> list[dict[str, str]
         add("error", "permissions must be an object")
         permissions = {}
     permission_sets: dict[str, list[str]] = {}
-    for name in ("writable", "read_only", "forbidden"):
+    for name in ("writable", "deletable", "read_only", "forbidden"):
         try:
             permission_sets[name] = _as_list(permissions.get(name, []))
         except KitError:
@@ -188,7 +188,13 @@ def validate_profile(root: Path, profile: dict[str, Any]) -> list[dict[str, str]
             if not normalized.strip() or normalized.startswith("/") or ":" in normalized[:3] or ".." in Path(normalized).parts:
                 add("error", f"permissions.{name} is not project-relative: {pattern}")
 
-    for left_name, right_name in (("writable", "read_only"), ("writable", "forbidden"), ("read_only", "forbidden")):
+    for left_name, right_name in (
+        ("writable", "read_only"),
+        ("writable", "forbidden"),
+        ("deletable", "read_only"),
+        ("deletable", "forbidden"),
+        ("read_only", "forbidden"),
+    ):
         for left in permission_sets[left_name]:
             for right in permission_sets[right_name]:
                 if _patterns_overlap(left, right):
@@ -998,22 +1004,29 @@ def validate_evidence(root: Path, profile: dict[str, Any], evidence: dict[str, A
         add("error", "permissions must be an object")
         permissions = {}
     writable_declared = "writable" in permissions
+    deletable_declared = "deletable" in permissions
     try:
         writable = _as_list(permissions.get("writable", []))
+        deletable = _as_list(permissions.get("deletable", []))
         read_only = _as_list(permissions.get("read_only", []))
         forbidden = _as_list(permissions.get("forbidden", []))
     except KitError as exc:
         add("error", f"permissions are invalid: {exc}")
-        writable, read_only, forbidden = [], [], []
+        writable, deletable, read_only, forbidden = [], [], [], []
     changes = evidence.get("changes", [])
     if not isinstance(changes, list):
         add("error", "changes must be a list")
         changes = []
     for index, change in enumerate(changes):
+        operation = "modify"
         if isinstance(change, str):
             path_value = change
         elif isinstance(change, dict):
             path_value = change.get("path")
+            operation = change.get("operation", "modify")
+            if not isinstance(operation, str) or operation not in {"modify", "delete"}:
+                add("error", f"changes[{index}].operation must be 'modify' or 'delete'")
+                continue
         else:
             add("error", f"changes[{index}] must be a path or object")
             continue
@@ -1028,9 +1041,17 @@ def validate_evidence(root: Path, profile: dict[str, Any], evidence: dict[str, A
                 for patterns in (forbidden, read_only)
             )
             writable_match = any(_permission_match(candidate, writable) for candidate in variants)
+            deletable_match = any(_permission_match(candidate, deletable) for candidate in variants)
             if blocked:
                 add("error", f"changes[{index}] is outside the writable scope: {relative}")
-            elif writable_declared and not writable_match:
+            elif operation == "delete" and (writable_declared or deletable_declared) and not (
+                writable_match or deletable_match
+            ):
+                add(
+                    "warning",
+                    f"changes[{index}] is not covered by permissions.deletable or permissions.writable: {relative}",
+                )
+            elif operation == "modify" and writable_declared and not writable_match:
                 add("warning", f"changes[{index}] is not covered by permissions.writable: {relative}")
 
     for key in ("skipped", "risks"):
