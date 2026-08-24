@@ -207,8 +207,17 @@ def validate_profile(root: Path, profile: dict[str, Any]) -> list[dict[str, str]
             add("error", f"build.commands.{name} must be an object")
             continue
         argv = command.get("argv")
-        if not isinstance(argv, list) or not argv or not all(isinstance(item, str) and item for item in argv):
-            add("error", f"build.commands.{name}.argv must be a non-empty list of strings")
+        mcp_tool = command.get("mcp_tool")
+        if mcp_tool is not None:
+            if not isinstance(mcp_tool, str) or not mcp_tool.strip():
+                add("error", f"build.commands.{name}.mcp_tool must be a non-empty string")
+            if argv is not None:
+                add("error", f"build.commands.{name} must define either argv or mcp_tool, not both")
+            mcp_server = command.get("mcp_server")
+            if not isinstance(mcp_server, str) or not mcp_server.strip():
+                add("error", f"build.commands.{name}.mcp_server must be a non-empty string for MCP-backed checks")
+        elif not isinstance(argv, list) or not argv or not all(isinstance(item, str) and item for item in argv):
+            add("error", f"build.commands.{name}.argv must be a non-empty list of strings when mcp_tool is absent")
         cwd = command.get("cwd", ".")
         if not isinstance(cwd, str):
             add("error", f"build.commands.{name}.cwd must stay inside the project root")
@@ -539,12 +548,19 @@ def command_menu(
         command = commands.get(name)
         definition = command if isinstance(command, dict) else None
         policy = command_selection_policy(name, definition)
-        result.append({
+        entry = {
             "name": name,
             "status": "available" if definition is not None else "missing",
             **policy,
             "definition": redact_profile(definition) if definition is not None else None,
-        })
+        }
+        if definition is not None:
+            mcp_tool = definition.get("mcp_tool")
+            entry["execution"] = "mcp" if isinstance(mcp_tool, str) and mcp_tool else "argv"
+            if isinstance(mcp_tool, str) and mcp_tool:
+                entry["mcp_server"] = definition.get("mcp_server")
+                entry["mcp_tool"] = mcp_tool
+        result.append(entry)
     return result
 
 
@@ -1046,11 +1062,16 @@ def _requires_explicit_confirmation(command: dict[str, Any]) -> bool:
 
 
 def _command_metadata(name: str, command: dict[str, Any]) -> dict[str, Any]:
+    mcp_tool = command.get("mcp_tool")
     metadata: dict[str, Any] = {
         "command": name,
         "category": command_category(name, command),
         "kind": command.get("kind"),
+        "execution": "mcp" if isinstance(mcp_tool, str) and mcp_tool else "argv",
     }
+    if isinstance(mcp_tool, str) and mcp_tool:
+        metadata["mcp_server"] = command.get("mcp_server")
+        metadata["mcp_tool"] = mcp_tool
     artifacts = command.get("artifacts", command.get("artifact"))
     if artifacts is not None:
         metadata["artifacts"] = redact_profile(artifacts)
@@ -1074,6 +1095,12 @@ def run_project_command(
     command = commands.get(name) if isinstance(commands, dict) else None
     if not isinstance(command, dict):
         raise KitError(f"Command is not declared in build.commands: {name}")
+    mcp_tool = command.get("mcp_tool")
+    if isinstance(mcp_tool, str) and mcp_tool:
+        server = command.get("mcp_server", "<unspecified server>")
+        raise KitError(
+            f"Command {name} is MCP-backed ({server}/{mcp_tool}); call the project MCP tool from Claude Code"
+        )
     argv = command.get("argv")
     if not isinstance(argv, list) or not argv or not all(isinstance(item, str) and item for item in argv):
         raise KitError(f"Invalid argv for command: {name}")

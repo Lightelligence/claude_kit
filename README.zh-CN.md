@@ -450,6 +450,20 @@ doctor 对尚不存在但可能由项目后续创建的 roots 报 warning；doct
 命令名推断 category。quick checks 会和 expensive/specialist checks 分开显示；
 命令只是因为 `recommended` 被展示，也不会因此自动执行。
 
+如果项目检查由 MCP server 提供，则使用 `mcp_server` 和 `mcp_tool`，不要写
+`argv`：
+
+~~~toml
+[build.commands.project_lint]
+mcp_server = "project-build"
+mcp_tool = "project_lint"
+category = "lint"
+kind = "verification"
+~~~
+
+菜单会把它标记为 MCP-backed check。工程师选择后由 Claude Code 调用项目 MCP
+tool；`claude-kit check-batch` 不会尝试通过 shell 启动 MCP server。
+
 需要 license、专用环境或远程资源的命令，应由项目 wrapper 负责；kit 只做 allowlist、cwd 和证据边界检查。
 
 ## Project adapter

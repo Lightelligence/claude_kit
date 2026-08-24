@@ -467,6 +467,20 @@ omitted, the kit infers a category from `kind` and the command name. Suggested
 quick checks are shown separately from explicit expensive or specialist checks;
 the kit never executes a menu entry merely because it is recommended.
 
+For a project MCP server, use `mcp_server` and `mcp_tool` instead of `argv`:
+
+~~~toml
+[build.commands.project_lint]
+mcp_server = "project-build"
+mcp_tool = "project_lint"
+category = "lint"
+kind = "verification"
+~~~
+
+The menu exposes this as an MCP-backed check. Claude Code calls the registered
+project MCP tool after the engineer selects it; `claude-kit check-batch` does
+not try to shell out to an MCP server.
+
 Commands that need a license, special environment, or remote resources should be owned by the project wrapper. The kit enforces allowlists, cwd, and evidence boundaries around that wrapper.
 
 ## Project adapter

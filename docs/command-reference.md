@@ -382,6 +382,9 @@ declares them. `simulation`, `regression`, `coverage`, `synthesis`, and `cdc`
 are explicit engineer choices and are never auto-selected by the kit. The
 category is inferred from the profile command's optional `category`, `kind`, or
 project command name; the kit does not need to know a project's wrapper names.
+For an MCP-backed check, declare `mcp_server` and `mcp_tool` instead of `argv`.
+The menu reports the MCP endpoint, while Claude Code calls that project server
+after the engineer selects it. The kit CLI does not shell out to MCP servers.
 
 Use `check-batch` for the engineer's multi-selection. It executes selected
 commands sequentially and returns one report per item plus aggregate counts.
@@ -719,7 +722,9 @@ The result preserves the order of selection and includes `passed`, `failed`,
 `blocked`, and `not_run` counts. `confirm=true` acknowledges this selected
 batch; simulation and regression commands still have their individual
 confirmation gate. Ask for explicit approval before adding an expensive
-workload, or delegate it to the project-approved `commander` flow.
+workload, or delegate it to the project-approved `commander` flow. MCP-backed
+entries are reported as blocked by the CLI batch runner because their actual
+tool calls belong in Claude Code; use the selected server/tool from `list_checks`.
 
 ## 6. Claude Code recipes
 

@@ -383,7 +383,9 @@ python3 "$CLAUDE_KIT_BIN" checks --project-root . --json
 `filelist` 通常会被标为 suggested；`simulation`、`regression`、`coverage`、
 `synthesis`、`cdc` 只作为 engineer 的 explicit choice，不会被 kit 自动选中。
 category 可以来自 command 的可选 `category`、`kind` 或项目命令名；kit 不需要
-知道某个项目 wrapper 的具体命名。
+知道某个项目 wrapper 的具体命名。如果 check 由 MCP server 提供，则在 profile
+中使用 `mcp_server` 和 `mcp_tool` 代替 `argv`。menu 会显示 MCP endpoint；
+工程师选择后由 Claude Code 调用项目 server，kit CLI 不会通过 shell 启动 MCP。
 
 工程师完成多选后，使用 `check-batch` 按选择顺序执行，并返回每项 report 和
 aggregate counts。默认某项失败后仍继续；需要 fail-fast 时加
@@ -711,7 +713,9 @@ aggregate counts。
 `names` 必须是 `[build.commands]` 中已登记且不重复的命令名。返回结果保留选择
 顺序，并统计 `passed`、`failed`、`blocked`、`not_run`。`confirm=true` 表示确认
 执行这一批；simulation 和 regression 仍有各自的显式确认 gate。加入 expensive
-workload 前先询问，或在获得明确委托后交给项目批准的 `commander` 流程。
+workload 前先询问，或在获得明确委托后交给项目批准的 `commander` 流程。MCP-backed
+entry 由 CLI 标为 blocked，因为实际 tool call 应由 Claude Code 完成；请使用
+`list_checks` 返回的 server/tool。
 
 ## 6. Claude Code 常用 prompt
 

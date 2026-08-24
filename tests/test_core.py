@@ -111,6 +111,26 @@ class CoreTests(unittest.TestCase):
             self.assertEqual(menu[name]["selection"], "explicit")
             self.assertFalse(menu[name]["recommended"])
 
+    def test_mcp_backed_check_is_profiled_but_not_shell_executed(self) -> None:
+        profile = {
+            "project": {"id": "mcp_fixture"},
+            "build": {
+                "commands": {
+                    "project_lint": {
+                        "mcp_server": "project-build",
+                        "mcp_tool": "project_lint",
+                        "category": "lint",
+                        "kind": "verification",
+                    }
+                }
+            },
+        }
+        menu = command_menu(profile)
+        self.assertEqual(menu[0]["execution"], "mcp")
+        self.assertEqual(menu[0]["mcp_tool"], "project_lint")
+        with self.assertRaisesRegex(KitError, "call the project MCP tool"):
+            run_project_command(FIXTURE, profile, "project_lint", confirm=True)
+
     def test_selected_checks_run_sequentially_with_per_check_reports(self) -> None:
         _, profile = load_profile(FIXTURE)
         result = run_project_commands(FIXTURE, profile, ["inspect", "confirmed"], confirm=True)
@@ -151,6 +171,8 @@ class CoreTests(unittest.TestCase):
         command_schema = schema["properties"]["build"]["properties"]["commands"]["additionalProperties"]["properties"]
         self.assertIn("category", command_schema)
         self.assertIn("artifacts", command_schema)
+        self.assertIn("mcp_server", command_schema)
+        self.assertIn("mcp_tool", command_schema)
         self.assertIn("required_functions", schema["properties"]["adapter"]["oneOf"][1]["properties"])
         self.assertEqual(schema["properties"]["packs"]["type"], "array")
 
