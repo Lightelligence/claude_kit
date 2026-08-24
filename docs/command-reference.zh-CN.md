@@ -11,20 +11,20 @@
 在消费项目根目录执行：
 
 ```bash
-KIT=third_party/claude_kit/bin/claude-kit
+CLAUDE_KIT_BIN=third_party/claude_kit/bin/claude-kit
 
 # 确认 kit 版本和项目 profile。
-python3 "$KIT" version
-python3 "$KIT" doctor --project-root . --strict --json
+python3 "$CLAUDE_KIT_BIN" version
+python3 "$CLAUDE_KIT_BIN" doctor --project-root . --strict --json
 
 # 查看可复用内容。
-python3 "$KIT" list roles
-python3 "$KIT" list skills
-python3 "$KIT" list packs
-python3 "$KIT" list workflows
+python3 "$CLAUDE_KIT_BIN" list roles
+python3 "$CLAUDE_KIT_BIN" list skills
+python3 "$CLAUDE_KIT_BIN" list packs
+python3 "$CLAUDE_KIT_BIN" list workflows
 
 # 在读取大量 context 或修改文件前先规划任务。
-python3 "$KIT" plan \
+python3 "$CLAUDE_KIT_BIN" plan \
   --project-root . \
   --task "Review and fix the AXI4 response path in hw/" \
   --json
@@ -113,10 +113,10 @@ build、lint、compile、simulation、regression 和 artifact collection 命令�
 先设置 wrapper 变量：
 
 ```bash
-KIT=third_party/claude_kit/bin/claude-kit
+CLAUDE_KIT_BIN=third_party/claude_kit/bin/claude-kit
 ```
 
-下面所有示例也可以把 `python3 "$KIT"` 换成已经安装的 `claude-kit` 命令。
+下面所有示例也可以把 `python3 "$CLAUDE_KIT_BIN"` 换成已经安装的 `claude-kit` 命令。
 
 ### 通用参数
 
@@ -133,7 +133,7 @@ KIT=third_party/claude_kit/bin/claude-kit
 查看 checkout 或 submodule 中 kit 的版本：
 
 ```bash
-python3 "$KIT" version
+python3 "$CLAUDE_KIT_BIN" version
 ```
 
 它只显示版本，不校验项目 profile。
@@ -143,7 +143,7 @@ python3 "$KIT" version
 生成最小的项目集成文件，不修改 RTL、DV、vendor、generated 或 build 文件：
 
 ```bash
-python3 "$KIT" init \
+python3 "$CLAUDE_KIT_BIN" init \
   --project-root . \
   --kit-path third_party/claude_kit
 ```
@@ -161,19 +161,19 @@ python3 "$KIT" init \
 
 ```bash
 # 只生成最小集成 skill，其他 skill 以后用 sync 生成。
-python3 "$KIT" init --project-root . --minimal
+python3 "$CLAUDE_KIT_BIN" init --project-root . --minimal
 
 # 不生成项目侧 skill 文件。
-python3 "$KIT" init --project-root . --no-skills
+python3 "$CLAUDE_KIT_BIN" init --project-root . --no-skills
 
 # 生成可选 adapter contract 模板。
-python3 "$KIT" init --project-root . --with-adapter
+python3 "$CLAUDE_KIT_BIN" init --project-root . --with-adapter
 
 # 只在 .mcp.json 中添加或刷新 claude-kit entry。
-python3 "$KIT" init --project-root . --with-mcp
+python3 "$CLAUDE_KIT_BIN" init --project-root . --with-mcp
 
 # 显式允许替换 kit 管理的文件。
-python3 "$KIT" init --project-root . --force
+python3 "$CLAUDE_KIT_BIN" init --project-root . --force
 ```
 
 `init` 不会开启可执行 MCP tool，也不会覆盖其他项目 MCP server。生成的 profile 仍然需要项目 owner 补全，之后再运行 `doctor`。
@@ -183,8 +183,8 @@ python3 "$KIT" init --project-root . --force
 生成或刷新 kit 提供的 Claude Code skills：
 
 ```bash
-python3 "$KIT" sync --project-root .
-python3 "$KIT" sync --project-root . --force
+python3 "$CLAUDE_KIT_BIN" sync --project-root .
+python3 "$CLAUDE_KIT_BIN" sync --project-root . --force
 ```
 
 没有 `--force` 时保留已有文件；有 `--force` 时只替换 kit 管理的 skill 路径，不修改 profile、项目规则、源代码或 MCP servers。
@@ -194,8 +194,8 @@ python3 "$KIT" sync --project-root . --force
 校验 profile、roots、commands、roles、packs、adapter 和权限边界：
 
 ```bash
-python3 "$KIT" doctor --project-root . --strict
-python3 "$KIT" doctor --project-root . --strict --json
+python3 "$CLAUDE_KIT_BIN" doctor --project-root . --strict
+python3 "$CLAUDE_KIT_BIN" doctor --project-root . --strict --json
 ```
 
 建议在开始修改、profile 变化、submodule 更新和交付前运行 `--strict`。strict failure 是需要处理的 gate，不应通过关闭校验来绕过。
@@ -214,12 +214,12 @@ python3 "$KIT" doctor --project-root . --strict --json
 查看可复用 catalogs：
 
 ```bash
-python3 "$KIT" list roles
-python3 "$KIT" list packs
-python3 "$KIT" list skills
-python3 "$KIT" list workflows
+python3 "$CLAUDE_KIT_BIN" list roles
+python3 "$CLAUDE_KIT_BIN" list packs
+python3 "$CLAUDE_KIT_BIN" list skills
+python3 "$CLAUDE_KIT_BIN" list workflows
 
-python3 "$KIT" list skills --json
+python3 "$CLAUDE_KIT_BIN" list skills --json
 ```
 
 文本输出适合人工阅读，JSON 适合脚本和让 Claude Code 根据精确 catalog 做选择。
@@ -229,7 +229,7 @@ python3 "$KIT" list skills --json
 把任务路由到最小的可复用 workflow，不执行项目命令，也不修改文件：
 
 ```bash
-python3 "$KIT" plan \
+python3 "$CLAUDE_KIT_BIN" plan \
   --project-root . \
   --task "Add an APB wait-state negative test for the hardware under hw/" \
   --json
@@ -238,7 +238,7 @@ python3 "$KIT" plan \
 已知任务类型时可以显式指定：
 
 ```bash
-python3 "$KIT" plan \
+python3 "$CLAUDE_KIT_BIN" plan \
   --project-root . \
   --workflow dv-change \
   --role dv-engineer \
@@ -263,7 +263,7 @@ python3 "$KIT" plan \
 从 profile 和选定的 guidance 生成紧凑的 Markdown context：
 
 ```bash
-python3 "$KIT" context \
+python3 "$CLAUDE_KIT_BIN" context \
   --project-root . \
   --role rtl-designer \
   --pack common \
@@ -282,7 +282,7 @@ roles 和 packs 可以重复指定。不指定时使用 profile defaults。skill
 只输出 resolved context 的机器可读 manifest：
 
 ```bash
-python3 "$KIT" manifest \
+python3 "$CLAUDE_KIT_BIN" manifest \
   --project-root . \
   --role reviewer \
   --pack common \
@@ -297,7 +297,7 @@ manifest 记录 project、profile、roles、packs、skills、task、源路径和
 对 `[roots]` 中声明的项目目录做只读文件和扩展名统计：
 
 ```bash
-python3 "$KIT" inspect --project-root . --json
+python3 "$CLAUDE_KIT_BIN" inspect --project-root . --json
 ```
 
 适合确认 `hw/`、`dv/`、`tb/`、logs 等目录是否存在。它不解析 SystemVerilog、不运行 simulator，也不读取项目根目录外的路径。
@@ -309,7 +309,7 @@ python3 "$KIT" inspect --project-root . --json
 读取项目根目录内有大小限制的 UTF-8 日志、报告或 evidence：
 
 ```bash
-python3 "$KIT" artifact read \
+python3 "$CLAUDE_KIT_BIN" artifact read \
   --project-root . \
   --file out/logs/smoke.log \
   --max-bytes 100000 \
@@ -323,7 +323,7 @@ python3 "$KIT" artifact read \
 生成 evidence 模板：
 
 ```bash
-python3 "$KIT" evidence template \
+python3 "$CLAUDE_KIT_BIN" evidence template \
   --project-root . \
   --output out/evidence.json
 ```
@@ -333,7 +333,7 @@ python3 "$KIT" evidence template \
 根据 profile 和权限策略校验证据：
 
 ```bash
-python3 "$KIT" evidence check \
+python3 "$CLAUDE_KIT_BIN" evidence check \
   --project-root . \
   --file out/evidence.json \
   --strict \
@@ -347,9 +347,9 @@ strict 会把 warning 当作 failure，并检查 passed check 是否有 command 
 执行 profile `[build.commands]` 中声明的一个项目命令：
 
 ```bash
-python3 "$KIT" check inspect --project-root .
-python3 "$KIT" check lint --project-root . --confirm
-python3 "$KIT" check compile --project-root . --confirm --timeout 7200
+python3 "$CLAUDE_KIT_BIN" check inspect --project-root .
+python3 "$CLAUDE_KIT_BIN" check lint --project-root . --confirm
+python3 "$CLAUDE_KIT_BIN" check compile --project-root . --confirm --timeout 7200
 ```
 
 kit 会：
@@ -367,7 +367,7 @@ kit 会：
 只校验可选 adapter，不调用其项目行为：
 
 ```bash
-python3 "$KIT" adapter check --project-root . --json
+python3 "$CLAUDE_KIT_BIN" adapter check --project-root . --json
 ```
 
 它检查 adapter 是否能 import、required functions 是否存在、已知函数签名是否接受参数；不会自动 resolve target、启动 test、连接 VIP 或收集 artifact。
@@ -377,7 +377,7 @@ python3 "$KIT" adapter check --project-root . --json
 通过 stdio 启动薄 MCP bridge。Claude Code 通常由 `.mcp.json` 自动启动；手工执行只适合 bridge 诊断：
 
 ```bash
-python3 "$KIT" mcp serve \
+python3 "$CLAUDE_KIT_BIN" mcp serve \
   --project-root . \
   --profile .ai/project.toml
 ```
@@ -723,8 +723,8 @@ forbidden = [".git/**", "secrets/**", "**/*.key"]
 校验：
 
 ```bash
-python3 "$KIT" doctor --project-root . --strict --json
-python3 "$KIT" inspect --project-root . --json
+python3 "$CLAUDE_KIT_BIN" doctor --project-root . --strict --json
+python3 "$CLAUDE_KIT_BIN" inspect --project-root . --json
 ```
 
 如果 strict evidence 报告 `hw/... is outside the writable scope`，检查配置而不是绕过校验：
@@ -793,7 +793,7 @@ wrapper 虽然有 Python shebang，但 checkout 可能没有 executable bit；�
 从消费项目根目录执行，或同时指定两个路径：
 
 ```bash
-python3 "$KIT" doctor \
+python3 "$CLAUDE_KIT_BIN" doctor \
   --project-root /path/to/consumer-project \
   --profile .ai/project.toml \
   --strict

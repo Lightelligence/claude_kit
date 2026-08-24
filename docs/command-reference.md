@@ -11,20 +11,20 @@ Use this document when you already know what you want to do and need the shortes
 From the consumer project root:
 
 ```bash
-KIT=third_party/claude_kit/bin/claude-kit
+CLAUDE_KIT_BIN=third_party/claude_kit/bin/claude-kit
 
 # Confirm the pinned kit and project profile.
-python3 "$KIT" version
-python3 "$KIT" doctor --project-root . --strict --json
+python3 "$CLAUDE_KIT_BIN" version
+python3 "$CLAUDE_KIT_BIN" doctor --project-root . --strict --json
 
 # See the available reusable pieces.
-python3 "$KIT" list roles
-python3 "$KIT" list skills
-python3 "$KIT" list packs
-python3 "$KIT" list workflows
+python3 "$CLAUDE_KIT_BIN" list roles
+python3 "$CLAUDE_KIT_BIN" list skills
+python3 "$CLAUDE_KIT_BIN" list packs
+python3 "$CLAUDE_KIT_BIN" list workflows
 
 # Route a task before reading a large amount of context or editing files.
-python3 "$KIT" plan \
+python3 "$CLAUDE_KIT_BIN" plan \
   --project-root . \
   --task "Review and fix the AXI4 response path in hw/" \
   --json
@@ -109,10 +109,10 @@ Build, lint, compile, simulation, regression, and collection commands are projec
 Set a short wrapper variable once in a shell session:
 
 ```bash
-KIT=third_party/claude_kit/bin/claude-kit
+CLAUDE_KIT_BIN=third_party/claude_kit/bin/claude-kit
 ```
 
-Every example below can also use an installed `claude-kit` executable instead of `python3 "$KIT"`.
+Every example below can also use an installed `claude-kit` executable instead of `python3 "$CLAUDE_KIT_BIN"`.
 
 ### Common options
 
@@ -129,7 +129,7 @@ Most project-aware commands accept:
 Show the kit version pinned by the checkout or submodule.
 
 ```bash
-python3 "$KIT" version
+python3 "$CLAUDE_KIT_BIN" version
 ```
 
 Use this to distinguish a stale submodule from a current kit checkout. It does not validate the project profile.
@@ -139,7 +139,7 @@ Use this to distinguish a stale submodule from a current kit checkout. It does n
 Create the minimal project integration files without touching RTL, DV, vendor, generated, or build files.
 
 ```bash
-python3 "$KIT" init \
+python3 "$CLAUDE_KIT_BIN" init \
   --project-root . \
   --kit-path third_party/claude_kit
 ```
@@ -157,19 +157,19 @@ Useful modes:
 
 ```bash
 # Only the integration skill; materialize the rest later with sync.
-python3 "$KIT" init --project-root . --minimal
+python3 "$CLAUDE_KIT_BIN" init --project-root . --minimal
 
 # Keep the project-side skill tree empty.
-python3 "$KIT" init --project-root . --no-skills
+python3 "$CLAUDE_KIT_BIN" init --project-root . --no-skills
 
 # Generate the adapter contract template.
-python3 "$KIT" init --project-root . --with-adapter
+python3 "$CLAUDE_KIT_BIN" init --project-root . --with-adapter
 
 # Add or refresh only the claude-kit MCP entry in .mcp.json.
-python3 "$KIT" init --project-root . --with-mcp
+python3 "$CLAUDE_KIT_BIN" init --project-root . --with-mcp
 
 # Explicitly replace kit-generated files.
-python3 "$KIT" init --project-root . --force
+python3 "$CLAUDE_KIT_BIN" init --project-root . --force
 ```
 
 `init` does not enable executable MCP tools. It preserves unrelated project MCP servers. Complete the generated profile before treating `doctor` as an acceptance check.
@@ -179,8 +179,8 @@ python3 "$KIT" init --project-root . --force
 Materialize or refresh the kit-provided Claude Code skills.
 
 ```bash
-python3 "$KIT" sync --project-root .
-python3 "$KIT" sync --project-root . --force
+python3 "$CLAUDE_KIT_BIN" sync --project-root .
+python3 "$CLAUDE_KIT_BIN" sync --project-root . --force
 ```
 
 Without `--force`, existing files are preserved. With `--force`, only kit-managed skill paths are replaced; the profile, project rules, source files, and MCP servers are not changed.
@@ -190,8 +190,8 @@ Without `--force`, existing files are preserved. With `--force`, only kit-manage
 Validate the profile, roots, commands, roles, packs, adapter contract, and permission boundaries.
 
 ```bash
-python3 "$KIT" doctor --project-root . --strict
-python3 "$KIT" doctor --project-root . --strict --json
+python3 "$CLAUDE_KIT_BIN" doctor --project-root . --strict
+python3 "$CLAUDE_KIT_BIN" doctor --project-root . --strict --json
 ```
 
 Use `--strict` before editing, after profile changes, after submodule changes, and before handoff. A strict failure is a gate, not a suggestion to bypass the profile.
@@ -210,12 +210,12 @@ Typical checks include:
 List the reusable catalogs.
 
 ```bash
-python3 "$KIT" list roles
-python3 "$KIT" list packs
-python3 "$KIT" list skills
-python3 "$KIT" list workflows
+python3 "$CLAUDE_KIT_BIN" list roles
+python3 "$CLAUDE_KIT_BIN" list packs
+python3 "$CLAUDE_KIT_BIN" list skills
+python3 "$CLAUDE_KIT_BIN" list workflows
 
-python3 "$KIT" list skills --json
+python3 "$CLAUDE_KIT_BIN" list skills --json
 ```
 
 Text output is convenient for a human. JSON output is useful for scripts and for asking Claude Code to choose from an exact catalog.
@@ -225,7 +225,7 @@ Text output is convenient for a human. JSON output is useful for scripts and for
 Route a task to the smallest reusable workflow without executing project commands or modifying files.
 
 ```bash
-python3 "$KIT" plan \
+python3 "$CLAUDE_KIT_BIN" plan \
   --project-root . \
   --task "Add an APB wait-state negative test for the hardware under hw/" \
   --json
@@ -234,7 +234,7 @@ python3 "$KIT" plan \
 Override routing when the task category is already known:
 
 ```bash
-python3 "$KIT" plan \
+python3 "$CLAUDE_KIT_BIN" plan \
   --project-root . \
   --workflow dv-change \
   --role dv-engineer \
@@ -259,7 +259,7 @@ The result may include:
 Resolve a compact Markdown context from the profile and selected reusable guidance.
 
 ```bash
-python3 "$KIT" context \
+python3 "$CLAUDE_KIT_BIN" context \
   --project-root . \
   --role rtl-designer \
   --pack common \
@@ -278,7 +278,7 @@ Roles and packs can be repeated. Profile defaults are used when they are not spe
 Emit only the machine-readable source manifest for a resolved context.
 
 ```bash
-python3 "$KIT" manifest \
+python3 "$CLAUDE_KIT_BIN" manifest \
   --project-root . \
   --role reviewer \
   --pack common \
@@ -293,7 +293,7 @@ The manifest records the project, profile, selected roles/packs/skills, task tex
 Produce a read-only file and extension summary under the configured project roots.
 
 ```bash
-python3 "$KIT" inspect --project-root . --json
+python3 "$CLAUDE_KIT_BIN" inspect --project-root . --json
 ```
 
 This is useful before a change to confirm that `hw/`, `dv/`, `tb/`, logs, or other configured roots exist. It does not parse SystemVerilog, run a simulator, or inspect paths outside the project root.
@@ -305,7 +305,7 @@ If `hw/` is not listed in the profile's `[roots]` table, `inspect` cannot report
 Read a bounded UTF-8 project artifact such as a log, report, or evidence file.
 
 ```bash
-python3 "$KIT" artifact read \
+python3 "$CLAUDE_KIT_BIN" artifact read \
   --project-root . \
   --file out/logs/smoke.log \
   --max-bytes 100000 \
@@ -319,7 +319,7 @@ The default maximum is 100 KiB; the hard maximum is 1 MiB. The result reports th
 Create a starter evidence file.
 
 ```bash
-python3 "$KIT" evidence template \
+python3 "$CLAUDE_KIT_BIN" evidence template \
   --project-root . \
   --output out/evidence.json
 ```
@@ -329,7 +329,7 @@ python3 "$KIT" evidence template \
 Validate evidence against the profile and permission policy.
 
 ```bash
-python3 "$KIT" evidence check \
+python3 "$CLAUDE_KIT_BIN" evidence check \
   --project-root . \
   --file out/evidence.json \
   --strict \
@@ -343,9 +343,9 @@ Strict validation checks that passed checks have evidence, artifact paths are va
 Run one command declared under `[build.commands]` in the profile.
 
 ```bash
-python3 "$KIT" check inspect --project-root .
-python3 "$KIT" check lint --project-root . --confirm
-python3 "$KIT" check compile --project-root . --confirm --timeout 7200
+python3 "$CLAUDE_KIT_BIN" check inspect --project-root .
+python3 "$CLAUDE_KIT_BIN" check lint --project-root . --confirm
+python3 "$CLAUDE_KIT_BIN" check compile --project-root . --confirm --timeout 7200
 ```
 
 The kit:
@@ -363,7 +363,7 @@ Do not invent simulator arguments at the CLI. Put project-specific behavior in a
 Validate the optional project adapter without invoking its project behavior.
 
 ```bash
-python3 "$KIT" adapter check --project-root . --json
+python3 "$CLAUDE_KIT_BIN" adapter check --project-root . --json
 ```
 
 It checks that the adapter imports, that required functions exist, and that known function signatures accept an argument. It does not automatically resolve targets, launch tests, connect VIP, or collect artifacts.
@@ -373,7 +373,7 @@ It checks that the adapter imports, that required functions exist, and that know
 Run the thin MCP bridge over stdio. Claude Code normally starts this through `.mcp.json`; use the command manually only for bridge diagnostics.
 
 ```bash
-python3 "$KIT" mcp serve \
+python3 "$CLAUDE_KIT_BIN" mcp serve \
   --project-root . \
   --profile .ai/project.toml
 ```
@@ -728,8 +728,8 @@ If the project also keeps a separate `rtl/` tree, add `rtl = ["rtl"]` and `rtl/*
 Validate the change:
 
 ```bash
-python3 "$KIT" doctor --project-root . --strict --json
-python3 "$KIT" inspect --project-root . --json
+python3 "$CLAUDE_KIT_BIN" doctor --project-root . --strict --json
+python3 "$CLAUDE_KIT_BIN" inspect --project-root . --json
 ```
 
 If strict evidence later reports `hw/... is outside the writable scope`, check both declarations rather than bypassing validation:
@@ -798,7 +798,7 @@ The wrapper has a Python shebang but a checkout may not preserve its executable 
 Run from the consumer project root or specify both paths:
 
 ```bash
-python3 "$KIT" doctor \
+python3 "$CLAUDE_KIT_BIN" doctor \
   --project-root /path/to/consumer-project \
   --profile .ai/project.toml \
   --strict
