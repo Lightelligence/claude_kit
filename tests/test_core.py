@@ -38,6 +38,7 @@ class CoreTests(unittest.TestCase):
     def test_catalogs_have_expected_entries(self) -> None:
         self.assertIn("reviewer", {item["id"] for item in role_catalog()})
         self.assertIn("waveform-debugger", {item["id"] for item in role_catalog()})
+        self.assertIn("commander", {item["id"] for item in role_catalog()})
         self.assertIn("protocols.apb", {item["id"] for item in pack_catalog()})
         self.assertIn("protocols.chi", {item["id"] for item in pack_catalog()})
         self.assertIn("protocols.axi4lite", {item["id"] for item in pack_catalog()})
@@ -207,6 +208,24 @@ class CoreTests(unittest.TestCase):
         result = run_project_command(FIXTURE, profile, "confirmed", confirm=True)
         self.assertEqual(result["status"], "passed")
         self.assertIn("fixture confirmed", result["stdout"])
+
+    def test_simulation_kind_requires_confirmation_by_default(self) -> None:
+        profile = {
+            "project": {"id": "simulation_gate"},
+            "build": {
+                "commands": {
+                    "simulate": {
+                        "argv": ["python", "-c", "print('simulation')"],
+                        "cwd": ".",
+                        "kind": "simulation",
+                    }
+                }
+            },
+        }
+        with self.assertRaisesRegex(KitError, "expensive simulation workload"):
+            run_project_command(FIXTURE, profile, "simulate")
+        result = run_project_command(FIXTURE, profile, "simulate", confirm=True)
+        self.assertEqual(result["status"], "passed")
 
     def test_command_timeout_returns_structured_failure(self) -> None:
         profile = {

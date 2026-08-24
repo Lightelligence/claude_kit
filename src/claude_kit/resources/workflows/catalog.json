@@ -40,13 +40,15 @@
         "Translate requirements into positive, boundary, negative, reset and recovery scenarios.",
         "Map each scenario to stimulus, observation, checking and coverage evidence.",
         "Preserve clear driver, monitor, scoreboard, reference-model and assertion responsibilities.",
-        "Run one focused test before requesting a wider regression.",
+        "Complete static and lint validation, then pause before simulation or regression.",
+        "After explicit approval or commander delegation, run one focused test before requesting a wider regression.",
         "Separate DUT failures, sampling gaps, environment failures and coverage gaps."
       ],
       "completion": [
         "The selected test and source revision are recorded.",
         "Expected behavior and failure diagnostics are explicit.",
-        "Coverage and assertion gaps remain visible instead of being inferred away."
+        "Coverage and assertion gaps remain visible instead of being inferred away.",
+        "Simulation and regression are either supported by execution evidence or marked not run, skipped or blocked."
       ]
     },
     {

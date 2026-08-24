@@ -106,7 +106,11 @@ forbidden = [".git/**", "secrets/**", "**/*.key"]
 - 默认 MCP tools；
 - Claude Code 对 profile 和 catalogs 的读取。
 
-build、lint、compile、simulation、regression 和 artifact collection 命令属于消费项目。它们必须在 `[build.commands]` 中声明；`confirmation = "required"` 的命令必须显式确认。需要 license 或远程资源的 workload 应继续由项目 wrapper 和批准的 runner 流程负责。
+build、lint、compile、simulation、regression 和 artifact collection 命令属于消费项目。它们必须在 `[build.commands]` 中声明；`confirmation = "required"` 的命令必须显式确认。`kind = "simulation"` 或 `kind = "regression"` 的命令即使没有填写 `confirmation` 或填写为 `optional`，也必须显式确认。需要 license 或远程资源的 workload 应继续由项目 wrapper 和批准的 runner 流程负责。
+
+新建或修改 DV test 时，默认 implementation 路径在 planning、static/lint
+检查和 evidence 后结束，不会自动启动 simulation 或 regression。运行 focused
+test 前先询问，或者只有在用户明确委托后才交给 `commander` role 执行。
 
 ## 4. CLI 参考
 
@@ -821,7 +825,10 @@ skills 是显式选择的。给 MCP `resolve_context` 传 `skills` array，或�
 
 ### `check` 或 `run_check` 被拒绝
 
-确认命令存在于 `[build.commands]`、cwd 存在，并满足 confirmation policy。默认 MCP bridge 不暴露 `run_check`，这是有意的安全边界。
+确认命令存在于 `[build.commands]`、cwd 存在，并满足 confirmation policy。
+`kind = "simulation"` 或 `kind = "regression"` 的命令无论 profile 中是否为
+optional，都必须使用 `--confirm`（`run_check` 使用 `confirm=true`）。默认 MCP
+bridge 不暴露 `run_check`，这是有意的安全边界。
 
 ### MCP startup timeout
 

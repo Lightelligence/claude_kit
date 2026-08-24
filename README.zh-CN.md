@@ -13,7 +13,7 @@ claude_kit 把通用 RTL/DV roles、protocol/VIP packs、项目 profile、repo-l
 - profile 解析和校验，支持 TOML/JSON；
 - 项目根目录发现和路径权限检查；
 - context resolver 和可审计 manifest；
-- 10 个通用 RTL/DV roles，包括 waveform-debugger 和 regression-triager；
+- 11 个通用 RTL/DV roles，包括 waveform-debugger、regression-triager 和显式委托的执行 commander；
 - 8 个可按需同步或触发的通用 skills；
 - 6 个可按任务路由的 RTL/DV workflows；
 - common、AXI4、AXI4-Lite、AXI4-Stream、APB、AHB、Wishbone、Ethernet、PCIe、UCIe、SPI、UART、JTAG、I2C、CHI 和 generic VIP packs；
@@ -494,6 +494,7 @@ Adapter 不应该：
 | debugger | compile、elaboration、simulation、assertion、scoreboard 和 timeout debug |
 | waveform-debugger | 波形、transaction、时序和状态机分析 |
 | regression-triager | 从 focused check 到 regression 的选择、分类、复现和结果比较 |
+| commander | 已明确批准/委托的 simulation 或 regression 执行和 evidence 采集 |
 | reviewer | 只读 RTL/DV review |
 | evidence-reviewer | 交付前 evidence、日志和未验证声明检查 |
 
@@ -509,6 +510,19 @@ Role 的共通流程：
 6. 记录命令、结果、跳过的检查和剩余风险。
 
 没有运行仿真时，必须明确写“未运行仿真”，不能写“验证通过”。
+
+### DV execution gate
+
+新建或修改 DV test 首先是 implementation work。默认完成路径是规划、
+testbench 修改、profile/只读 inspect、static 或 lint 检查和 evidence；不会
+自动启动 simulation 或 regression。
+
+启动 simulation 或 regression 前，先询问并展示 profile command、target、
+test selector、simulator、预计运行/资源成本和 artifact 位置。只有用户明确
+批准或明确委托时才使用 `commander` role；它仍然只能使用 profile 声明的
+wrapper。即使没有填写 `confirmation`，或者填写为 `optional`，
+`kind = "simulation"`/`"regression"` 的 profile command 也必须显式传入
+`--confirm`。
 
 ## Skills
 
@@ -937,8 +951,10 @@ workflow 里不存在项目绝对路径、VIP class、license、scheduler 或 si
 3. 区分 driver、monitor、sequencer、scoreboard、reference model 和 coverage。
 4. 规划 positive、boundary、negative、reset 和 recovery 场景。
 5. 明确比较时点、排序、ID、mask、延迟和容忍范围。
-6. 先运行单 test，再根据证据扩大回归。
-7. 检查 assertion、functional coverage 和 scoreboard evidence。
+6. 先完成 static/lint 检查并记录 implementation evidence。运行 simulation
+   前先询问；用户批准或委托给 `commander` 后，再运行单 test 并根据证据扩大回归。
+7. 检查 assertion、functional coverage、scoreboard evidence、simulation 状态
+   和覆盖缺口。
 
 test 结束不等于验证完成；必须说明关键 corner case 和覆盖缺口。
 

@@ -102,7 +102,12 @@ The following are read-only or planning operations:
 - the default MCP tools;
 - profile and catalog reads from Claude Code.
 
-Build, lint, compile, simulation, regression, and collection commands are project-owned. They must be declared under `build.commands`; commands marked `confirmation = "required"` need explicit confirmation. Licensed or remote workloads should remain behind the project wrapper and the project's approved runner flow.
+Build, lint, compile, simulation, regression, and collection commands are project-owned. They must be declared under `build.commands`; commands marked `confirmation = "required"` need explicit confirmation. A command whose `kind` is `simulation` or `regression` always needs explicit confirmation, even when `confirmation` is omitted or `optional`. Licensed or remote workloads should remain behind the project wrapper and the project's approved runner flow.
+
+For a newly created or modified DV test, the default implementation path ends
+with planning, static/lint checks and evidence. It does not start simulation or
+regression. Ask before running an approved focused test, or explicitly delegate
+that execution to the `commander` role.
 
 ## 4. CLI reference
 
@@ -826,7 +831,11 @@ Use a project-relative path under the project root. Read large logs in bounded c
 
 ### `check` or `run_check` is refused
 
-Confirm that the command exists under `[build.commands]`, that its cwd exists, and that the confirmation policy is satisfied. The default MCP bridge does not expose `run_check`; this is intentional.
+Confirm that the command exists under `[build.commands]`, that its cwd exists,
+and that the confirmation policy is satisfied. Commands with
+`kind = "simulation"` or `kind = "regression"` require `--confirm` (or
+`confirm=true` for `run_check`) regardless of the profile's optional policy.
+The default MCP bridge does not expose `run_check`; this is intentional.
 
 ### MCP startup times out
 

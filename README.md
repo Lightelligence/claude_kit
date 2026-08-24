@@ -15,7 +15,7 @@ The repository currently provides a runnable Python MVP with:
 - TOML and JSON project-profile loading and validation;
 - project-root discovery and path-boundary checks;
 - context resolution and auditable manifests;
-- ten reusable RTL/DV roles, including waveform debugging and regression triage;
+- eleven reusable RTL/DV roles, including waveform debugging, regression triage and explicitly delegated execution;
 - eight reusable skills that can be synchronized into a project on demand;
 - six task-routing RTL/DV workflows;
 - common, AXI4, AXI4-Lite, AXI4-Stream, APB, AHB, Wishbone, Ethernet, PCIe, UCIe, SPI, UART, JTAG, I2C, CHI, and generic VIP packs;
@@ -510,6 +510,7 @@ The built-in roles are:
 | debugger | Compile, elaboration, simulation, assertion, scoreboard, and timeout diagnosis |
 | waveform-debugger | Waveform, transaction, timing, and state-machine analysis |
 | regression-triager | Focused-to-regression selection, classification, reproduction, and comparison |
+| commander | Explicitly approved simulation/regression execution and evidence capture |
 | reviewer | Read-only RTL/DV review |
 | evidence-reviewer | Evidence, logs, skipped checks, and delivery review |
 
@@ -525,6 +526,21 @@ A role should:
 6. record commands, results, skipped checks, and residual risks.
 
 If no simulation was run, state that explicitly. Do not report a change as verified merely because the code was edited.
+
+### DV execution gate
+
+Creating or modifying a DV test is implementation work first. The default
+completion path is planning, testbench edits, profile/read-only inspection,
+static or lint checks, and evidence. It does not start simulation or
+regression automatically.
+
+Before a simulation or regression, ask for approval and show the profile
+command, target, test selector, simulator, expected runtime/resource cost and
+artifact location. The `commander` role is available for an explicitly
+approved or explicitly delegated run; it still uses only profile-declared
+wrappers. A profile command with `kind = "simulation"` or
+`kind = "regression"` also requires explicit `--confirm`, even when its
+`confirmation` field is omitted or optional.
 
 ## Skills
 
@@ -937,8 +953,11 @@ Use dv-architect with dv-engineer:
 3. Separate driver, monitor, sequencer, scoreboard, reference model, and coverage responsibilities.
 4. Plan positive, boundary, negative, reset, and recovery scenarios.
 5. Define comparison timing, ordering, IDs, masks, latency, and tolerance.
-6. Run one focused test before expanding to regression.
-7. Review assertions, functional coverage, scoreboard evidence, and gaps.
+6. Finish static/lint checks and record the implementation evidence. Ask before
+   running simulation; if the user approves or delegates to `commander`, run
+   one focused test before expanding to regression.
+7. Review assertions, functional coverage, scoreboard evidence, simulation
+   status and gaps.
 
 A passing test is not the same as complete verification. Report important corner cases and coverage gaps.
 

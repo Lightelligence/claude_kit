@@ -934,6 +934,14 @@ def _process_output(value: str | bytes | None) -> str:
     return str(value)
 
 
+def _requires_explicit_confirmation(command: dict[str, Any]) -> bool:
+    if command.get("confirmation") == "required":
+        return True
+    kind = command.get("kind")
+    normalized_kind = kind.strip().lower().replace("-", "_") if isinstance(kind, str) else ""
+    return normalized_kind in {"simulation", "regression"}
+
+
 def run_project_command(
     root: Path,
     profile: dict[str, Any],
@@ -957,7 +965,12 @@ def run_project_command(
     confirmation = command.get("confirmation")
     if confirmation not in (None, "required", "optional"):
         raise KitError(f"Invalid confirmation policy for command: {name}")
-    if confirmation == "required" and not confirm:
+    if _requires_explicit_confirmation(command) and not confirm:
+        kind = str(command.get("kind", "command")).strip().lower()
+        if kind in {"simulation", "regression"}:
+            raise KitError(
+                f"Command {name} is an expensive {kind} workload and requires explicit confirmation (--confirm)"
+            )
         raise KitError(f"Command {name} requires explicit confirmation (--confirm)")
     cwd_value = command.get("cwd", ".")
     cwd = _project_path(root, cwd_value, f"Command cwd for {name}")
