@@ -76,6 +76,7 @@ Claude Code
 - [Skills](#skills)
 - [Protocol/VIP packs](#protocolvip-packs)
 - [CLI 参考](#cli-参考)
+- [命令与工具速查](docs/command-reference.zh-CN.md)
 - [Context 和 manifest](#context-和-manifest)
 - [Workflow planner](#workflow-planner)
 - [典型 RTL/DV 工作流](#典型-rtldv-工作流)
@@ -256,6 +257,7 @@ my_rtl_project/
 │   └── skills/
 ├── CLAUDE.md                       # 项目已有规则时可继续保留
 ├── .mcp.json                       # 可选：项目自己的 MCP 连接
+├── hw/                             # 硬件实现目录（通常可写）
 ├── rtl/
 ├── dv/
 ├── tb/
@@ -331,6 +333,7 @@ language = "systemverilog"
 platform = "linux"
 
 [roots]
+hw = ["hw"]
 rtl = ["rtl"]
 dv = ["dv"]
 testbench = ["tb"]
@@ -375,7 +378,7 @@ axi4_interface = "axi_if"
 apb_interface = "apb_if"
 
 [permissions]
-writable = ["rtl/**", "dv/**", "tb/**", "docs/**", ".ai/overrides/**"]
+writable = ["hw/**", "rtl/**", "dv/**", "tb/**", "docs/**", ".ai/overrides/**"]
 read_only = ["third_party_vip/**", "generated/**", "out/**"]
 forbidden = [".git/**", "secrets/**", "**/*.key"]
 
@@ -568,6 +571,8 @@ Pack 只提供领域规则，不提供项目绝对路径、license、VIP class�
 
 ## CLI 参考
 
+需要按任务快速查命令、MCP 参数、Claude Code prompt、`hw/**` 示例和故障排查时，请看[命令与工具速查](docs/command-reference.zh-CN.md)。
+
 ### 总览
 
 ~~~text
@@ -597,7 +602,7 @@ claude-kit mcp serve
 claude-kit version
 ~~~
 
-显示 kit 版本。当前版本为 0.2.0。
+显示 kit 版本。当前版本为 0.2.1。
 
 ### init
 

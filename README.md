@@ -85,6 +85,7 @@ The MCP bridge here is the Claude Code interface. It is unrelated to any project
 - [Skills](#skills)
 - [Protocol and VIP packs](#protocol-and-vip-packs)
 - [CLI reference](#cli-reference)
+- [Command and tool reference](docs/command-reference.md)
 - [Context and manifests](#context-and-manifests)
 - [Workflow planner](#workflow-planner)
 - [Typical RTL/DV workflows](#typical-rtldv-workflows)
@@ -273,6 +274,7 @@ my_rtl_project/
 |   +-- skills/
 +-- CLAUDE.md                       # existing project rules, if any
 +-- .mcp.json                       # optional project MCP connections
++-- hw/                             # hardware implementation (normally writable)
 +-- rtl/
 +-- dv/
 +-- tb/
@@ -348,6 +350,7 @@ language = "systemverilog"
 platform = "linux"
 
 [roots]
+hw = ["hw"]
 rtl = ["rtl"]
 dv = ["dv"]
 testbench = ["tb"]
@@ -392,7 +395,7 @@ axi4_interface = "axi_if"
 apb_interface = "apb_if"
 
 [permissions]
-writable = ["rtl/**", "dv/**", "tb/**", "docs/**", ".ai/overrides/**"]
+writable = ["hw/**", "rtl/**", "dv/**", "tb/**", "docs/**", ".ai/overrides/**"]
 read_only = ["third_party_vip/**", "generated/**", "out/**"]
 forbidden = [".git/**", "secrets/**", "**/*.key"]
 
@@ -575,6 +578,8 @@ A protocol pack should cover at least:
 - checks and evidence expected from a smoke test.
 
 ## CLI reference
+
+For a task-oriented command lookup with MCP arguments, Claude Code prompts, `hw/**` examples, and troubleshooting, see the [Command and Tool Reference](docs/command-reference.md).
 
 ### Command overview
 

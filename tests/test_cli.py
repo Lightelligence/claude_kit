@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 from pathlib import Path
 
@@ -162,6 +163,18 @@ class CliTests(unittest.TestCase):
             server = config["mcpServers"]["claude-kit"]
             self.assertEqual(server["type"], "stdio")
             self.assertIn("mcp", server["args"])
+
+    def test_init_template_includes_hw_as_writable_scope(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            project.mkdir()
+            result = self.run_cli(
+                "init", "--project-root", str(project), "--no-skills",
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            profile = tomllib.loads((project / ".ai" / "project.toml").read_text(encoding="utf-8"))
+            self.assertEqual(profile["roots"]["hw"], ["hw"])
+            self.assertIn("hw/**", profile["permissions"]["writable"])
 
     def test_init_no_skills_flag_is_available(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -10,6 +10,7 @@ language = "systemverilog"
 platform = "linux"
 
 [roots]
+hw = ["hw"]
 rtl = ["rtl"]
 dv = ["dv"]
 testbench = ["tb"]
@@ -37,7 +38,7 @@ simulator = "project-configured"
 # required_functions = ["resolve_target", "resolve_test"]
 
 [permissions]
-writable = ["rtl/**", "dv/**", "tb/**", "docs/**", ".ai/overrides/**"]
+writable = ["hw/**", "rtl/**", "dv/**", "tb/**", "docs/**", ".ai/overrides/**"]
 read_only = ["third_party_vip/**", "generated/**", "out/**"]
 forbidden = [".git/**", "secrets/**"]
 
