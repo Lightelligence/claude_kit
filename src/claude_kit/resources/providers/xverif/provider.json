@@ -39,6 +39,7 @@
   "requirements": [
     "Python 3.11 or newer for xverif-mcp",
     "A separately installed and licensed xverif checkout",
+    "Upstream xdebug currently documents V-2023.12-SP2 as its tested Verdi/NPI baseline; other releases require local compatibility validation",
     "A separately installed and licensed Synopsys Verdi/NPI/FSDB or coverage runtime for vendor-backed operations",
     "Project-owned MCP environment with XVERIF_HOME and any required license, Verdi and LSF variables"
   ],
