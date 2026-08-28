@@ -76,8 +76,25 @@ wrapper，但要保持同一环境和 MCP contract。direct 模式示例：
 }
 ```
 
-LSF 模式把 `XVERIF_MCP_BACKEND` 设为 `lsf`，并提供项目完整的 LSF、Verdi 和
-license 环境。不要把真实凭证或 site-specific 绝对路径放进 `claude_kit`。
+LSF 模式把 `XVERIF_MCP_BACKEND` 设为 `lsf`，并确保项目批准的 LSF/simulation
+launcher 把完整的 LSF、Verdi 和 license 环境传给 xverif 进程。不要假设一个
+单独启动的 MCP 进程会自动获得 simulation job 后来才加载的变量。不要把真实
+凭证或 site-specific 绝对路径放进 `claude_kit`；应放在消费项目未跟踪的本地
+配置或批准的 secret 机制中。
+
+### Vendor 环境加载时机和进程边界
+
+普通 Claude Code shell 不需要手工 export `VERDI_HOME` 或 `VCS_HOME`。有些项目
+只有在显式选择 simulation、由项目注册的 `simmer` 或 simulation launcher 启动
+之后，才会加载这些 vendor 变量。kit 不会为了准备环境而自动运行 simulation。
+
+需要 Verdi/VCS 的 xdebug action 必须运行在同一个已批准的 simulation 环境中启动
+的 xverif MCP 进程里，或者运行在能够继承该环境的项目批准 wrapper/LSF launcher
+里。单独启动的 `simmer` 进程不能回头更新已经运行的 MCP 子进程。如果 MCP server
+早于 vendor 环境启动，应在选择 simulation 后使用项目支持的 MCP reload/restart
+路径；不要通过把 site path 或 credential 写进 kit 来绕过这个进程边界。direct
+示例中的 `VERDI_HOME`/`VCS_HOME` 只是有环境感知能力的 launcher 的占位符，并不
+要求每一次普通 Claude Code 会话都手工设置。
 
 如果希望 profile 显示 provider 关系，可以加：
 
@@ -147,6 +164,8 @@ python third_party/claude_kit/bin/claude-kit context \
   --task "规划确定性的波形证据，不运行 simulation"
 ```
 
-然后通过项目已有的 MCP smoke/validation 路径测试真实 xverif server。kit-only pass
-只能证明 metadata、skill materialization 和 profile contract 正确，不能证明 Verdi/NPI
-或 licensed waveform access 可用。
+然后通过项目已有的 MCP smoke/validation 路径测试真实 xverif server。如果 validation
+包含依赖 vendor 的 xdebug action，应当在启动 MCP 进程的同一个批准的
+simulation/simmer 环境中执行 probe。kit-only pass 只能证明 metadata、skill
+materialization 和 profile contract 正确，不能证明 Verdi/NPI 或 licensed waveform
+access 可用。

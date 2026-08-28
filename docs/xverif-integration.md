@@ -81,10 +81,32 @@ MCP contract. A direct-mode example is:
 }
 ```
 
-For an LSF-backed project, set `XVERIF_MCP_BACKEND` to `lsf` and provide the
-project's complete LSF, Verdi and license environment. Do not put real
-credentials or site-specific absolute paths in `claude_kit`; keep them in the
-consumer's untracked/local configuration or approved secret mechanism.
+For an LSF-backed project, set `XVERIF_MCP_BACKEND` to `lsf` and make the
+project's approved LSF/simulation launcher pass the complete LSF, Verdi and
+license environment to the xverif process. Do not assume that a separately
+started MCP process will acquire variables that are loaded later by a
+simulation job. Do not put real credentials or site-specific absolute paths
+in `claude_kit`; keep them in the consumer's untracked/local configuration or
+approved secret mechanism.
+
+### Vendor environment timing and process boundaries
+
+The ordinary Claude Code shell does not need to export `VERDI_HOME` or
+`VCS_HOME` by hand. Some projects load those vendor variables only when an
+explicit simulation is selected and the project's registered `simmer` or
+simulation launcher starts. The kit does not auto-run a simulation just to
+prepare an environment.
+
+An xdebug action that needs Verdi/VCS must run in an xverif MCP process started
+from that same approved simulation environment, or from a project-approved
+wrapper/LSF launcher that inherits it. A separate `simmer` process cannot
+retroactively update the environment of an already-running MCP child. If the
+MCP server was started before the vendor environment became available, use the
+project's supported MCP reload/restart path after selecting the simulation;
+do not work around the boundary by adding site paths or credentials to the
+kit. The `VERDI_HOME`/`VCS_HOME` entries in the direct-mode example are
+therefore placeholders for a deliberately environment-aware launcher, not a
+requirement for every ordinary Claude Code session.
 
 An optional profile declaration makes the relationship visible to the kit
 without duplicating the launcher:
@@ -165,5 +187,7 @@ python third_party/claude_kit/bin/claude-kit context \
 ```
 
 Then use the project's registered MCP smoke/validation path to test the real
-xverif server. A kit-only pass proves metadata, skill materialization and
+xverif server. If the validation includes a vendor-backed xdebug action, run
+that probe from the same approved simulation/simmer environment that starts
+the MCP process. A kit-only pass proves metadata, skill materialization and
 profile contracts; it does not prove Verdi/NPI or licensed waveform access.
