@@ -1263,6 +1263,28 @@ A project may use any local or remote infrastructure inside its own wrapper. The
 
 ## Development and testing
 
+### GitHub and GitLab parity
+
+The repository is maintained for both GitHub and GitLab. Keep package code,
+tests, resource catalogs, and documentation hosting-neutral; hosting-specific
+behavior belongs only in the corresponding CI adapter:
+
+- GitHub: `.github/workflows/ci.yml` runs the supported Python matrix.
+- GitLab: `.gitlab-ci.yml` runs the same Python matrix and the same compile,
+  unittest, installation, CLI, and planner smoke checks.
+- Review ownership: the root `CODEOWNERS` file applies to both hosting flows.
+- Git remotes: in a checkout with both hosts configured, use the `github`
+  remote for the public GitHub repository and `origin` for the internal
+  GitLab/IDC repository. Verify the actual URLs with `git remote -v` before
+  fetching or pushing; remote names are local Git configuration, not tracked
+  source files.
+
+A normal change must pass the local checks and the CI check on whichever host
+receives the change. GitHub pull requests and GitLab merge requests use the
+same branch contents and review expectations. Do not put credentials, license
+paths, scheduler details, or host-specific filesystem paths into the kit just
+to make one CI platform pass.
+
 ### Local checks
 
 ~~~powershell
@@ -1270,7 +1292,10 @@ python -m compileall -q src bin
 python -m unittest discover -s tests -v
 ~~~
 
-The repository CI workflow runs the same compile, installation, CLI, and unittest checks across supported Python versions. It does not start a simulator, submit ETX/bsub work, or require a project license.
+The repository GitHub Actions workflow and GitLab CI pipeline run the same
+compile, installation, CLI, and unittest checks across supported Python
+versions. They do not start a simulator, submit ETX/bsub work, or require a
+project license.
 
 The fixtures cover:
 

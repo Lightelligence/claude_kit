@@ -1,0 +1,28 @@
+stages:
+  - test
+
+default:
+  interruptible: true
+  cache: {}
+
+variables:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
+
+test:
+  stage: test
+  image: python:${PYTHON_VERSION}-slim
+  parallel:
+    matrix:
+      - PYTHON_VERSION: ["3.11", "3.12", "3.13"]
+  script:
+    - python --version
+    - python -m pip install --no-cache-dir --no-deps --editable .
+    - python -m compileall -q src bin
+    - python -m unittest discover -s tests -v
+    - claude-kit version
+    - claude-kit list roles --json
+    - claude-kit list packs --json
+    - claude-kit list skills --json
+    - claude-kit list workflows --json
+    - claude-kit plan --project-root tests/fixtures/minimal_project --task "debug APB timeout" --json

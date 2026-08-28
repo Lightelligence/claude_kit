@@ -1259,6 +1259,26 @@ MCP 配置是可选的。项目的 .mcp.json 只负责连接 bridge；profile、
 
 ## 开发和测试
 
+### 同时兼容 GitHub 和 GitLab
+
+本仓库同时面向 GitHub 和 GitLab 维护。package code、tests、resource
+catalog 和文档应保持 hosting-neutral；与托管平台相关的行为只放在对应
+的 CI 适配层中：
+
+- GitHub：`.github/workflows/ci.yml` 执行受支持的 Python 版本矩阵。
+- GitLab：`.gitlab-ci.yml` 执行相同的 Python 矩阵，以及相同的 compile、
+  unittest、安装态、CLI 和 planner smoke 检查。
+- review ownership：仓库根目录的 `CODEOWNERS` 同时用于两种托管流程。
+- Git remote：同时配置两个托管端的 checkout 使用 `github` 指向公共
+  GitHub 仓库，使用 `origin` 指向内部 GitLab/IDC 仓库。fetch 或 push
+  前先用 `git remote -v` 核对实际 URL；remote 名称属于本地 Git 配置，
+  不是仓库中可 merge 的 source file。
+
+普通改动需要通过本地检查，以及接收该改动的托管平台 CI。GitHub pull
+request 和 GitLab merge request 使用相同的 branch 内容和 review 要求。
+不要为了让某一个 CI 平台通过，而把 credential、license path、scheduler
+细节或 host-specific filesystem path 写入 kit。
+
 ### 本地测试
 
 ~~~powershell
@@ -1266,7 +1286,9 @@ python -m compileall -q src bin
 python -m unittest discover -s tests -v
 ~~~
 
-仓库的 `.github/workflows/ci.yml` 会在 Python 3.11、3.12、3.13 上执行同一组 compile、安装态 CLI 和 unittest 检查；它不启动 simulator、不提交 ETX/bsub 作业，也不需要项目 license。
+仓库的 GitHub Actions workflow 和 GitLab CI pipeline 会在 Python 3.11、
+3.12、3.13 上执行同一组 compile、安装态 CLI 和 unittest 检查；它们不启动
+simulator、不提交 ETX/bsub 作业，也不需要项目 license。
 
 当前 fixture 覆盖：
 
