@@ -585,6 +585,10 @@ class CoreTests(unittest.TestCase):
             self.assertTrue((root / ".claude/skills/xverif/references/core/execution-model.md").is_file())
             self.assertTrue((root / ".claude/skills/xverif-admin/references/mcp/overview.md").is_file())
             self.assertTrue((root / ".claude/skills/x-npi/scripts/examples/apb_summary.py").is_file())
+            prompt = root / ".claude/skills/xwiki/references/prompts/bt/prompts/backpressure.md"
+            self.assertTrue(prompt.is_file())
+            self.assertTrue(prompt.read_text(encoding="utf-8").endswith("\n"))
+            self.assertFalse(prompt.read_text(encoding="utf-8").endswith("\n\n"))
 
     def test_sync_rejects_skills_symlink_that_escapes_project(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

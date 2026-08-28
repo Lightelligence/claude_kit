@@ -1748,7 +1748,11 @@ def _skill_targets(root: Path) -> dict[Path, str]:
             if not candidate.is_file():
                 continue
             relative = candidate.relative_to(source_root)
-            targets[target_root / relative] = candidate.read_text(encoding="utf-8")
+            # Keep materialized project files clean even when an upstream
+            # guidance file has one or more blank lines at EOF.  This is
+            # formatting-only and avoids introducing `git diff --check`
+            # errors into consumer repositories.
+            targets[target_root / relative] = candidate.read_text(encoding="utf-8").rstrip() + "\n"
     return targets
 
 
