@@ -21,6 +21,7 @@ python3 "$CLAUDE_KIT_BIN" doctor --project-root . --strict --json
 python3 "$CLAUDE_KIT_BIN" list roles
 python3 "$CLAUDE_KIT_BIN" list skills
 python3 "$CLAUDE_KIT_BIN" list packs
+python3 "$CLAUDE_KIT_BIN" list providers
 python3 "$CLAUDE_KIT_BIN" list workflows
 
 # Route a task before reading a large amount of context or editing files.
@@ -47,6 +48,7 @@ When `.mcp.json` contains the generated `claude-kit` entry, Claude Code starts t
 | Discover roles | `list roles` | `list_roles` |
 | Discover protocol/VIP packs | `list packs` | `list_packs` |
 | Discover skills | `list skills` | `list_skills` |
+| Discover registered external providers | `list providers` | `list_providers` |
 | Discover workflows | `list workflows` | `list_workflows` |
 | Decide how to approach a task | `plan --task ...` | `plan_task` |
 | Load selected role/pack/skill guidance | `context ...` | `resolve_context` |
@@ -193,7 +195,7 @@ python3 "$CLAUDE_KIT_BIN" sync --project-root .
 python3 "$CLAUDE_KIT_BIN" sync --project-root . --force
 ```
 
-Without `--force`, existing files are preserved. With `--force`, only kit-managed skill paths are replaced; the profile, project rules, source files, and MCP servers are not changed.
+Without `--force`, existing files are preserved. With `--force`, only kit-managed skill paths are replaced; the profile, project rules, source files, and MCP servers are not changed. The sync is recursive: skills such as `xverif` include their `references/`, scripts, specs, and examples, not only the top-level `SKILL.md`.
 
 ### `doctor`
 
@@ -223,12 +225,39 @@ List the reusable catalogs.
 python3 "$CLAUDE_KIT_BIN" list roles
 python3 "$CLAUDE_KIT_BIN" list packs
 python3 "$CLAUDE_KIT_BIN" list skills
+python3 "$CLAUDE_KIT_BIN" list providers
 python3 "$CLAUDE_KIT_BIN" list workflows
 
 python3 "$CLAUDE_KIT_BIN" list skills --json
+python3 "$CLAUDE_KIT_BIN" list providers --json
 ```
 
 Text output is convenient for a human. JSON output is useful for scripts and for asking Claude Code to choose from an exact catalog.
+
+### `list providers`
+
+List version-pinned external provider contracts bundled by the kit. A provider
+describes the Claude-facing skills, project-owned MCP server name, expected
+backend choices, and required tool contract; it does not install or vendor an
+EDA runtime.
+
+```bash
+python3 "$CLAUDE_KIT_BIN" list providers
+python3 "$CLAUDE_KIT_BIN" list providers --json
+```
+
+For the bundled `xverif` provider, use the JSON output to verify the upstream
+repository, exact commit, skill IDs, server name, and required xdebug tools
+before adapting a consumer project. The project still owns `.mcp.json`,
+`XVERIF_HOME`, Python/environment selection, licenses, and direct-versus-LSF
+backend configuration.
+
+Claude Code equivalent:
+
+```text
+Call list_providers. Show the xverif upstream commit, skills, MCP server name,
+required tools, and runtime prerequisites. Do not start a session or run EDA.
+```
 
 ### `plan`
 
@@ -552,6 +581,31 @@ Claude Code example:
 
 ```text
 Call list_skills and identify the smallest skill set for an RTL change, a DV change, and a waveform/debugging task. Do not load every skill into context.
+```
+
+### `list_providers`
+
+Purpose: list the external provider contracts that the kit knows how to
+describe to Claude Code.
+
+Arguments:
+
+```json
+{}
+```
+
+Use it before configuring or troubleshooting an external MCP provider. It is
+read-only and returns provider metadata, including the pinned upstream
+provenance, skill IDs, server name, backend choices, required tools, and
+runtime boundaries. It does not launch the provider, inspect a waveform, open
+a debug session, or execute an EDA command.
+
+Claude Code example:
+
+```text
+Call list_providers. For xverif, summarize the pinned source commit, skills,
+server name, backend options, required tools, and what remains project-owned.
+Do not guess a target, action, simulator, or XVERIF_HOME path.
 ```
 
 ### `list_workflows`
@@ -994,6 +1048,7 @@ src/claude_kit/resources/templates/SKILL.md
 src/claude_kit/resources/claude/CLAUDE.md
 src/claude_kit/resources/roles/
 src/claude_kit/resources/skills/
+src/claude_kit/resources/providers/
 src/claude_kit/resources/packs/
 src/claude_kit/resources/workflows/catalog.json
 tests/test_cli.py
