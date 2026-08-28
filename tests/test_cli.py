@@ -56,10 +56,16 @@ class CliTests(unittest.TestCase):
         self.assertIn("A separate `simmer` process cannot", english)
         self.assertIn("retroactively update", english)
         self.assertIn("does not auto-run a simulation", english)
+        self.assertIn("Native/runtime compatibility preflight", english)
+        self.assertIn("output.view=guide", english)
+        self.assertIn("native binary predates the action-guide", english)
+        self.assertIn("contract. Rebuild the native", english)
         self.assertIn("普通 Claude Code shell 不需要手工 export", chinese)
         self.assertIn("显式选择 simulation", chinese)
         self.assertIn("单独启动的 `simmer` 进程不能回头更新", chinese)
         self.assertIn("不会为了准备环境而自动运行 simulation", chinese)
+        self.assertIn("Native/runtime 版本兼容性 preflight", chinese)
+        self.assertIn("output.view=guide", chinese)
 
     def test_plan_routes_workflow_and_reports_gates(self) -> None:
         workflows = self.run_cli("list", "workflows", "--json")
