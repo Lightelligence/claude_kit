@@ -20,6 +20,7 @@ from .core import (
     inspect_project,
     load_profile,
     pack_catalog,
+    provider_catalog,
     read_artifact,
     read_regression_artifact,
     resolve_context,
@@ -99,8 +100,8 @@ def build_parser() -> argparse.ArgumentParser:
     doctor_parser.add_argument("--json", action="store_true", help="Print JSON")
     doctor_parser.set_defaults(handler=handle_doctor)
 
-    listing = subparsers.add_parser("list", help="List roles, packs, skills or workflows")
-    listing.add_argument("kind", choices=("roles", "packs", "skills", "workflows"))
+    listing = subparsers.add_parser("list", help="List roles, packs, skills, providers or workflows")
+    listing.add_argument("kind", choices=("roles", "packs", "skills", "providers", "workflows"))
     listing.add_argument("--json", action="store_true", help="Print JSON")
     listing.set_defaults(handler=handle_list)
 
@@ -254,6 +255,8 @@ def handle_list(args: argparse.Namespace) -> int:
         result = role_catalog()
     elif args.kind == "packs":
         result = pack_catalog()
+    elif args.kind == "providers":
+        result = provider_catalog()
     elif args.kind == "workflows":
         result = workflow_catalog()
     else:

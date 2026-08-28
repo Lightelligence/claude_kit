@@ -42,6 +42,20 @@
       ]
     },
     "packs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "providers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "enabled": {"type": "boolean"},
+          "server": {"type": "string", "minLength": 1},
+          "backend": {"type": "string", "minLength": 1},
+          "command": {"type": "string", "minLength": 1},
+          "skills": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "required_tools": {"type": "array", "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    },
     "build": {
       "type": "object",
       "properties": {

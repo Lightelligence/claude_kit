@@ -38,6 +38,9 @@ class CliTests(unittest.TestCase):
         skills_text = self.run_cli("list", "skills")
         self.assertEqual(skills_text.returncode, 0, skills_text.stderr)
         self.assertIn("rtl-design\tPlan and implement", skills_text.stdout)
+        providers = self.run_cli("list", "providers", "--json")
+        self.assertEqual(providers.returncode, 0, providers.stderr)
+        self.assertEqual(json.loads(providers.stdout)[0]["id"], "xverif")
         evidence = self.run_cli(
             "evidence", "check", "--project-root", str(FIXTURE),
             "--file", "out/evidence.json", "--strict", "--json",

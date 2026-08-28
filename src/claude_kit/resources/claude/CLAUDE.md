@@ -13,6 +13,8 @@ This file is shared by projects that pin claude_kit.
 - Simulation and regression are explicit-consent steps. Ask for approval with the selected command, target, test, expected cost and artifacts, or use the `commander` role only when the user explicitly delegates that run.
 - Mark simulation as `not run`, `skipped` or `blocked` when it has not started; reserve `passed` for a run with matching evidence.
 - Keep project-specific paths and target names in the project profile or adapter.
+- If the profile declares an external provider such as `xverif` and that server is registered in Claude Code, use the provider's registered MCP tools for its capability; do not replace them with ad-hoc Python, shell, or guessed simulator commands.
+- For xdebug work, call `xverif_tools` once, then `xverif_debug_get_schema`, then use the managed session/query lifecycle. Keep xverif's source-only and separately licensed runtime boundary explicit.
 - When a project profile declares `[artifacts.regression]`, use the read-only
   `discover_regression_artifacts` MCP tool to locate compile/simulation logs
   and `read_regression_artifact` to inspect a bounded log. Do not scan a

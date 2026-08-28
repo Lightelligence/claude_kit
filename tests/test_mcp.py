@@ -99,12 +99,24 @@ class McpTests(unittest.TestCase):
             self.assertIn("discover_regression_artifacts", names)
             self.assertIn("read_regression_artifact", names)
             self.assertIn("list_skills", names)
+            self.assertIn("list_providers", names)
             self.assertNotIn("run_check", names)
             evidence_tool = next(tool for tool in tools if tool["name"] == "review_evidence")
             self.assertIn("strict", evidence_tool["inputSchema"]["properties"])
             self.assertIn("list_workflows", names)
             self.assertIn("plan_task", names)
             self.assertIn("list_checks", names)
+
+            process.stdin.write(frame({
+                "jsonrpc": "2.0",
+                "id": 10,
+                "method": "tools/call",
+                "params": {"name": "list_providers", "arguments": {}},
+            }))
+            process.stdin.flush()
+            providers_response = read_frame(process.stdout)
+            providers = json.loads(providers_response["result"]["content"][0]["text"])
+            self.assertEqual(providers[0]["id"], "xverif")
 
             process.stdin.write(frame({
                 "jsonrpc": "2.0",

@@ -14,7 +14,7 @@ claude_kit 把通用 RTL/DV roles、protocol/VIP packs、项目 profile、repo-l
 - 项目根目录发现和路径权限检查；
 - context resolver 和可审计 manifest；
 - 11 个通用 RTL/DV roles，包括 waveform-debugger、regression-triager 和显式委托的执行 commander；
-- 8 个可按需同步或触发的通用 skills；
+- 13 个可按需同步或触发的通用 skills；
 - 6 个可按任务路由的 RTL/DV workflows；
 - common、AXI4、AXI4-Lite、AXI4-Stream、APB、AHB、Wishbone、Ethernet、PCIe、UCIe、SPI、UART、JTAG、I2C、CHI 和 generic VIP packs；
 - repo-local CLI；
@@ -24,6 +24,7 @@ claude_kit 把通用 RTL/DV roles、protocol/VIP packs、项目 profile、repo-l
 - profile、manifest、artifact 和 evidence schema；
 - 可选 project adapter template；
 - 默认只读的 stdio MCP bridge；
+- 固定上游版本的 xverif provider 契约，以及 xverif、xverif-admin、x-npi、xsimdebug、xwiki Claude skills；
 - `plan` workflow planner：把任务映射到 roles、skills、protocol/VIP packs、项目命令和 evidence gates；
 - project init 模板；
 - fixture 和自动化测试。
@@ -74,6 +75,7 @@ Claude Code
 - [Project adapter](#project-adapter)
 - [Roles](#roles)
 - [Skills](#skills)
+- [xverif provider](#xverif-provider)
 - [Protocol/VIP packs](#protocolvip-packs)
 - [CLI 参考](#cli-参考)
 - [命令与工具速查](docs/command-reference.zh-CN.md)
@@ -212,6 +214,8 @@ src/claude_kit/resources/
 ├── roles/
 ├── skills/
 ├── packs/
+├── providers/
+│   └── xverif/provider.json
 ├── workflows/
 │   └── catalog.json
 ├── schemas/
@@ -222,7 +226,7 @@ src/claude_kit/resources/
 └── templates/
 ~~~
 
-项目 profile/adapter 只填写项目事实；schema、rules、skills、packs 和 evidence 语义由 kit 统一维护。
+项目 profile/adapter 只填写项目事实；schema、rules、skills、packs、provider 契约和 evidence 语义由 kit 统一维护。
 
 初始化后先运行：
 
@@ -589,8 +593,39 @@ skills 是可由 Claude Code 按任务触发或由项目按需同步到 `.claude
 | rtl-dv-regression | 通过项目 wrapper 选择 focused-to-regression 检查并保留可复现证据 |
 | rtl-dv-review | 做只读 RTL/DV review 和交付前检查 |
 | rtl-dv-evidence | 记录可复现的 checks、artifacts、skipped/blocked 和 risks |
+| xverif | 路由确定性的 design、waveform、protocol、coverage、bit、entry、location 和 SVA 证据任务 |
+| xverif-admin | 排查 xverif MCP session、direct/LSF backend、transport、timeout 和 license/runtime 配置 |
+| x-npi | 执行获得授权的有界 Python NPI 和 coverage helper 流程 |
+| xsimdebug | 只有确实需要时，使用 live VCS UCLI 或 Xcelium/Xrun PTY session |
+| xwiki | 查询或更新获得授权的验证项目长期知识 |
 
-默认 `init` 会同步全部通用 skills；`init --minimal` 只生成一个 integration skill；`init --no-skills` 不生成任何项目侧 skill 文件。两种最小模式之后都可以用 `sync` 同步完整集合。
+默认 `init` 会同步 kit 的全部 skills，包括相对路径下的 `references/` 和辅助文件；`init --minimal` 只生成一个 integration skill；`init --no-skills` 不生成任何项目侧 skill 文件。两种最小模式之后都可以用 `sync` 同步完整集合。xverif skills 在消费项目注册自己的 xverif MCP server 之前只提供 guidance。
+
+## xverif provider
+
+可选的 xverif 集成是项目无关的 provider 契约，不是 kit 内置的 EDA runtime。
+它在 `src/claude_kit/resources/providers/xverif/provider.json` 中固定到上游
+xverif commit，并包含确定性 waveform/design/coverage 证据、MCP 运维、
+有界 NPI 分析、live simulator debug 和验证项目长期知识所需的 Claude skills。
+
+kit 不 vendoring xverif 源码、Verdi/NPI/FSDB/VDB 库、headers、数据库、凭证或
+license 值。消费项目自己维护 `.mcp.json` 中的 `xverif` entry、`XVERIF_HOME`、
+Python 环境、Verdi/LSF/license 变量和 repo-local launcher。`claude-kit init
+--with-mcp` 只加入 `claude-kit` server，不会覆盖项目已有的 `xverif` server。
+
+快速查询和同步：
+
+~~~bash
+claude-kit list providers --json
+claude-kit list skills
+claude-kit sync --project-root .
+~~~
+
+完整的 MCP contract、direct/LSF 示例、session 生命周期、action guide、provenance
+和排障说明见 [xverif 集成](docs/xverif-integration.zh-CN.md) 以及
+[English version](docs/xverif-integration.md)。每个 xdebug 任务都应先调用
+`xverif_tools`，再调用 `xverif_debug_get_schema`，最后按 managed session/query
+生命周期操作；不能猜 action，也不能静默切换 backend、transport 或数据源。
 
 ## Protocol/VIP packs
 
@@ -648,6 +683,7 @@ claude-kit doctor
 claude-kit list roles
 claude-kit list packs
 claude-kit list skills
+claude-kit list providers
 claude-kit list workflows
 claude-kit plan
 claude-kit context
@@ -667,7 +703,7 @@ claude-kit mcp serve
 claude-kit version
 ~~~
 
-显示 kit 版本。当前版本为 0.2.1。
+显示 kit 版本。当前版本为 0.3.0。
 
 ### init
 
@@ -1119,6 +1155,7 @@ MCP bridge 是 CLI/context resolver 的适配层，不是另一个工作流引�
 - get_project_profile；
 - list_roles；
 - list_packs；
+- list_providers；
 - list_skills；
 - list_workflows；
 - plan_task；
