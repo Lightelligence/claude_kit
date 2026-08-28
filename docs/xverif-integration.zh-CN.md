@@ -121,6 +121,22 @@ revision 重建 native `xdebug` target，或者把 `XVERIF_HOME` 指向匹配的
 不要放宽 MCP 校验、不要把 vendor binary 复制进本仓库，也不要把 compact action list
 当成等价证据。
 
+upstream xdebug 当前文档把 Verdi `V-2023.12-SP2` 列为测试基线，并明确提醒
+不同 Verdi release 的 NPI signature 可能不同。应在与 MCP process 相同的、已获
+授权的环境中，用完全相同的 source revision 构建：
+
+```bash
+cd <xverif-root>
+make -C xdebug
+```
+
+如果源码编译通过、但链接阶段出现缺少 `npi_fsdb_*` 或 `npi_util_*` symbol，说明
+当前安装的 Verdi/NPI release 与该 xdebug revision 不兼容。应选择导出所需 NPI API
+的安装，或请 xverif owner 提供经过 review 的兼容性修改。不要把 proprietary library
+复制进 `claude_kit`，也不要仅凭 MCP 注册成功或 compact action-list probe 就声称
+provider 完全可用。ETX runner 的可选 `isolated-source-build` 模式会先检查 NPI 导出；
+找不到兼容的本地 Verdi 时会快速失败，并上传诊断 artifact。
+
 如果希望 profile 显示 provider 关系，可以加：
 
 ```toml

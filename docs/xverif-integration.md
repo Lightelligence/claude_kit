@@ -135,6 +135,26 @@ revision used by the Python MCP checkout, or point `XVERIF_HOME` at a matching
 installed build. Do not loosen the MCP validation, copy vendor binaries into
 this repository, or treat a compact action list as equivalent evidence.
 
+The upstream xdebug documentation currently identifies Verdi `V-2023.12-SP2`
+as its tested baseline and warns that NPI signatures can differ by release.
+Build from the exact source revision with the same licensed environment used by
+the MCP process:
+
+```bash
+cd <xverif-root>
+make -C xdebug
+```
+
+If the build compiles but fails at link time with missing `npi_fsdb_*` or
+`npi_util_*` symbols, the installed Verdi/NPI release is not source-compatible
+with that xdebug revision. Select an installation that exports the required
+NPI API, or ask the xverif owner for a reviewed compatibility change. Do not
+copy proprietary libraries into `claude_kit` and do not claim the provider is
+fully usable based only on MCP registration or the compact action-list probe.
+The ETX runner's optional `isolated-source-build` mode performs this NPI export
+preflight and fails fast with the diagnostic artifact when no compatible local
+Verdi installation is available.
+
 An optional profile declaration makes the relationship visible to the kit
 without duplicating the launcher:
 
