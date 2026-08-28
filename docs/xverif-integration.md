@@ -108,6 +108,33 @@ kit. The `VERDI_HOME`/`VCS_HOME` entries in the direct-mode example are
 therefore placeholders for a deliberately environment-aware launcher, not a
 requirement for every ordinary Claude Code session.
 
+### Native/runtime compatibility preflight
+
+The Python `xverif_mcp` adapter and the native `xdebug` executable under
+`XVERIF_HOME` are a versioned pair. Updating the copied skills or the Python
+adapter does not rebuild an existing native executable. The adapter therefore
+fails closed if the native executable cannot produce the canonical action guide;
+this prevents Claude Code from selecting actions from an incomplete or stale
+catalog.
+
+In an approved, vendor-enabled environment, an administrator can perform this
+read-only preflight before registering the MCP server:
+
+```bash
+printf '%s\n' \
+  '{"api_version":"xdebug.v1","action":"actions","args":{"output":{"view":"guide"}}}' \
+  | "$XVERIF_HOME/tools/xdebug" --json -
+```
+
+A compatible runtime returns `summary.view` equal to `guide`, together with a
+non-empty `data.guide` string and the corresponding guide byte/count fields. If
+the command exits successfully but returns compact `data.actions` while
+ignoring `output.view=guide`, the native binary predates the action-guide
+contract. Rebuild the native `xdebug` target from the exact upstream source
+revision used by the Python MCP checkout, or point `XVERIF_HOME` at a matching
+installed build. Do not loosen the MCP validation, copy vendor binaries into
+this repository, or treat a compact action list as equivalent evidence.
+
 An optional profile declaration makes the relationship visible to the kit
 without duplicating the launcher:
 

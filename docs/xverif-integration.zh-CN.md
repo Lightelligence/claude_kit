@@ -96,6 +96,31 @@ launcher 把完整的 LSF、Verdi 和 license 环境传给 xverif 进程。不�
 示例中的 `VERDI_HOME`/`VCS_HOME` 只是有环境感知能力的 launcher 的占位符，并不
 要求每一次普通 Claude Code 会话都手工设置。
 
+### Native/runtime 版本兼容性 preflight
+
+`XVERIF_HOME` 下的 Python `xverif_mcp` adapter 和 native `xdebug` executable
+是一个有版本关系的组合。更新复制到 kit 的 skill 或 Python adapter 并不会自动
+重建已有的 native executable。因此，当 native executable 不能提供 canonical
+action guide 时，adapter 会 fail closed，避免 Claude Code 根据不完整或过期的
+catalog 选择 action。
+
+管理员可以在批准的、已经加载 vendor 环境的环境中，先执行下面这个只读 preflight，
+再注册 MCP server：
+
+```bash
+printf '%s\n' \
+  '{"api_version":"xdebug.v1","action":"actions","args":{"output":{"view":"guide"}}}' \
+  | "$XVERIF_HOME/tools/xdebug" --json -
+```
+
+兼容的 runtime 应返回 `summary.view` 为 `guide`、非空的 `data.guide`，以及对应
+的 guide 字节数和 action 行数。如果命令成功退出，却在收到
+`output.view=guide` 后仍返回 compact 的 `data.actions`，说明 native binary
+早于 action-guide 契约。应当用 Python MCP checkout 所使用的同一个 upstream source
+revision 重建 native `xdebug` target，或者把 `XVERIF_HOME` 指向匹配的已安装 build。
+不要放宽 MCP 校验、不要把 vendor binary 复制进本仓库，也不要把 compact action list
+当成等价证据。
+
 如果希望 profile 显示 provider 关系，可以加：
 
 ```toml
