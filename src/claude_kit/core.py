@@ -1735,6 +1735,12 @@ def integration_skill() -> str:
     return (resource_root() / "templates" / "SKILL.md").read_text(encoding="utf-8")
 
 
+def _is_generated_skill_cache(path: Path) -> bool:
+    """Exclude interpreter-generated cache files from materialized skills."""
+
+    return "__pycache__" in path.parts or path.suffix.lower() in {".pyc", ".pyo"}
+
+
 def _skill_targets(root: Path) -> dict[Path, str]:
     targets = {root / ".claude" / "skills" / "rtl-dv-kit" / "SKILL.md": integration_skill()}
     resources = resource_root()
@@ -1746,6 +1752,8 @@ def _skill_targets(root: Path) -> dict[Path, str]:
             if candidate.is_symlink():
                 raise KitError(f"Skill resource must not be a symlink: {candidate}")
             if not candidate.is_file():
+                continue
+            if _is_generated_skill_cache(candidate):
                 continue
             relative = candidate.relative_to(source_root)
             # Keep materialized project files clean even when an upstream

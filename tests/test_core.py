@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -589,6 +590,33 @@ class CoreTests(unittest.TestCase):
             self.assertTrue(prompt.is_file())
             self.assertTrue(prompt.read_text(encoding="utf-8").endswith("\n"))
             self.assertFalse(prompt.read_text(encoding="utf-8").endswith("\n\n"))
+
+    def test_sync_ignores_interpreter_generated_skill_caches(self) -> None:
+        from claude_kit.core import _skill_targets
+
+        with tempfile.TemporaryDirectory() as resources_directory, tempfile.TemporaryDirectory() as project_directory:
+            resources = Path(resources_directory)
+            (resources / "templates").mkdir()
+            (resources / "templates" / "SKILL.md").write_text(
+                "# Integration fixture\n",
+                encoding="utf-8",
+            )
+            skill_root = resources / "skills" / "cache-fixture"
+            skill_root.mkdir(parents=True)
+            (skill_root / "SKILL.md").write_text(
+                "---\nname: cache-fixture\n---\n# Cache fixture\n",
+                encoding="utf-8",
+            )
+            cache_root = skill_root / "scripts" / "__pycache__"
+            cache_root.mkdir(parents=True)
+            (cache_root / "bad.cpython-314.pyc").write_bytes(b"\xfb\x00\x00\x00")
+            with patch("claude_kit.core.resource_root", return_value=resources):
+                targets = _skill_targets(Path(project_directory))
+            self.assertIn(Path(project_directory) / ".claude/skills/cache-fixture/SKILL.md", targets)
+            self.assertNotIn(
+                Path(project_directory) / ".claude/skills/cache-fixture/scripts/__pycache__/bad.cpython-314.pyc",
+                targets,
+            )
 
     def test_sync_rejects_skills_symlink_that_escapes_project(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
