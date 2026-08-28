@@ -38,12 +38,28 @@ class CliTests(unittest.TestCase):
         skills_text = self.run_cli("list", "skills")
         self.assertEqual(skills_text.returncode, 0, skills_text.stderr)
         self.assertIn("rtl-design\tPlan and implement", skills_text.stdout)
+        providers = self.run_cli("list", "providers", "--json")
+        self.assertEqual(providers.returncode, 0, providers.stderr)
+        self.assertEqual(json.loads(providers.stdout)[0]["id"], "xverif")
         evidence = self.run_cli(
             "evidence", "check", "--project-root", str(FIXTURE),
             "--file", "out/evidence.json", "--strict", "--json",
         )
         self.assertEqual(evidence.returncode, 0, evidence.stderr)
         self.assertEqual(json.loads(evidence.stdout)["status"], "passed")
+
+    def test_xverif_docs_explain_vendor_environment_boundary(self) -> None:
+        english = (ROOT / "docs" / "xverif-integration.md").read_text(encoding="utf-8")
+        chinese = (ROOT / "docs" / "xverif-integration.zh-CN.md").read_text(encoding="utf-8")
+        self.assertIn("ordinary Claude Code shell does not need to export", english)
+        self.assertIn("explicit simulation is selected", english)
+        self.assertIn("A separate `simmer` process cannot", english)
+        self.assertIn("retroactively update", english)
+        self.assertIn("does not auto-run a simulation", english)
+        self.assertIn("普通 Claude Code shell 不需要手工 export", chinese)
+        self.assertIn("显式选择 simulation", chinese)
+        self.assertIn("单独启动的 `simmer` 进程不能回头更新", chinese)
+        self.assertIn("不会为了准备环境而自动运行 simulation", chinese)
 
     def test_plan_routes_workflow_and_reports_gates(self) -> None:
         workflows = self.run_cli("list", "workflows", "--json")

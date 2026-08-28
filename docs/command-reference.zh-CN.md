@@ -21,6 +21,7 @@ python3 "$CLAUDE_KIT_BIN" doctor --project-root . --strict --json
 python3 "$CLAUDE_KIT_BIN" list roles
 python3 "$CLAUDE_KIT_BIN" list skills
 python3 "$CLAUDE_KIT_BIN" list packs
+python3 "$CLAUDE_KIT_BIN" list providers
 python3 "$CLAUDE_KIT_BIN" list workflows
 
 # 在读取大量 context 或修改文件前先规划任务。
@@ -47,6 +48,7 @@ claude
 | 查看 roles | `list roles` | `list_roles` |
 | 查看 protocol/VIP packs | `list packs` | `list_packs` |
 | 查看 skills | `list skills` | `list_skills` |
+| 查看已注册的外部 provider | `list providers` | `list_providers` |
 | 查看 workflows | `list workflows` | `list_workflows` |
 | 规划任务 | `plan --task ...` | `plan_task` |
 | 加载选定的 role/pack/skill context | `context ...` | `resolve_context` |
@@ -196,7 +198,7 @@ python3 "$CLAUDE_KIT_BIN" sync --project-root .
 python3 "$CLAUDE_KIT_BIN" sync --project-root . --force
 ```
 
-没有 `--force` 时保留已有文件；有 `--force` 时只替换 kit 管理的 skill 路径，不修改 profile、项目规则、源代码或 MCP servers。
+没有 `--force` 时保留已有文件；有 `--force` 时只替换 kit 管理的 skill 路径，不修改 profile、项目规则、源代码或 MCP servers。同步是递归的：例如 `xverif` skill 会包含 `references/`、scripts、specs 和 examples，而不只是顶层 `SKILL.md`。
 
 ### `doctor`
 
@@ -226,12 +228,37 @@ python3 "$CLAUDE_KIT_BIN" doctor --project-root . --strict --json
 python3 "$CLAUDE_KIT_BIN" list roles
 python3 "$CLAUDE_KIT_BIN" list packs
 python3 "$CLAUDE_KIT_BIN" list skills
+python3 "$CLAUDE_KIT_BIN" list providers
 python3 "$CLAUDE_KIT_BIN" list workflows
 
 python3 "$CLAUDE_KIT_BIN" list skills --json
+python3 "$CLAUDE_KIT_BIN" list providers --json
 ```
 
 文本输出适合人工阅读，JSON 适合脚本和让 Claude Code 根据精确 catalog 做选择。
+
+### `list providers`
+
+查看 kit 内置的、固定上游版本的外部 provider 契约。provider 描述
+Claude Code 使用的 skills、项目侧 MCP server 名称、可选 backend 和必需
+tool；它不会安装或 vendoring EDA runtime。
+
+```bash
+python3 "$CLAUDE_KIT_BIN" list providers
+python3 "$CLAUDE_KIT_BIN" list providers --json
+```
+
+对于内置的 `xverif` provider，可以用 JSON 输出核对上游仓库、精确 commit、
+skill IDs、server name 和 xdebug 必需 tools，然后再适配消费项目。项目仍然
+负责 `.mcp.json`、`XVERIF_HOME`、Python/environment、license，以及
+direct/LSF backend 配置。
+
+Claude Code 等价 prompt：
+
+```text
+调用 list_providers。显示 xverif 的上游 commit、skills、MCP server name、
+required tools 和 runtime prerequisites。不要启动 session 或运行 EDA。
+```
 
 ### `plan`
 
@@ -544,6 +571,28 @@ skill 是指导内容，不是 executable tool。应该先发现 ID，再按当�
 
 ```text
 调用 list_skills，分别为 RTL change、DV change 和 waveform/debugging 任务推荐最小 skill 集合。不要加载全部 skill。
+```
+
+### `list_providers`
+
+功能：列出 kit 已知的外部 provider 契约，供 Claude Code 发现和核对。
+
+参数：
+
+```json
+{}
+```
+
+在配置或排查外部 MCP provider 前调用。它是只读 tool，返回 provider 的上游
+provenance、skill IDs、server name、backend 选项、required tools 和 runtime
+边界；不会启动 provider、读取 waveform、打开 debug session 或执行 EDA 命令。
+
+典型 prompt：
+
+```text
+调用 list_providers。针对 xverif 总结固定的 source commit、skills、server
+name、backend 选项、required tools 和项目侧仍需负责的配置。不要猜 target、
+action、simulator 或 XVERIF_HOME 路径。
 ```
 
 ### `list_workflows`
@@ -974,6 +1023,7 @@ src/claude_kit/resources/templates/SKILL.md
 src/claude_kit/resources/claude/CLAUDE.md
 src/claude_kit/resources/roles/
 src/claude_kit/resources/skills/
+src/claude_kit/resources/providers/
 src/claude_kit/resources/packs/
 src/claude_kit/resources/workflows/catalog.json
 tests/test_cli.py

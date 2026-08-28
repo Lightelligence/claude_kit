@@ -16,7 +16,7 @@ The repository currently provides a runnable Python MVP with:
 - project-root discovery and path-boundary checks;
 - context resolution and auditable manifests;
 - eleven reusable RTL/DV roles, including waveform debugging, regression triage and explicitly delegated execution;
-- eight reusable skills that can be synchronized into a project on demand;
+- thirteen reusable skills that can be synchronized into a project on demand;
 - six task-routing RTL/DV workflows;
 - common, AXI4, AXI4-Lite, AXI4-Stream, APB, AHB, Wishbone, Ethernet, PCIe, UCIe, SPI, UART, JTAG, I2C, CHI, and generic VIP packs;
 - a repository-local CLI;
@@ -26,6 +26,7 @@ The repository currently provides a runnable Python MVP with:
 - profile, manifest, artifact, and evidence schemas;
 - an optional project-adapter template;
 - a read-only stdio MCP bridge;
+- a version-pinned xverif provider contract with Claude-facing xverif, xverif-admin, x-npi, xsimdebug and xwiki skills;
 - a task planner that maps work to roles, skills, packs, project commands, and evidence gates;
 - project initialization templates;
 - fixtures and automated tests.
@@ -83,6 +84,7 @@ The MCP bridge here is the Claude Code interface. It is unrelated to any project
 - [Project adapter](#project-adapter)
 - [Roles](#roles)
 - [Skills](#skills)
+- [xverif provider](#xverif-provider)
 - [Protocol and VIP packs](#protocol-and-vip-packs)
 - [CLI reference](#cli-reference)
 - [Command and tool reference](docs/command-reference.md)
@@ -229,6 +231,8 @@ src/claude_kit/resources/
 +-- roles/
 +-- skills/
 +-- packs/
++-- providers/
+|   +-- xverif/provider.json
 +-- workflows/
 |   +-- catalog.json
 +-- schemas/
@@ -239,7 +243,7 @@ src/claude_kit/resources/
 +-- templates/
 ~~~
 
-The project profile and adapter contain project facts. Schemas, generic rules, skills, packs, and evidence semantics are maintained in the kit.
+The project profile and adapter contain project facts. Schemas, generic rules, skills, packs, provider contracts, and evidence semantics are maintained in the kit.
 
 Run a strict profile check after initialization:
 
@@ -611,8 +615,46 @@ Skills are Claude Code procedures that can be synchronized into .claude/skills o
 | rtl-dv-regression | Select focused-to-regression checks and preserve reproducible evidence |
 | rtl-dv-review | Perform read-only RTL/DV review and delivery checks |
 | rtl-dv-evidence | Record checks, artifacts, skipped/blocked items, and risks |
+| xverif | Route deterministic design, waveform, protocol, coverage, bit, entry, location and SVA evidence tasks |
+| xverif-admin | Diagnose xverif MCP sessions, direct/LSF backends, transports, timeouts and license/runtime setup |
+| x-npi | Run authorized bounded Python NPI and coverage helper workflows |
+| xsimdebug | Use an explicitly needed live VCS UCLI or Xcelium/Xrun PTY session |
+| xwiki | Query or update authorized persistent verification-project knowledge |
 
-Normal init synchronizes all generic skills. init minimal creates only one integration skill. init no-skills creates no project-side skill files. Both minimal modes can later be followed by sync.
+Normal init synchronizes all kit skills, including their relative `references/` and support files. init minimal creates only one integration skill. init no-skills creates no project-side skill files. Both minimal modes can later be followed by sync. The xverif skills remain optional guidance until the consumer project registers its own xverif MCP server.
+
+## xverif provider
+
+The optional xverif integration is a project-neutral contract, not an embedded
+EDA runtime. It is pinned to an upstream xverif commit in
+`src/claude_kit/resources/providers/xverif/provider.json` and includes the
+Claude-facing skills needed for deterministic waveform/design/coverage
+evidence, MCP administration, bounded NPI analysis, live simulator debugging
+and persistent verification knowledge.
+
+The kit does not vendor xverif source, Verdi/NPI/FSDB/VDB libraries, headers,
+databases, credentials or license values. A consumer project owns its `.mcp.json`
+entry, `XVERIF_HOME`, Python environment, Verdi/LSF/license variables and any
+repo-local launcher. `claude-kit init --with-mcp` only adds the `claude-kit`
+server and never overwrites a project-owned `xverif` server.
+
+Inspect the pinned contract and materialize the complete skill directories:
+
+~~~bash
+claude-kit list providers --json
+claude-kit list skills
+claude-kit sync --project-root .
+~~~
+
+For the exact MCP contract, direct/LSF examples, session lifecycle, action
+guide workflow, upstream provenance and troubleshooting, read
+[xverif integration](docs/xverif-integration.md) and its
+[Chinese translation](docs/xverif-integration.zh-CN.md). For every xdebug task,
+Claude Code should first call `xverif_tools`, then
+`xverif_debug_get_schema`, then use the managed session/query lifecycle. It
+must not guess actions or silently switch backend, transport or data source.
+`xverif` diagnostics do not replace the project's registered build, compile or
+simulation MCP tools.
 
 ## Protocol and VIP packs
 
@@ -662,6 +704,7 @@ claude-kit doctor
 claude-kit list roles
 claude-kit list packs
 claude-kit list skills
+claude-kit list providers
 claude-kit list workflows
 claude-kit plan
 claude-kit context
@@ -1126,6 +1169,7 @@ The default bridge provides:
 - get_project_profile;
 - list_roles;
 - list_packs;
+- list_providers;
 - list_skills;
 - list_workflows;
 - plan_task;

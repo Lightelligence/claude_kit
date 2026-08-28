@@ -285,6 +285,31 @@ def validate_profile(root: Path, profile: dict[str, Any]) -> list[dict[str, str]
         if identifier not in known_packs:
             add("error", f"Unknown pack in profile: {identifier}")
 
+    providers = profile.get("providers", {})
+    if not isinstance(providers, dict):
+        add("error", "providers must be an object")
+        providers = {}
+    for provider_id, provider in providers.items():
+        if not isinstance(provider_id, str) or not provider_id.strip():
+            add("error", "providers keys must be non-empty strings")
+            continue
+        if not isinstance(provider, dict):
+            add("error", f"providers.{provider_id} must be an object")
+            continue
+        enabled = provider.get("enabled")
+        if enabled is not None and not isinstance(enabled, bool):
+            add("error", f"providers.{provider_id}.enabled must be a boolean")
+        for field in ("server", "backend", "command"):
+            value = provider.get(field)
+            if value is not None and (not isinstance(value, str) or not value.strip()):
+                add("error", f"providers.{provider_id}.{field} must be a non-empty string")
+        provider_skills = provider.get("skills", [])
+        if not isinstance(provider_skills, list) or not all(isinstance(item, str) and item for item in provider_skills):
+            add("error", f"providers.{provider_id}.skills must be a list of non-empty strings")
+        required_tools = provider.get("required_tools", [])
+        if not isinstance(required_tools, list) or not all(isinstance(item, str) and item for item in required_tools):
+            add("error", f"providers.{provider_id}.required_tools must be a list of non-empty strings")
+
     if "adapter" in profile:
         adapter = profile.get("adapter")
         if not isinstance(adapter, (str, dict)) or (isinstance(adapter, str) and not adapter.strip()):
@@ -377,6 +402,40 @@ def skill_catalog() -> list[dict[str, str]]:
             "id": metadata.get("name", path.parent.name),
             "version": metadata.get("version", "1"),
             "description": metadata.get("description", ""),
+            "path": str(path.relative_to(resource_root())).replace(os.sep, "/"),
+        })
+    return result
+
+
+def provider_catalog() -> list[dict[str, Any]]:
+    """Return external provider contracts bundled as kit metadata.
+
+    Providers describe project-owned integrations; they do not embed EDA
+    runtimes, licenses, or scheduler behavior in the kit.
+    """
+
+    directory = resource_root() / "providers"
+    result: list[dict[str, Any]] = []
+    if not directory.is_dir():
+        return result
+    known_skills = {item["id"] for item in skill_catalog()}
+    for path in sorted(directory.rglob("provider.json")):
+        try:
+            metadata = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise KitError(f"Invalid provider metadata {path}: {exc}") from exc
+        if not isinstance(metadata, dict) or not isinstance(metadata.get("id"), str) or not metadata["id"].strip():
+            raise KitError(f"Provider metadata requires id: {path}")
+        skills = metadata.get("skills", [])
+        if not isinstance(skills, list) or not all(isinstance(item, str) and item for item in skills):
+            raise KitError(f"Provider {metadata['id']} skills must be a list of non-empty strings: {path}")
+        missing_skills = sorted(set(skills) - known_skills)
+        if missing_skills:
+            raise KitError(
+                f"Provider {metadata['id']} references missing skills: {', '.join(missing_skills)}"
+            )
+        result.append({
+            **metadata,
             "path": str(path.relative_to(resource_root())).replace(os.sep, "/"),
         })
     return result
@@ -676,6 +735,7 @@ def resolve_plan(
         "adapter": profile.get("adapter"),
         "artifacts": profile.get("artifacts", {}),
         "roots": profile.get("roots", {}),
+        "providers": profile.get("providers", {}),
     }
     missing_facts = [
         name for name in required_facts
@@ -723,6 +783,7 @@ def resolve_plan(
         "missing_commands": missing_commands,
         "permissions": redact_profile(profile.get("permissions", {})),
         "artifacts": redact_profile(profile.get("artifacts", {})),
+        "providers": redact_profile(profile.get("providers", {})),
         "evidence": {
             "required": bool((profile.get("policies") or {}).get("require_evidence", False))
             if isinstance(profile.get("policies"), dict) else False,
@@ -1513,6 +1574,7 @@ This project uses the reusable RTL/DV Claude kit.
 - Pass only the selected `--skill` entries to `context` when their guidance is needed; do not materialize every skill into the prompt.
 - Keep changes inside the profile permissions.
 - Prefer read-only inspect/context/log commands before editing.
+- Use `claude-kit list providers` to discover optional provider contracts; when `providers.xverif` is declared and its MCP server is registered, use the registered xverif tools for deterministic waveform/design evidence.
 - Record commands, results, skipped checks and unresolved risks.
 - Do not claim verification without evidence.
 - Do not modify vendor/generated files unless the profile explicitly allows it.
@@ -1673,12 +1735,32 @@ def integration_skill() -> str:
     return (resource_root() / "templates" / "SKILL.md").read_text(encoding="utf-8")
 
 
+def _is_generated_skill_cache(path: Path) -> bool:
+    """Exclude interpreter-generated cache files from materialized skills."""
+
+    return "__pycache__" in path.parts or path.suffix.lower() in {".pyc", ".pyo"}
+
+
 def _skill_targets(root: Path) -> dict[Path, str]:
     targets = {root / ".claude" / "skills" / "rtl-dv-kit" / "SKILL.md": integration_skill()}
     resources = resource_root()
     for entry in skill_catalog():
         source = resources / entry["path"]
-        targets[root / ".claude" / "skills" / entry["id"] / "SKILL.md"] = source.read_text(encoding="utf-8")
+        source_root = source.parent
+        target_root = root / ".claude" / "skills" / entry["id"]
+        for candidate in sorted(source_root.rglob("*")):
+            if candidate.is_symlink():
+                raise KitError(f"Skill resource must not be a symlink: {candidate}")
+            if not candidate.is_file():
+                continue
+            if _is_generated_skill_cache(candidate):
+                continue
+            relative = candidate.relative_to(source_root)
+            # Keep materialized project files clean even when an upstream
+            # guidance file has one or more blank lines at EOF.  This is
+            # formatting-only and avoids introducing `git diff --check`
+            # errors into consumer repositories.
+            targets[target_root / relative] = candidate.read_text(encoding="utf-8").rstrip() + "\n"
     return targets
 
 

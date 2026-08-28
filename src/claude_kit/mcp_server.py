@@ -13,6 +13,7 @@ from .core import (
     inspect_project,
     load_profile,
     pack_catalog,
+    provider_catalog,
     read_artifact,
     redact_profile,
     review_evidence_file,
@@ -91,6 +92,11 @@ def _tool_definitions(allow_exec: bool) -> list[dict[str, Any]]:
         {
             "name": "list_packs",
             "description": "List reusable protocol/VIP packs.",
+            "inputSchema": {"type": "object", "properties": {}},
+        },
+        {
+            "name": "list_providers",
+            "description": "List bundled external provider contracts, their skills and MCP requirements.",
             "inputSchema": {"type": "object", "properties": {}},
         },
         {
@@ -243,6 +249,8 @@ def _call_tool(
         return _text_result(role_catalog())
     if name == "list_packs":
         return _text_result(pack_catalog())
+    if name == "list_providers":
+        return _text_result(provider_catalog())
     if name == "list_skills":
         return _text_result(skill_catalog())
     if name == "list_workflows":

@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -22,6 +23,7 @@ from claude_kit.core import (
     resolve_context,
     role_catalog,
     pack_catalog,
+    provider_catalog,
     review_evidence_file,
     run_project_commands,
     run_project_command,
@@ -48,6 +50,8 @@ class CoreTests(unittest.TestCase):
         self.assertIn("protocols.axi4lite", {item["id"] for item in pack_catalog()})
         self.assertIn("rtl-design", {item["id"] for item in skill_catalog()})
         self.assertIn("rtl-dv-evidence", {item["id"] for item in skill_catalog()})
+        self.assertIn("xverif", {item["id"] for item in skill_catalog()})
+        self.assertIn("xverif", {item["id"] for item in provider_catalog()})
 
     def test_workflow_catalog_resolves_task_plan(self) -> None:
         self.assertIn("debug", {item["id"] for item in workflow_catalog()})
@@ -441,6 +445,25 @@ class CoreTests(unittest.TestCase):
         issues = validate_profile(FIXTURE, profile)
         self.assertTrue(any("permissions overlap" in item["message"] for item in issues))
 
+    def test_provider_profile_contract_is_validated_without_hardcoding_paths(self) -> None:
+        profile = {
+            "schema_version": 1,
+            "project": {"id": "provider_fixture"},
+            "providers": {
+                "xverif": {
+                    "enabled": True,
+                    "server": "xverif",
+                    "backend": "lsf",
+                    "skills": ["xverif", "xverif-admin"],
+                    "required_tools": ["xverif_tools", "xverif_debug_query"],
+                }
+            },
+        }
+        self.assertEqual(validate_profile(FIXTURE, profile), [])
+
+        invalid = {**profile, "providers": {"xverif": {"enabled": "yes"}}}
+        self.assertTrue(any("providers.xverif.enabled" in item["message"] for item in validate_profile(FIXTURE, invalid)))
+
     def test_init_is_non_destructive_without_force(self) -> None:
         from claude_kit.core import init_project
 
@@ -554,6 +577,46 @@ class CoreTests(unittest.TestCase):
             self.assertGreaterEqual(len(created), 7)
             self.assertTrue((Path(directory) / ".claude/skills/rtl-design/SKILL.md").is_file())
             self.assertTrue((Path(directory) / ".claude/skills/rtl-dv-evidence/SKILL.md").is_file())
+
+    def test_sync_materializes_nested_upstream_skill_support_files(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sync_project_skills(root)
+            self.assertTrue((root / ".claude/skills/xverif/SKILL.md").is_file())
+            self.assertTrue((root / ".claude/skills/xverif/references/core/execution-model.md").is_file())
+            self.assertTrue((root / ".claude/skills/xverif-admin/references/mcp/overview.md").is_file())
+            self.assertTrue((root / ".claude/skills/x-npi/scripts/examples/apb_summary.py").is_file())
+            prompt = root / ".claude/skills/xwiki/references/prompts/bt/prompts/backpressure.md"
+            self.assertTrue(prompt.is_file())
+            self.assertTrue(prompt.read_text(encoding="utf-8").endswith("\n"))
+            self.assertFalse(prompt.read_text(encoding="utf-8").endswith("\n\n"))
+
+    def test_sync_ignores_interpreter_generated_skill_caches(self) -> None:
+        from claude_kit.core import _skill_targets
+
+        with tempfile.TemporaryDirectory() as resources_directory, tempfile.TemporaryDirectory() as project_directory:
+            resources = Path(resources_directory)
+            (resources / "templates").mkdir()
+            (resources / "templates" / "SKILL.md").write_text(
+                "# Integration fixture\n",
+                encoding="utf-8",
+            )
+            skill_root = resources / "skills" / "cache-fixture"
+            skill_root.mkdir(parents=True)
+            (skill_root / "SKILL.md").write_text(
+                "---\nname: cache-fixture\n---\n# Cache fixture\n",
+                encoding="utf-8",
+            )
+            cache_root = skill_root / "scripts" / "__pycache__"
+            cache_root.mkdir(parents=True)
+            (cache_root / "bad.cpython-314.pyc").write_bytes(b"\xfb\x00\x00\x00")
+            with patch("claude_kit.core.resource_root", return_value=resources):
+                targets = _skill_targets(Path(project_directory))
+            self.assertIn(Path(project_directory) / ".claude/skills/cache-fixture/SKILL.md", targets)
+            self.assertNotIn(
+                Path(project_directory) / ".claude/skills/cache-fixture/scripts/__pycache__/bad.cpython-314.pyc",
+                targets,
+            )
 
     def test_sync_rejects_skills_symlink_that_escapes_project(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

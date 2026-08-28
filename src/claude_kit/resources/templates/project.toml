@@ -32,6 +32,15 @@ simulator = "project-configured"
 
 [vip]
 
+# Optional external provider declaration. The project-owned .mcp.json still
+# supplies the command, paths, environment and license/scheduler settings.
+# [providers.xverif]
+# enabled = true
+# server = "xverif"
+# backend = "direct"
+# skills = ["xverif", "xverif-admin"]
+# required_tools = ["xverif_tools", "xverif_debug_get_schema", "xverif_debug_query"]
+
 # Optional project adapter:
 # [adapter]
 # path = ".ai/adapter.py"

@@ -1,0 +1,51 @@
+{
+  "id": "xverif",
+  "version": "2026.08.25",
+  "kind": "rtl-dv-debug-mcp",
+  "summary": "Deterministic design, waveform, coverage, bit, entry, location and SVA evidence through the project-owned xverif MCP server.",
+  "upstream": {
+    "repository": "https://github.com/BLANK2077/xverif",
+    "branch": "master",
+    "commit": "214e9cc81ba5ffe0010f5f4f2e0d6e4cfae40de6",
+    "commit_date": "2026-08-25T07:01:01Z",
+    "sync_scope": "Claude-facing skills and integration contract only; no xverif runtime or vendor dependency is vendored"
+  },
+  "skills": [
+    "xverif",
+    "xverif-admin",
+    "x-npi",
+    "xsimdebug",
+    "xwiki"
+  ],
+  "mcp": {
+    "server_name": "xverif",
+    "entrypoint": "python -m xverif_mcp.server",
+    "project_owned_launcher": true,
+    "backend_environment_variable": "XVERIF_MCP_BACKEND",
+    "supported_backends": ["direct", "lsf"],
+    "debug_tools": [
+      "xverif_tools",
+      "xverif_debug_list_actions",
+      "xverif_debug_get_schema",
+      "xverif_debug_session_open",
+      "xverif_debug_session_list",
+      "xverif_debug_session_doctor",
+      "xverif_debug_session_close",
+      "xverif_debug_session_gc",
+      "xverif_debug_query"
+    ],
+    "routing": "Call xverif_tools once, get the selected action schema, then use the managed session/query lifecycle; do not guess actions or silently switch backend, transport or data source."
+  },
+  "requirements": [
+    "Python 3.11 or newer for xverif-mcp",
+    "A separately installed and licensed xverif checkout",
+    "A separately installed and licensed Synopsys Verdi/NPI/FSDB or coverage runtime for vendor-backed operations",
+    "Project-owned MCP environment with XVERIF_HOME and any required license, Verdi and LSF variables"
+  ],
+  "boundaries": [
+    "The kit provides skills, documentation and a versioned contract; it does not launch EDA jobs itself.",
+    "The consumer project's .mcp.json owns the xverif command, paths, environment and backend choice.",
+    "Do not copy vendor headers, libraries, binaries, FSDB/VDB databases, credentials or license values into this repository.",
+    "Use xsimdebug only for an explicitly needed live simulator PTY; use xdebug/xverif MCP first when static or waveform evidence is sufficient."
+  ]
+}
