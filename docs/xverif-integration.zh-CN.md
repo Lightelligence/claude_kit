@@ -63,7 +63,7 @@ wrapper，但要保持同一环境和 MCP contract。direct 模式示例：
   "mcpServers": {
     "xverif": {
       "type": "stdio",
-      "command": "<python-3.11>",
+      "command": "<python-3.12>",
       "args": ["-m", "xverif_mcp.server"],
       "env": {
         "PYTHONPATH": "<xverif-root>/xverif_mcp/src:<xverif-root>",

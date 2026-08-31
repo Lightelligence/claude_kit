@@ -68,7 +68,7 @@ MCP contract. A direct-mode example is:
   "mcpServers": {
     "xverif": {
       "type": "stdio",
-      "command": "<python-3.11>",
+      "command": "<python-3.12>",
       "args": ["-m", "xverif_mcp.server"],
       "env": {
         "PYTHONPATH": "<xverif-root>/xverif_mcp/src:<xverif-root>",
