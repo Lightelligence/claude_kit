@@ -17,6 +17,10 @@ claude-kit = "claude_kit.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+namespaces = false
 
 [tool.setuptools.package-data]
-claude_kit = ["resources/**/*"]
+claude_kit = ["resources/**/*", "resources/upstream/vibe_soc/source/.agents/**/*", "resources/upstream/vibe_soc/source/.agents/**/.*", "resources/upstream/vibe_soc/source/scripts/**/.*"]
+
+[tool.setuptools.exclude-package-data]
+claude_kit = ["**/__pycache__/*", "**/*.pyc", "**/*.pyo"]

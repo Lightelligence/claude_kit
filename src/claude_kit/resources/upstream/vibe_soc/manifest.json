@@ -1,0 +1,1974 @@
+{
+  "capabilities": {
+    "requirements_sha256": "e01ddeed825479ee57f1b674af73ae7e6a89157444e59e2dabca75f90c89b6e1",
+    "roles": [
+      "soc-architect",
+      "soc-cdc-engineer",
+      "soc-crg-engineer",
+      "soc-dft-engineer",
+      "soc-doc-engineer",
+      "soc-integrator",
+      "soc-low-power-engineer",
+      "soc-pd-engineer",
+      "soc-reviewer",
+      "soc-rtl-designer",
+      "soc-synthesis-engineer",
+      "soc-verification-engineer"
+    ],
+    "servers": {
+      "cr-tree-diag-gen": {
+        "definition": {
+          "default_enabled": true,
+          "name": "cr-tree-diag-gen",
+          "script": ".agents/skills/cr-tree-diag-gen/mcp_server.py",
+          "startup_timeout_sec": 120,
+          "tool_timeout_sec": 300
+        },
+        "inventory": "static_python_decorators_not_runtime_schema",
+        "tools": [
+          {
+            "arguments": "arguments(args=[arg(arg='input_path', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value=None)])",
+            "name": "cr_tree_diag_gen",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='input_path', annotation=Name(id='str', ctx=Load())), arg(arg='output_path', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value=None)])",
+            "name": "cr_tree_diag_gen_drawio",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='input_path', annotation=Name(id='str', ctx=Load())), arg(arg='output_path', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value=None)])",
+            "name": "cr_tree_diag_gen_excalidraw",
+            "returns": "Name(id='str', ctx=Load())"
+          }
+        ],
+        "validation": "not_run"
+      },
+      "crg-gen": {
+        "definition": {
+          "default_enabled": true,
+          "name": "crg-gen",
+          "script": ".agents/skills/crg-gen/mcp_server.py",
+          "startup_timeout_sec": 120,
+          "tool_timeout_sec": 600
+        },
+        "inventory": "static_python_decorators_not_runtime_schema",
+        "tools": [
+          {
+            "arguments": "arguments(args=[arg(arg='excel_file', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='.')])",
+            "name": "crg_gen",
+            "returns": "Name(id='str', ctx=Load())"
+          }
+        ],
+        "validation": "not_run"
+      },
+      "crg-req-to-design": {
+        "definition": {
+          "default_enabled": true,
+          "name": "crg-req-to-design",
+          "script": ".agents/skills/crg-req-to-design/mcp_server.py",
+          "startup_timeout_sec": 120,
+          "tool_timeout_sec": 300
+        },
+        "inventory": "static_python_decorators_not_runtime_schema",
+        "tools": [
+          {
+            "arguments": "arguments(args=[arg(arg='input_path', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value=None)])",
+            "name": "crg_req_to_design",
+            "returns": "Name(id='str', ctx=Load())"
+          }
+        ],
+        "validation": "not_run"
+      },
+      "dft-gen": {
+        "definition": {
+          "default_enabled": true,
+          "name": "dft-gen",
+          "script": ".agents/skills/dft-gen/mcp_server.py",
+          "startup_timeout_sec": 120,
+          "tool_timeout_sec": 300
+        },
+        "inventory": "static_python_decorators_not_runtime_schema",
+        "tools": [
+          {
+            "arguments": "arguments(args=[arg(arg='rtl_file', annotation=Name(id='str', ctx=Load())), arg(arg='module', annotation=Name(id='str', ctx=Load())), arg(arg='output', annotation=Name(id='str', ctx=Load())), arg(arg='soft_scan', annotation=Name(id='bool', ctx=Load()))], defaults=[Constant(value=''), Constant(value=''), Constant(value=True)])",
+            "name": "dft_readiness_check",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='rtl_file', annotation=Name(id='str', ctx=Load())), arg(arg='output', annotation=Name(id='str', ctx=Load())), arg(arg='module', annotation=Name(id='str', ctx=Load())), arg(arg='tcl_output', annotation=Name(id='str', ctx=Load())), arg(arg='period_ns', annotation=Name(id='float', ctx=Load())), arg(arg='testclock', annotation=Name(id='bool', ctx=Load())), arg(arg='best_practice', annotation=Name(id='bool', ctx=Load()))], defaults=[Constant(value=''), Constant(value=''), Constant(value=''), Constant(value=5.0), Constant(value=False), Constant(value=False)])",
+            "name": "dft_sgdc_from_rtl",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='config_file', annotation=Name(id='str', ctx=Load())), arg(arg='output', annotation=Name(id='str', ctx=Load())), arg(arg='tcl_output', annotation=Name(id='str', ctx=Load())), arg(arg='best_practice', annotation=Name(id='bool', ctx=Load()))], defaults=[Constant(value=''), Constant(value=''), Constant(value=False)])",
+            "name": "dft_sgdc_gen",
+            "returns": "Name(id='str', ctx=Load())"
+          }
+        ],
+        "validation": "not_run"
+      },
+      "drawio": {
+        "definition": {
+          "default_enabled": true,
+          "name": "drawio",
+          "startup_timeout_sec": 30,
+          "tool_timeout_sec": 120,
+          "url": "https://mcp.draw.io/mcp"
+        },
+        "inventory": "external_or_non_python_requires_runtime_probe",
+        "tools": [],
+        "validation": "not_run"
+      },
+      "excel-yml-gen": {
+        "definition": {
+          "default_enabled": true,
+          "name": "excel-yml-gen",
+          "script": ".agents/skills/excel-yml-gen/mcp_server.py",
+          "startup_timeout_sec": 120,
+          "tool_timeout_sec": 300
+        },
+        "inventory": "static_python_decorators_not_runtime_schema",
+        "tools": [
+          {
+            "arguments": "arguments(args=[arg(arg='excel_file', annotation=Name(id='str', ctx=Load())), arg(arg='sheet_name', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='.')])",
+            "name": "excel_yml_gen",
+            "returns": "Name(id='str', ctx=Load())"
+          }
+        ],
+        "validation": "not_run"
+      },
+      "gen-asic-memmap": {
+        "definition": {
+          "default_enabled": true,
+          "name": "gen-asic-memmap",
+          "script": ".agents/skills/gen-asic-memmap/mcp_server.py",
+          "startup_timeout_sec": 120,
+          "tool_timeout_sec": 300
+        },
+        "inventory": "static_python_decorators_not_runtime_schema",
+        "tools": [
+          {
+            "arguments": "arguments(args=[arg(arg='excel_file', annotation=Name(id='str', ctx=Load())), arg(arg='project_name', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='.')])",
+            "name": "gen_asic_memmap",
+            "returns": "Name(id='str', ctx=Load())"
+          }
+        ],
+        "validation": "not_run"
+      },
+      "gen-memwrap": {
+        "definition": {
+          "default_enabled": true,
+          "name": "gen-memwrap",
+          "script": ".agents/skills/gen-memwrap/mcp_server.py",
+          "startup_timeout_sec": 120,
+          "tool_timeout_sec": 300
+        },
+        "inventory": "static_python_decorators_not_runtime_schema",
+        "tools": [
+          {
+            "arguments": "arguments(args=[arg(arg='excel_file', annotation=Name(id='str', ctx=Load())), arg(arg='sheet_name', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load())), arg(arg='platform', annotation=Name(id='str', ctx=Load())), arg(arg='relaxed', annotation=Name(id='bool', ctx=Load())), arg(arg='generate', annotation=Name(id='bool', ctx=Load()))], defaults=[Constant(value='auto'), Constant(value=False), Constant(value=True)])",
+            "name": "gen_memwrap",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments()",
+            "name": "gen_memwrap_status",
+            "returns": "Name(id='str', ctx=Load())"
+          }
+        ],
+        "validation": "not_run"
+      },
+      "io-top-gen": {
+        "definition": {
+          "default_enabled": true,
+          "name": "io-top-gen",
+          "script": ".agents/skills/io-top-gen/mcp_server.py",
+          "startup_timeout_sec": 120,
+          "tool_timeout_sec": 600
+        },
+        "inventory": "missing_script",
+        "tools": [],
+        "validation": "unavailable"
+      },
+      "lib-db-gen": {
+        "definition": {
+          "default_enabled": true,
+          "name": "lib-db-gen",
+          "script": ".agents/skills/lib-db-gen/mcp_server.py",
+          "startup_timeout_sec": 120,
+          "tool_timeout_sec": 3600
+        },
+        "inventory": "static_python_decorators_not_runtime_schema",
+        "tools": [
+          {
+            "arguments": "arguments(args=[arg(arg='lib_file', annotation=Name(id='str', ctx=Load())), arg(arg='db_file', annotation=Name(id='str', ctx=Load())), arg(arg='lc_shell', annotation=Name(id='str', ctx=Load())), arg(arg='dc_shell', annotation=Name(id='str', ctx=Load())), arg(arg='shell_mode', annotation=Name(id='str', ctx=Load())), arg(arg='work_dir', annotation=Name(id='str', ctx=Load())), arg(arg='library_name', annotation=Name(id='str', ctx=Load())), arg(arg='no_run', annotation=Name(id='bool', ctx=Load())), arg(arg='keep_tcl', annotation=Name(id='bool', ctx=Load()))], defaults=[Constant(value=''), Constant(value=''), Constant(value=''), Constant(value=''), Constant(value=''), Constant(value=False), Constant(value=False)])",
+            "name": "lib_db_convert",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='top_v', annotation=Name(id='str', ctx=Load())), arg(arg='lib_file', annotation=Name(id='str', ctx=Load())), arg(arg='db_file', annotation=Name(id='str', ctx=Load())), arg(arg='top', annotation=Name(id='str', ctx=Load())), arg(arg='lc_shell', annotation=Name(id='str', ctx=Load())), arg(arg='dc_shell', annotation=Name(id='str', ctx=Load())), arg(arg='shell_mode', annotation=Name(id='str', ctx=Load())), arg(arg='work_dir', annotation=Name(id='str', ctx=Load())), arg(arg='library_name', annotation=Name(id='str', ctx=Load())), arg(arg='no_run', annotation=Name(id='bool', ctx=Load())), arg(arg='keep_tcl', annotation=Name(id='bool', ctx=Load()))], defaults=[Constant(value=''), Constant(value=''), Constant(value=''), Constant(value=''), Constant(value=''), Constant(value=''), Constant(value=False), Constant(value=False)])",
+            "name": "lib_db_stub",
+            "returns": "Name(id='str', ctx=Load())"
+          }
+        ],
+        "validation": "not_run"
+      },
+      "noc-gen": {
+        "definition": {
+          "default_enabled": true,
+          "name": "noc-gen",
+          "script": ".agents/skills/noc-gen/mcp_server.py",
+          "startup_timeout_sec": 120,
+          "tool_timeout_sec": 600
+        },
+        "inventory": "missing_script",
+        "tools": [],
+        "validation": "unavailable"
+      },
+      "openroad-mcp": {
+        "definition": {
+          "args": [
+            "-u",
+            "PYTHONHOME",
+            "-u",
+            "PYTHONPATH",
+            "FASTMCP_SHOW_SERVER_BANNER=false",
+            "LOG_LEVEL=ERROR",
+            ".openroad-mcp-venv/bin/openroad-mcp",
+            "--log-level",
+            "ERROR"
+          ],
+          "command": "/usr/bin/env",
+          "cwd": ".",
+          "default_enabled": false,
+          "name": "openroad-mcp",
+          "startup_timeout_sec": 30,
+          "tool_timeout_sec": 120
+        },
+        "inventory": "external_or_non_python_requires_runtime_probe",
+        "tools": [],
+        "validation": "not_run"
+      },
+      "soc-build": {
+        "definition": {
+          "default_enabled": true,
+          "name": "soc-build",
+          "script": ".agents/skills/soc-build/mcp_server.py",
+          "startup_timeout_sec": 120,
+          "tool_timeout_sec": 43200
+        },
+        "inventory": "static_python_decorators_not_runtime_schema",
+        "tools": [
+          {
+            "arguments": "arguments(args=[arg(arg='module_name', annotation=Name(id='str', ctx=Load())), arg(arg='project_dir', annotation=Name(id='str', ctx=Load()))])",
+            "name": "soc_add_chip",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='ip_name', annotation=Name(id='str', ctx=Load())), arg(arg='project_dir', annotation=Name(id='str', ctx=Load())), arg(arg='ip_type', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='digital')])",
+            "name": "soc_add_ip",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='module_dir', annotation=Name(id='str', ctx=Load())), arg(arg='cdc_tool', annotation=Name(id='str', ctx=Load())), arg(arg='rtl_top', annotation=Name(id='str', ctx=Load())), arg(arg='gui', annotation=Name(id='bool', ctx=Load()))], defaults=[Constant(value='spyglass'), Constant(value=''), Constant(value=False)])",
+            "name": "soc_cdc",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='module_dir', annotation=Name(id='str', ctx=Load())), arg(arg='simulator', annotation=Name(id='str', ctx=Load())), arg(arg='top_module', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='verilator'), Constant(value='')])",
+            "name": "soc_comp",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='module_dir', annotation=Name(id='str', ctx=Load())), arg(arg='simulator', annotation=Name(id='str', ctx=Load())), arg(arg='mode', annotation=Name(id='str', ctx=Load())), arg(arg='test', annotation=Name(id='str', ctx=Load())), arg(arg='seed', annotation=Name(id='int', ctx=Load())), arg(arg='tests', annotation=Name(id='str', ctx=Load())), arg(arg='seeds', annotation=Name(id='str', ctx=Load())), arg(arg='jobs', annotation=Name(id='int', ctx=Load())), arg(arg='top_module', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='verilator'), Constant(value='single'), Constant(value='default'), Constant(value=1), Constant(value=''), Constant(value='1'), Constant(value=1), Constant(value='')])",
+            "name": "soc_coverage",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='module_dir', annotation=Name(id='str', ctx=Load())), arg(arg='dft_tool', annotation=Name(id='str', ctx=Load())), arg(arg='rtl_top', annotation=Name(id='str', ctx=Load())), arg(arg='gui', annotation=Name(id='bool', ctx=Load())), arg(arg='best_practice', annotation=Name(id='bool', ctx=Load()))], defaults=[Constant(value='vc_static'), Constant(value=''), Constant(value=False), Constant(value=False)])",
+            "name": "soc_dft",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='path', annotation=Name(id='str', ctx=Load())), arg(arg='output', annotation=Name(id='str', ctx=Load())), arg(arg='recursive', annotation=Name(id='bool', ctx=Load()))], defaults=[Constant(value=''), Constant(value=False)])",
+            "name": "soc_flist",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='module_dir', annotation=Name(id='str', ctx=Load())), arg(arg='syn_run_id', annotation=Name(id='str', ctx=Load())), arg(arg='syn_source_fingerprint', annotation=Name(id='str', ctx=Load())), arg(arg='rtl_top', annotation=Name(id='str', ctx=Load())), arg(arg='timeout', annotation=Name(id='int', ctx=Load()))], defaults=[Constant(value=''), Constant(value=7200)])",
+            "name": "soc_formal",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='project_name', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load())), arg(arg='top_module', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='.'), Constant(value='')])",
+            "name": "soc_init",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='module_dir', annotation=Name(id='str', ctx=Load())), arg(arg='lint_tool', annotation=Name(id='str', ctx=Load())), arg(arg='rtl_top', annotation=Name(id='str', ctx=Load())), arg(arg='gui', annotation=Name(id='bool', ctx=Load()))], defaults=[Constant(value='verilator'), Constant(value=''), Constant(value=False)])",
+            "name": "soc_lint",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='module_dir', annotation=Name(id='str', ctx=Load())), arg(arg='rdc_tool', annotation=Name(id='str', ctx=Load())), arg(arg='rtl_top', annotation=Name(id='str', ctx=Load())), arg(arg='gui', annotation=Name(id='bool', ctx=Load()))], defaults=[Constant(value='vc_static'), Constant(value=''), Constant(value=False)])",
+            "name": "soc_rdc",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='module_dir', annotation=Name(id='str', ctx=Load())), arg(arg='simulator', annotation=Name(id='str', ctx=Load())), arg(arg='tests', annotation=Name(id='str', ctx=Load())), arg(arg='seeds', annotation=Name(id='str', ctx=Load())), arg(arg='jobs', annotation=Name(id='int', ctx=Load())), arg(arg='top_module', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='verilator'), Constant(value=''), Constant(value='1'), Constant(value=1), Constant(value='')])",
+            "name": "soc_regress",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='module_dir', annotation=Name(id='str', ctx=Load())), arg(arg='simulator', annotation=Name(id='str', ctx=Load())), arg(arg='seed', annotation=Name(id='int', ctx=Load())), arg(arg='test', annotation=Name(id='str', ctx=Load())), arg(arg='top_module', annotation=Name(id='str', ctx=Load())), arg(arg='fsdb', annotation=Name(id='bool', ctx=Load()))], defaults=[Constant(value='verilator'), Constant(value=1), Constant(value='default'), Constant(value=''), Constant(value=False)])",
+            "name": "soc_sim",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='module_dir', annotation=Name(id='str', ctx=Load())), arg(arg='rtl_top', annotation=Name(id='str', ctx=Load())), arg(arg='syn_tool', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value=''), Constant(value='yosys')])",
+            "name": "soc_syn",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='module_dir', annotation=Name(id='str', ctx=Load())), arg(arg='scope', annotation=Name(id='str', ctx=Load())), arg(arg='simulator', annotation=Name(id='str', ctx=Load())), arg(arg='top_module', annotation=Name(id='str', ctx=Load())), arg(arg='test', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='dv'), Constant(value='verilator'), Constant(value=''), Constant(value='default')])",
+            "name": "soc_verdi",
+            "returns": "Name(id='str', ctx=Load())"
+          }
+        ],
+        "validation": "not_run"
+      },
+      "soc-integrate": {
+        "definition": {
+          "default_enabled": false,
+          "name": "soc-integrate",
+          "script": ".agents/skills/soc-integrate/mcp_server.py",
+          "startup_timeout_sec": 120,
+          "tool_timeout_sec": 300
+        },
+        "inventory": "static_python_decorators_not_runtime_schema",
+        "tools": [
+          {
+            "arguments": "arguments(args=[arg(arg='verilog_file', annotation=Name(id='str', ctx=Load())), arg(arg='module_name', annotation=Name(id='str', ctx=Load())), arg(arg='output', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value=''), Constant(value='ports.csv')])",
+            "name": "soc_csv",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='verilog_file', annotation=Name(id='str', ctx=Load())), arg(arg='snapshot_file', annotation=Name(id='str', ctx=Load())), arg(arg='module_name', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='')])",
+            "name": "soc_diff",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='verilog_file', annotation=Name(id='str', ctx=Load())), arg(arg='module_name', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='')])",
+            "name": "soc_extract",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='top_file', annotation=Name(id='str', ctx=Load())), arg(arg='output', annotation=Name(id='str', ctx=Load())), arg(arg='verify_modules', annotation=Subscript(value=Name(id='list', ctx=Load()), slice=Name(id='str', ctx=Load()), ctx=Load()))], defaults=[Constant(value=''), Constant(value=None)])",
+            "name": "soc_extract_map",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='verilog_file', annotation=Name(id='str', ctx=Load())), arg(arg='instance_name', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='')])",
+            "name": "soc_instantiate",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='module_files', annotation=Subscript(value=Name(id='list', ctx=Load()), slice=Name(id='str', ctx=Load()), ctx=Load())), arg(arg='top_name', annotation=Name(id='str', ctx=Load())), arg(arg='output_file', annotation=Name(id='str', ctx=Load())), arg(arg='port_map', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='')])",
+            "name": "soc_integrate",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='config_file', annotation=Name(id='str', ctx=Load())), arg(arg='module_name', annotation=Name(id='str', ctx=Load()))])",
+            "name": "soc_remove",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='verilog_file', annotation=Name(id='str', ctx=Load())), arg(arg='module_name', annotation=Name(id='str', ctx=Load())), arg(arg='output', annotation=Name(id='str', ctx=Load())), arg(arg='format_type', annotation=Name(id='str', ctx=Load())), arg(arg='version', annotation=Name(id='str', ctx=Load())), arg(arg='changelog', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value=''), Constant(value=''), Constant(value='both'), Constant(value='1.0.0'), Constant(value='')])",
+            "name": "soc_snapshot",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='config_file', annotation=Name(id='str', ctx=Load())), arg(arg='output', annotation=Name(id='str', ctx=Load())), arg(arg='port_map', annotation=Name(id='str', ctx=Load())), arg(arg='top_name', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value=''), Constant(value=''), Constant(value='')])",
+            "name": "soc_update",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='verilog_file', annotation=Name(id='str', ctx=Load())), arg(arg='module_name', annotation=Name(id='str', ctx=Load())), arg(arg='wrapper_name', annotation=Name(id='str', ctx=Load())), arg(arg='output', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value=''), Constant(value=''), Constant(value='')])",
+            "name": "soc_wrap",
+            "returns": "Name(id='str', ctx=Load())"
+          }
+        ],
+        "validation": "not_run"
+      },
+      "soc-openroad": {
+        "definition": {
+          "default_enabled": false,
+          "name": "soc-openroad",
+          "script": ".agents/skills/soc-openroad/mcp_server.py",
+          "startup_timeout_sec": 120,
+          "tool_timeout_sec": 7500
+        },
+        "inventory": "static_python_decorators_not_runtime_schema",
+        "tools": [
+          {
+            "arguments": "arguments(args=[arg(arg='project_dir', annotation=Name(id='str', ctx=Load())), arg(arg='module_dir', annotation=Name(id='str', ctx=Load())), arg(arg='design_name', annotation=Name(id='str', ctx=Load())), arg(arg='top_module', annotation=Name(id='str', ctx=Load())), arg(arg='platform', annotation=Name(id='str', ctx=Load())), arg(arg='clock_port', annotation=Name(id='str', ctx=Load())), arg(arg='reset_port', annotation=Name(id='str', ctx=Load())), arg(arg='clock_period_ns', annotation=Name(id='float', ctx=Load())), arg(arg='core_utilization', annotation=Name(id='int', ctx=Load())), arg(arg='place_density', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='chip/top'), Constant(value=''), Constant(value=''), Constant(value='nangate45'), Constant(value='clk'), Constant(value='rst_n'), Constant(value=10.0), Constant(value=55), Constant(value=''), Constant(value='')])",
+            "name": "soc_openroad_init",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='project_dir', annotation=Name(id='str', ctx=Load())), arg(arg='orfs_dir', annotation=Name(id='str', ctx=Load())), arg(arg='design_config', annotation=Name(id='str', ctx=Load())), arg(arg='stage', annotation=Name(id='str', ctx=Load())), arg(arg='platform', annotation=Name(id='str', ctx=Load())), arg(arg='design_name', annotation=Name(id='str', ctx=Load())), arg(arg='flow_variant', annotation=Name(id='str', ctx=Load())), arg(arg='work_home', annotation=Name(id='str', ctx=Load())), arg(arg='jobs', annotation=Name(id='int', ctx=Load())), arg(arg='timeout', annotation=Name(id='int', ctx=Load())), arg(arg='backend', annotation=Name(id='str', ctx=Load())), arg(arg='docker_image', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value=''), Constant(value=''), Constant(value='synth'), Constant(value='nangate45'), Constant(value='vibe_soc_top'), Constant(value='base'), Constant(value=''), Constant(value=1), Constant(value=7200), Name(id='DEFAULT_BACKEND', ctx=Load()), Name(id='DEFAULT_ORFS_IMAGE', ctx=Load())])",
+            "name": "soc_openroad_run",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='project_dir', annotation=Name(id='str', ctx=Load())), arg(arg='design_name', annotation=Name(id='str', ctx=Load())), arg(arg='platform', annotation=Name(id='str', ctx=Load())), arg(arg='flow_variant', annotation=Name(id='str', ctx=Load())), arg(arg='work_home', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='vibe_soc_top'), Constant(value='nangate45'), Constant(value='base'), Constant(value='')])",
+            "name": "soc_openroad_status",
+            "returns": "Name(id='str', ctx=Load())"
+          }
+        ],
+        "validation": "not_run"
+      },
+      "upf-gen": {
+        "definition": {
+          "default_enabled": true,
+          "name": "upf-gen",
+          "script": ".agents/skills/upf-gen/mcp_server.py",
+          "startup_timeout_sec": 120,
+          "tool_timeout_sec": 43200
+        },
+        "inventory": "missing_script",
+        "tools": [],
+        "validation": "unavailable"
+      },
+      "wavedrom-gen": {
+        "definition": {
+          "args": [
+            "scripts/mcp_node.sh",
+            ".agents/skills/wavedrom-gen/scripts/mcp-server.mjs",
+            "--stdio"
+          ],
+          "command": "/bin/sh",
+          "cwd": ".",
+          "default_enabled": true,
+          "name": "wavedrom-gen",
+          "startup_timeout_sec": 180,
+          "tool_timeout_sec": 300
+        },
+        "inventory": "external_or_non_python_requires_runtime_probe",
+        "tools": [],
+        "validation": "not_run"
+      },
+      "xml2yml": {
+        "definition": {
+          "default_enabled": true,
+          "name": "xml2yml",
+          "script": ".agents/skills/xml2yml/mcp_server.py",
+          "startup_timeout_sec": 120,
+          "tool_timeout_sec": 300
+        },
+        "inventory": "static_python_decorators_not_runtime_schema",
+        "tools": [
+          {
+            "arguments": "arguments(args=[arg(arg='xml_file', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load())), arg(arg='name', annotation=Name(id='str', ctx=Load())), arg(arg='protocol', annotation=Name(id='str', ctx=Load())), arg(arg='fold_interrupts', annotation=Name(id='bool', ctx=Load()))], defaults=[Constant(value=''), Constant(value=''), Constant(value=''), Constant(value=False)])",
+            "name": "ipxact2yml",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='xml_file', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load())), arg(arg='name', annotation=Name(id='str', ctx=Load())), arg(arg='protocol', annotation=Name(id='str', ctx=Load())), arg(arg='fold_interrupts', annotation=Name(id='bool', ctx=Load()))], defaults=[Constant(value=''), Constant(value=''), Constant(value=''), Constant(value=False)])",
+            "name": "xml2yml",
+            "returns": "Name(id='str', ctx=Load())"
+          }
+        ],
+        "validation": "not_run"
+      },
+      "yml2reg": {
+        "definition": {
+          "default_enabled": true,
+          "name": "yml2reg",
+          "script": ".agents/skills/yml2reg/mcp_server.py",
+          "startup_timeout_sec": 120,
+          "tool_timeout_sec": 300
+        },
+        "inventory": "static_python_decorators_not_runtime_schema",
+        "tools": [
+          {
+            "arguments": "arguments(args=[arg(arg='yaml_file', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value=''), Constant(value='')])",
+            "name": "yml2bus_adapters",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='yaml_file', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load())), arg(arg='targets', annotation=Name(id='str', ctx=Load())), arg(arg='guard', annotation=Name(id='str', ctx=Load())), arg(arg='no_fill_gaps', annotation=Name(id='bool', ctx=Load()))], defaults=[Constant(value=''), Constant(value='xml,excel,h,sysmap,ral,define,init,ral_lib,regmap,adapter'), Constant(value=''), Constant(value=False)])",
+            "name": "yml2docs",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='yaml_file', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='')])",
+            "name": "yml2excel",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='yaml_file', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='')])",
+            "name": "yml2ral_lib",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='yaml_file', annotation=Name(id='str', ctx=Load())), arg(arg='protocol', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='apb')])",
+            "name": "yml2reg",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='yaml_file', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load())), arg(arg='guard', annotation=Name(id='str', ctx=Load())), arg(arg='no_fill_gaps', annotation=Name(id='bool', ctx=Load()))], defaults=[Constant(value=''), Constant(value=''), Constant(value=False)])",
+            "name": "yml2reg_c",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='yaml_file', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='')])",
+            "name": "yml2regmap_export",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='yaml_file', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='')])",
+            "name": "yml2regs_init",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='yaml_file', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='')])",
+            "name": "yml2sv_define",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='yaml_file', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='')])",
+            "name": "yml2sysmap",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='yaml_file', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load())), arg(arg='coverage', annotation=Name(id='bool', ctx=Load()))], defaults=[Constant(value=''), Constant(value=False)])",
+            "name": "yml2uvm_ral",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='yaml_file', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load())), arg(arg='emit_children', annotation=Name(id='bool', ctx=Load()))], defaults=[Constant(value=''), Constant(value=True)])",
+            "name": "yml2uvm_ral_top",
+            "returns": "Name(id='str', ctx=Load())"
+          },
+          {
+            "arguments": "arguments(args=[arg(arg='yaml_file', annotation=Name(id='str', ctx=Load())), arg(arg='output_dir', annotation=Name(id='str', ctx=Load()))], defaults=[Constant(value='')])",
+            "name": "yml2xml",
+            "returns": "Name(id='str', ctx=Load())"
+          }
+        ],
+        "validation": "not_run"
+      }
+    },
+    "skills": [
+      "cr-tree-diag-gen",
+      "crg-gen",
+      "crg-req-to-design",
+      "dft-gen",
+      "excel-yml-gen",
+      "gen-asic-memmap",
+      "gen-memwrap",
+      "lib-db-gen",
+      "soc-build",
+      "soc-integrate",
+      "soc-openroad",
+      "soc-pipeline",
+      "vibe-soc-loop",
+      "wavedrom-gen",
+      "xml2yml",
+      "yml2reg"
+    ]
+  },
+  "commit": "0b0ae36846cd3a5e7be39ea90eb57bf5dbb3b026",
+  "files": {
+    ".agents/agents/soc-architect.md": {
+      "git_mode": "100644",
+      "sha256": "aa0e5d6ab3be2e1d0341641be085ce6e1a017a3b27518d0038d146a0c9e83865",
+      "size": 1499
+    },
+    ".agents/agents/soc-cdc-engineer.md": {
+      "git_mode": "100644",
+      "sha256": "d783bf92fb3b5694a52435449d0cc21257f625e85ad7e729057140d9d3d8241f",
+      "size": 3650
+    },
+    ".agents/agents/soc-crg-engineer.md": {
+      "git_mode": "100644",
+      "sha256": "9eaba036b09d202777688279e19177acdb20d61117d1f95bf02b5fee6c78fc20",
+      "size": 1031
+    },
+    ".agents/agents/soc-dft-engineer.md": {
+      "git_mode": "100644",
+      "sha256": "6389b02b54ba8cdfefe756a349cf65d5b87dc59346ced1c2e4596a77138a071c",
+      "size": 4296
+    },
+    ".agents/agents/soc-doc-engineer.md": {
+      "git_mode": "100644",
+      "sha256": "d540d9413ccf83ca0382e1362dbd89653bc71e79182a217ebe92535530c8bbd1",
+      "size": 1076
+    },
+    ".agents/agents/soc-integrator.md": {
+      "git_mode": "100644",
+      "sha256": "5ac702819849ecda763fad2fbbe1342de6bc39a3bb3adb96783560a45b9f0fa9",
+      "size": 1576
+    },
+    ".agents/agents/soc-low-power-engineer.md": {
+      "git_mode": "100644",
+      "sha256": "8625e720471f72269338c3a0d80c2da43bceba9a9ebb68ed5b392c71046182b5",
+      "size": 2686
+    },
+    ".agents/agents/soc-pd-engineer.md": {
+      "git_mode": "100644",
+      "sha256": "7dcec11272f739d3710ff684398df459f38477a2a1857f759874690aba1cb692",
+      "size": 1032
+    },
+    ".agents/agents/soc-reviewer.md": {
+      "git_mode": "100644",
+      "sha256": "54cc217e4b1dac3b027e2145f59e5987f03a79ac7237a16b28e0ccfbcf56bbfd",
+      "size": 1159
+    },
+    ".agents/agents/soc-rtl-designer.md": {
+      "git_mode": "100644",
+      "sha256": "f8eec7824c0ef1378587cb4bb9c3d8f669bbf4ff447dd8e40d3c04758dbedc80",
+      "size": 1682
+    },
+    ".agents/agents/soc-synthesis-engineer.md": {
+      "git_mode": "100644",
+      "sha256": "49fe3fbb72962299d61bd4a19e2457cab24e14b5dd305a6dcd6cc15d2b7acd93",
+      "size": 1117
+    },
+    ".agents/agents/soc-verification-engineer.md": {
+      "git_mode": "100644",
+      "sha256": "fa6b0d939904c91d28c2b75632f735800dab9e92492ec4bd55d6eaf9c98deb93",
+      "size": 1279
+    },
+    ".agents/loop_policy.json": {
+      "git_mode": "100644",
+      "sha256": "3c4c9cceac84cec13ad2fa4f2e76f36102ecadae7569dce2483dd7993d87f283",
+      "size": 3633
+    },
+    ".agents/mcp-requirements.txt": {
+      "git_mode": "100644",
+      "sha256": "e01ddeed825479ee57f1b674af73ae7e6a89157444e59e2dabca75f90c89b6e1",
+      "size": 155
+    },
+    ".agents/mcp-servers.json": {
+      "git_mode": "100644",
+      "sha256": "49261114e227ba2da7d895f03a6e26f2f0543437d3a8a77f95b803423469441c",
+      "size": 4198
+    },
+    ".agents/rules/00_loop_modes.md": {
+      "git_mode": "100644",
+      "sha256": "4867305c13c377c560eec81a7a4dfabe3a979b72f16a77e2861249e8a092464a",
+      "size": 1146
+    },
+    ".agents/rules/01_swarm_flow.md": {
+      "git_mode": "100644",
+      "sha256": "7630c843831419d8bfe4ff92ea8094f6360110911fdcf0944bc77d7a068f8642",
+      "size": 2142
+    },
+    ".agents/rules/02_toolchain.md": {
+      "git_mode": "100644",
+      "sha256": "b038331d78e8b289920e32ad302529754000071ce652f2bea0a48f764f52331e",
+      "size": 1618
+    },
+    ".agents/rules/03_exceptions.md": {
+      "git_mode": "100644",
+      "sha256": "5aea80a9f4a98892dab280b9f4b8b65c51206952409f09e8b9debcb849c4ab15",
+      "size": 1002
+    },
+    ".agents/rules/04_coding_style.md": {
+      "git_mode": "100644",
+      "sha256": "0ab2d93a8c0fa6d0f3f707132090ea0cf74351ebaf8699cb0dc06abb313c9f03",
+      "size": 1811
+    },
+    ".agents/rules/04_verilog_coding_style.md": {
+      "git_mode": "100644",
+      "sha256": "7a7d1425afad12e41052bb40f091951d61ff40cf3a80364b651366a23e68dacb",
+      "size": 28892
+    },
+    ".agents/rules/05_pipeline_state.md": {
+      "git_mode": "100644",
+      "sha256": "edb8dafbf18e775854f65f7aadbd5a775962b4554873dac8bfb37dea6af4b16c",
+      "size": 2844
+    },
+    ".agents/rules/06_design_knowledge.md": {
+      "git_mode": "100644",
+      "sha256": "df3b633593cea0f3c6db36e2b284c71a4c47081c44d7a3d806a03425184ffb08",
+      "size": 2941
+    },
+    ".agents/rules/10_rtl_change_gate.md": {
+      "git_mode": "100644",
+      "sha256": "0ad7132064dcad1a2640c0f095addc31c3c99cb22612d057713980f203a767f3",
+      "size": 972
+    },
+    ".agents/rules/11_verif_recovery_gate.md": {
+      "git_mode": "100644",
+      "sha256": "9cdc37e56e61deacb9c18a1b175caf79a669fe5702e2945a0b576991a3c741bd",
+      "size": 883
+    },
+    ".agents/rules/12_syn_pd_gate.md": {
+      "git_mode": "100644",
+      "sha256": "3210a5b1c9818f543826cbb6d49967dff8c8d82c14765b13f578d397f0144fc7",
+      "size": 812
+    },
+    ".agents/rules/13_review_gate.md": {
+      "git_mode": "100644",
+      "sha256": "040eb014fa11cc39cdfd9a28f8387ecabbf36241205b4b44aea5115d1eb752d3",
+      "size": 1790
+    },
+    ".agents/rules/14_dft_gate.md": {
+      "git_mode": "100644",
+      "sha256": "869613402f746df2ebc0d4c323f12c26df37743b25261346bc9dd88700182094",
+      "size": 2264
+    },
+    ".agents/rules/15_reset_ownership.md": {
+      "git_mode": "100644",
+      "sha256": "b4069ebfcd38c9b263497aac87bbec6b7f67706642d7e5bff8dfadaa1f701ba7",
+      "size": 1714
+    },
+    ".agents/scripts/check_doc_completeness.py": {
+      "git_mode": "100644",
+      "sha256": "f3923e0d97c7a6474490b57e0d54700b5da1748de7708ee89c5cc97ff9e26ed1",
+      "size": 1809
+    },
+    ".agents/scripts/check_handoff.py": {
+      "git_mode": "100644",
+      "sha256": "f96c0e86239424fdab79449d6cc9e31c0541bf0ec09cdad90b8229bc9fa6306e",
+      "size": 7003
+    },
+    ".agents/scripts/check_integrate.py": {
+      "git_mode": "100644",
+      "sha256": "788a80958ab179e80525298eff7ae508649e48f193506035c33a29bfe95f49cf",
+      "size": 1062
+    },
+    ".agents/scripts/check_loop_state.py": {
+      "git_mode": "100755",
+      "sha256": "ad2954e4d60169456b07e7e71bc4eeabb2f54efd1a12a95ddd9225dc229cce87",
+      "size": 218
+    },
+    ".agents/scripts/check_rtl_quality.py": {
+      "git_mode": "100644",
+      "sha256": "50ff710e3e56e4b0f715d7289fb038b02f9557b977e23bbfeef1f9aa0ef355ae",
+      "size": 3592
+    },
+    ".agents/scripts/check_sim_pass.py": {
+      "git_mode": "100644",
+      "sha256": "9431b8ec5d980754c971fed7de55d255f7421f0dcef9023a15f98ba9bd3fcd69",
+      "size": 3222
+    },
+    ".agents/scripts/check_timing.py": {
+      "git_mode": "100644",
+      "sha256": "2ae88aebdcf5887b0c931a6d4647e0020a8446538fefbfadf0208c8cccf4fca5",
+      "size": 1939
+    },
+    ".agents/scripts/init_state.py": {
+      "git_mode": "100644",
+      "sha256": "d5536e2ad840d7278ff6e5d6c91dd75a8aadd4549f10d42a9633882b686b9b7a",
+      "size": 246
+    },
+    ".agents/scripts/loop_context.py": {
+      "git_mode": "100644",
+      "sha256": "0e2de7f0e8ea3c195132c8bf9850fe275185ba035163c73f84173be5c21f5234",
+      "size": 31495
+    },
+    ".agents/scripts/loop_state_core.py": {
+      "git_mode": "100644",
+      "sha256": "0b291e94d38f67a7350ed6a783dd6528ad3b109281865e2b4327c3aadf3cc2df",
+      "size": 101813
+    },
+    ".agents/scripts/mcp_runtime.py": {
+      "git_mode": "100644",
+      "sha256": "7154b8a455bc28d3dd57a00732bd1a1150fdd9e2e75b036a52736d0c5fada263",
+      "size": 2335
+    },
+    ".agents/scripts/migrate_state.py": {
+      "git_mode": "100755",
+      "sha256": "452ab601d7b0a482cee2ec5f31cd875cbc2146c13a8c6fde222e7055cdd3e37d",
+      "size": 250
+    },
+    ".agents/scripts/pipeline_state.py": {
+      "git_mode": "100644",
+      "sha256": "0426a1b341a947159a174002bad4c3f1101112a8d5bb56d74d4ed864f2fe11f6",
+      "size": 292
+    },
+    ".agents/scripts/query_state.py": {
+      "git_mode": "100644",
+      "sha256": "ceb0b140f3529e32082af3696044b2b74527e1a1662b14dfe847de34c8c99849",
+      "size": 224
+    },
+    ".agents/scripts/run_mcp_node.sh": {
+      "git_mode": "100755",
+      "sha256": "391e4a3ecef4accd61805bc215e78a7b4bd2e2f614682548e4c6f9846bf3b8e2",
+      "size": 8705
+    },
+    ".agents/scripts/run_mcp_python.sh": {
+      "git_mode": "100755",
+      "sha256": "4df9c59d0e82e4c1b1ff961172f5c8f2586254e834b92b0f3d040a897072b1cb",
+      "size": 4113
+    },
+    ".agents/scripts/setup_mcp_env.sh": {
+      "git_mode": "100755",
+      "sha256": "ed99a3a68c354f1563fef47a3513f163efb888963197f1423344b01c7dbeff9c",
+      "size": 275
+    },
+    ".agents/scripts/tests/test_loop_context.py": {
+      "git_mode": "100644",
+      "sha256": "b793b79774fafb30efb308273c6ebc7275235d4b2b0f025f742e74de9354e52b",
+      "size": 18439
+    },
+    ".agents/scripts/tests/test_loop_state_core.py": {
+      "git_mode": "100644",
+      "sha256": "b0a9feab0708466bb6b04566c185ff282402f7d3a837f6892d07113973805a36",
+      "size": 24927
+    },
+    ".agents/scripts/tests/test_loop_state_repair.py": {
+      "git_mode": "100644",
+      "sha256": "31dfa9c93d3f43f1be01b6b3df6b31c3bb998301508ccf90270c64d4ef641a50",
+      "size": 11863
+    },
+    ".agents/scripts/tests/test_sync_loop_state_entrypoints.py": {
+      "git_mode": "100644",
+      "sha256": "1a95730315f289d10010bf8aaac75a1e6127afb66a77adb77bccb5a1d4993e33",
+      "size": 1831
+    },
+    ".agents/scripts/update_state.py": {
+      "git_mode": "100644",
+      "sha256": "4faebb4062cb83b59737eac0b46a7b910d13521b1b59106d64ddadd5b3e44131",
+      "size": 227
+    },
+    ".agents/skills/.gitignore": {
+      "git_mode": "100644",
+      "sha256": "f2dbbe006a1860a491dad53825c26325d113f018a8762bcb123e78dd4b240e99",
+      "size": 106
+    },
+    ".agents/skills/cr-tree-diag-gen/SKILL.md": {
+      "git_mode": "100644",
+      "sha256": "27e240bea932cfd4615ca668c777aada147e5515dc001b1358cc4e408b6ab43b",
+      "size": 939
+    },
+    ".agents/skills/cr-tree-diag-gen/examples/input/clock_table.xlsx": {
+      "git_mode": "100644",
+      "sha256": "b0c11488ea27ff117dd92447139fdd5cfe9eba5097840fe146ba3feae6a92ab1",
+      "size": 6183
+    },
+    ".agents/skills/cr-tree-diag-gen/examples/input/reset_table.xlsx": {
+      "git_mode": "100644",
+      "sha256": "dbb02ff7b6e754fa5b67e8f0f0f205e8c535cc7f9b2c19dbbd80feccd8d350f1",
+      "size": 5779
+    },
+    ".agents/skills/cr-tree-diag-gen/examples/input/sub_clock_table.xlsx": {
+      "git_mode": "100644",
+      "sha256": "a2650d686a1061e9d3a6c5a3f53c7795992cf20c2f45e17dc6093aae419decf2",
+      "size": 11568
+    },
+    ".agents/skills/cr-tree-diag-gen/examples/output/clock_tree.drawio": {
+      "git_mode": "100644",
+      "sha256": "f4a59b7775be0576a11ecd037f2aa61044d41b7d1d0f8206070a786aa2306802",
+      "size": 35210
+    },
+    ".agents/skills/cr-tree-diag-gen/examples/output/clock_tree.excalidraw": {
+      "git_mode": "100644",
+      "sha256": "6c8557abbb69b756efce37c9fded4c237abdc51d5aa32e166f1bb0f6095dcd4c",
+      "size": 100978
+    },
+    ".agents/skills/cr-tree-diag-gen/examples/output/reset_tree.drawio": {
+      "git_mode": "100644",
+      "sha256": "597b74dc7f27874be034f9c8009902591ddb6e2fec3212faa260ec337e772585",
+      "size": 35168
+    },
+    ".agents/skills/cr-tree-diag-gen/examples/output/reset_tree.excalidraw": {
+      "git_mode": "100644",
+      "sha256": "bfd433a792a74591720bf89e03c23f3791ef510472098ed0b5fa3cd1cc65ed04",
+      "size": 99673
+    },
+    ".agents/skills/cr-tree-diag-gen/examples/output/sub_clock_tree.drawio": {
+      "git_mode": "100644",
+      "sha256": "4f5070f9ab84a30a1ae4ab9a2f8dddbf7cd82390b602730854aa39e44c2fe457",
+      "size": 50307
+    },
+    ".agents/skills/cr-tree-diag-gen/examples/output/sub_clock_tree.excalidraw": {
+      "git_mode": "100644",
+      "sha256": "bee97f90972af43bdb27b0b4f200484c582f06559b06a432a0b0cc5d6fd6c161",
+      "size": 141789
+    },
+    ".agents/skills/cr-tree-diag-gen/mcp_server.py": {
+      "git_mode": "100644",
+      "sha256": "17bf8e1c8e6d523cd368a428415e1e81e598faba31ed9e89a3c419984d86fa29",
+      "size": 6422
+    },
+    ".agents/skills/cr-tree-diag-gen/scripts/__init__.py": {
+      "git_mode": "100644",
+      "sha256": "47dcb2d9487be71795b30eb74be81fb4896772a1f6bfca417f5b1c3f00799c7e",
+      "size": 150
+    },
+    ".agents/skills/cr-tree-diag-gen/scripts/excalidraw_renderer.py": {
+      "git_mode": "100644",
+      "sha256": "c433bd9f8673e028e5bf80381e5cd75a7966f84d78f26d8895b325c9017adc14",
+      "size": 20707
+    },
+    ".agents/skills/cr-tree-diag-gen/scripts/graph.py": {
+      "git_mode": "100644",
+      "sha256": "3db216592ef2e5d40c6d5440d0d2cdd6fb339c29d5c689e2e83df0db98869601",
+      "size": 14189
+    },
+    ".agents/skills/cr-tree-diag-gen/scripts/layout.py": {
+      "git_mode": "100644",
+      "sha256": "f5ad2c7d4ffda488de72d33f247d430a8e98dab9debf8f44cd60d06dbf477679",
+      "size": 9173
+    },
+    ".agents/skills/cr-tree-diag-gen/scripts/main.py": {
+      "git_mode": "100644",
+      "sha256": "4343a5c4f3c2922dd085f759e163509dbe8625ebe27d1cd087640594624a73c8",
+      "size": 3779
+    },
+    ".agents/skills/cr-tree-diag-gen/scripts/parser.py": {
+      "git_mode": "100644",
+      "sha256": "b88dfbe0d6beae99df72c07fbf5c9cb5d47c7018de0d3705ca5ef96b2efa65f4",
+      "size": 4696
+    },
+    ".agents/skills/cr-tree-diag-gen/scripts/renderer.py": {
+      "git_mode": "100644",
+      "sha256": "193cef84eae6c64acbdee10624bd51779a8fbe0c36ce6b6b5e504eed4289730f",
+      "size": 17969
+    },
+    ".agents/skills/cr-tree-diag-gen/scripts/styles.py": {
+      "git_mode": "100644",
+      "sha256": "ec96e124b26bc9a9d0a9f5f97405a365ced6bd1cd6d100af3eea225ce2346b8d",
+      "size": 5978
+    },
+    ".agents/skills/crg-gen/SKILL.md": {
+      "git_mode": "100644",
+      "sha256": "6919eae867ab9a490ef235bd937d3d337f6dddf6f2d4450ba4a6fdbc12d69780",
+      "size": 1145
+    },
+    ".agents/skills/crg-gen/mcp_server.py": {
+      "git_mode": "100644",
+      "sha256": "2f13da452c25e1f725a5a765cb8569e46fda0d1a97cc612eed4886871d9e50ea",
+      "size": 2486
+    },
+    ".agents/skills/crg-gen/references/crg_demo.xlsx": {
+      "git_mode": "100644",
+      "sha256": "4caa7f382973f6d4c70412aa869542e9e208a4ce1fbee77e59c9744be2d1f970",
+      "size": 20244
+    },
+    ".agents/skills/crg-gen/scripts/crg_gen.py": {
+      "git_mode": "100644",
+      "sha256": "ab494a6822b524f8c0e189655317061d38c971180eb946f09acb9615d6a54e40",
+      "size": 288283
+    },
+    ".agents/skills/crg-gen/scripts/soc_build.py": {
+      "git_mode": "100644",
+      "sha256": "5ddacc0814e509576a3cb6f58977f8ca0134da486b9251642992379b4a478b26",
+      "size": 244816
+    },
+    ".agents/skills/crg-gen/scripts/yml2reg/yml2reg.py": {
+      "git_mode": "100644",
+      "sha256": "f285da8eb14581ec004a8b8a4656d3607b771c592059232113bc74ca4b0bdbea",
+      "size": 11021
+    },
+    ".agents/skills/crg-req-to-design/SKILL.md": {
+      "git_mode": "100644",
+      "sha256": "074cad2bcb03e13e5fe06ca26c094a887e0fa97d33f5efbe386f36ab4cf77056",
+      "size": 1005
+    },
+    ".agents/skills/crg-req-to-design/examples/input/req_table_complex.xlsx": {
+      "git_mode": "100644",
+      "sha256": "a5725f4638c0ef52389fd2cbe44075c87a3c2059c3c585a7bb1cfbab3896cf3c",
+      "size": 10141
+    },
+    ".agents/skills/crg-req-to-design/examples/input/reset_table_complex.xlsx": {
+      "git_mode": "100644",
+      "sha256": "3f462b197f99b425a189105c91daefcf8b19585f0fcd3933059d80a6b99d823e",
+      "size": 5735
+    },
+    ".agents/skills/crg-req-to-design/mcp_server.py": {
+      "git_mode": "100644",
+      "sha256": "194f3ad81b906edccbcbdaf303d92612922654990709ee0fe0c9e6a63993a73b",
+      "size": 5239
+    },
+    ".agents/skills/crg-req-to-design/scripts/__init__.py": {
+      "git_mode": "100644",
+      "sha256": "60e3a3f4d80d25ce6c1c1117a639a5e3343a2aff035b4e56e03a0645c2b13a47",
+      "size": 70
+    },
+    ".agents/skills/crg-req-to-design/scripts/main.py": {
+      "git_mode": "100644",
+      "sha256": "58281d475456c07fe0313ddb92159bd490225ae005edd4afd737ec2bd9c716d4",
+      "size": 4410
+    },
+    ".agents/skills/crg-req-to-design/scripts/pll_recommender.py": {
+      "git_mode": "100644",
+      "sha256": "42e348a69bef70e2546538d98ec3ba31bfc76ebc77d0807e7b9db87cd365be12",
+      "size": 9506
+    },
+    ".agents/skills/crg-req-to-design/scripts/req_parser.py": {
+      "git_mode": "100644",
+      "sha256": "716e22e3ac8d1b9977d87b7d5eb8b519637e0cee52ef88a0415004d24b3f36a2",
+      "size": 7452
+    },
+    ".agents/skills/crg-req-to-design/scripts/reset_table_gen.py": {
+      "git_mode": "100644",
+      "sha256": "d9211cb0fbb1a153dd6764bbdca09cfc4605b82d2894233347bee14bc0e5d73d",
+      "size": 5750
+    },
+    ".agents/skills/dft-gen/SKILL.md": {
+      "git_mode": "100644",
+      "sha256": "40cd284baf0c612c397416483c9c916c83425c41d567e7db08cac738e6c8f432",
+      "size": 3787
+    },
+    ".agents/skills/dft-gen/mcp_server.py": {
+      "git_mode": "100644",
+      "sha256": "27d74818ddbf592d327fad063a3d6bc1d67a5fe674e580e5b53bd397e11a0d8e",
+      "size": 4726
+    },
+    ".agents/skills/dft-gen/references/dft_frontend_checklist.md": {
+      "git_mode": "100644",
+      "sha256": "3768cc1f3a4d8a02eb37a6d8ae074322f8fc9575a34d8b8745ac8f7363a1dfae",
+      "size": 2044
+    },
+    ".agents/skills/dft-gen/references/dft_sgdc_template.yml": {
+      "git_mode": "100644",
+      "sha256": "e64e03cd5228fd2218001b7e54e9aee60a62e552a1ddbe07de24c4fb35c287f7",
+      "size": 667
+    },
+    ".agents/skills/dft-gen/scripts/dft_gen.py": {
+      "git_mode": "100644",
+      "sha256": "ac53f6606e34da10518c39186c7da81f9f50321e18c0ab8cb2bcea4ab2416a79",
+      "size": 23636
+    },
+    ".agents/skills/dft-gen/tests/test_dft_gen.py": {
+      "git_mode": "100644",
+      "sha256": "7a4e3b175ec66a31e1e26d5982acaefc16fa2b2626668be2a67745cb9cd47ae8",
+      "size": 4120
+    },
+    ".agents/skills/excel-yml-gen/SKILL.md": {
+      "git_mode": "100644",
+      "sha256": "c75b0fc842294256b01d56ad1bb85416b3637d0c963795305c5e70057b86265e",
+      "size": 926
+    },
+    ".agents/skills/excel-yml-gen/mcp_server.py": {
+      "git_mode": "100644",
+      "sha256": "a90351e709eae13d315d48e1d45b5061bdad76f161befc1fa7f7b42255550813",
+      "size": 3241
+    },
+    ".agents/skills/excel-yml-gen/references/excel2yml_demo.xlsx": {
+      "git_mode": "100644",
+      "sha256": "9cd90214125374818a4903a244134f88d885737487d7c403685eaeb44bd1c362",
+      "size": 13857
+    },
+    ".agents/skills/excel-yml-gen/scripts/excel_yml_gen.py": {
+      "git_mode": "100644",
+      "sha256": "de7cc5fc0b2d31c4c1ef3803dba7d97c13bb6c760f570166a74a5fe4b08f9d34",
+      "size": 31614
+    },
+    ".agents/skills/gen-asic-memmap/SKILL.md": {
+      "git_mode": "100644",
+      "sha256": "3ec9f627b2f1667a2606c50b8be86b3cb9f48e372e3f30756a07fe7339bc636f",
+      "size": 1172
+    },
+    ".agents/skills/gen-asic-memmap/mcp_server.py": {
+      "git_mode": "100644",
+      "sha256": "2cd754c558a8ac91f0c70f3b2918aeff634a7fce794efa2777545a82c642f0c7",
+      "size": 2063
+    },
+    ".agents/skills/gen-asic-memmap/references/memmap_demo.xlsx": {
+      "git_mode": "100644",
+      "sha256": "a66c6518424ab9a958f64c94d373dc7c72765ca22995c4d20184382181686b71",
+      "size": 8994
+    },
+    ".agents/skills/gen-asic-memmap/scripts/gen_asic_memmap.py": {
+      "git_mode": "100644",
+      "sha256": "0ae5d82b32dfa6ec3f8a18064ea0787a86c7bccfc5aed8ec37e4846b72e108fb",
+      "size": 8727
+    },
+    ".agents/skills/gen-memwrap/SKILL.md": {
+      "git_mode": "100644",
+      "sha256": "588da76df0719e8440244c69df9d4e1cb3ea5a61ee18fe757afd1255552cd234",
+      "size": 4134
+    },
+    ".agents/skills/gen-memwrap/mcp_server.py": {
+      "git_mode": "100644",
+      "sha256": "64edd58f33a64d39b1022271ed1aca8ec77b2633adfacc9a46426d589f459e45",
+      "size": 3318
+    },
+    ".agents/skills/gen-memwrap/references/catalog_nangate45.json": {
+      "git_mode": "100644",
+      "sha256": "8e9c5fd950763675b517f58e77d8a791842f0d3ce3ef076a1a191975bbb041ec",
+      "size": 7336
+    },
+    ".agents/skills/gen-memwrap/references/catalog_sky130.json": {
+      "git_mode": "100644",
+      "sha256": "990b1e8eec175b38f6066d69f7dfdc6b6038801fed6996c2c85aa6176401cd68",
+      "size": 2297
+    },
+    ".agents/skills/gen-memwrap/references/memwrap_demo.xlsx": {
+      "git_mode": "100644",
+      "sha256": "499f1b806a9d93963582f51fca9d3042ebcb00e67b90d16294b31eebf718bd63",
+      "size": 5450
+    },
+    ".agents/skills/gen-memwrap/scripts/gen_memwrap.py": {
+      "git_mode": "100644",
+      "sha256": "c5f5b924234a0de15260d9f0a82b0582a8c8d8a54a334cc7c89254481c09a4dc",
+      "size": 48612
+    },
+    ".agents/skills/gen-memwrap/scripts/mem_generators.py": {
+      "git_mode": "100644",
+      "sha256": "3b34d0d0ef38723ae5120987fc93af6e09f6a99275699ffa324eeb03eed0e61d",
+      "size": 30279
+    },
+    ".agents/skills/lib-db-gen/SKILL.md": {
+      "git_mode": "100644",
+      "sha256": "09f1996e157b6da8beeec6622c1d4a329ef9c2a2bdcbd1b1bfaf1f1b9fc14c15",
+      "size": 3908
+    },
+    ".agents/skills/lib-db-gen/agents/openai.yaml": {
+      "git_mode": "100644",
+      "sha256": "91246e37fa783916968415aadbac926c5304e8cf515039d0d3ce4179aaa265a8",
+      "size": 229
+    },
+    ".agents/skills/lib-db-gen/mcp_server.py": {
+      "git_mode": "100644",
+      "sha256": "93b57e8887e26394eb639597751511a367de8bf2a1ed63fba136023bde2c6779",
+      "size": 4977
+    },
+    ".agents/skills/lib-db-gen/scripts/lib_db_gen.py": {
+      "git_mode": "100755",
+      "sha256": "37b398d556f5b19069c62808bed0d4e2c799eb99ba1b8af8109b5edd3ed3a66d",
+      "size": 26085
+    },
+    ".agents/skills/lib-db-gen/tests/test_lib_db_gen.py": {
+      "git_mode": "100644",
+      "sha256": "b46155e20ad7a3f54227079b67848c65f63d51a2e8ef204ace510c89158eee43",
+      "size": 18712
+    },
+    ".agents/skills/soc-build/SKILL.md": {
+      "git_mode": "100644",
+      "sha256": "999f6b0ed0a81e5001dd1f42452164e803ef348c5032394105a24b3398e4f7d6",
+      "size": 5711
+    },
+    ".agents/skills/soc-build/mcp_server.py": {
+      "git_mode": "100644",
+      "sha256": "efdd9bb911e34cf83a4653698ba1dbe42a9bafdf504aab69a10eab6e9eadb8d4",
+      "size": 46065
+    },
+    ".agents/skills/soc-build/references/verilog_coding_style.md": {
+      "git_mode": "100644",
+      "sha256": "e7e3c95210238b4e4aa7a89eecc05792f1ee074857db752274ad9961b4542a68",
+      "size": 290
+    },
+    ".agents/skills/soc-build/scripts/common.mk": {
+      "git_mode": "100644",
+      "sha256": "95116d4db378febd967db599585315c1c8f915355f4a24b836dbe94219a00671",
+      "size": 3765
+    },
+    ".agents/skills/soc-build/scripts/soc_gen_flist.py": {
+      "git_mode": "100644",
+      "sha256": "eac910dccb8244e8b64470d30a4dfb21facd7e74ee7c30fc47f224b3fb0766ad",
+      "size": 2213
+    },
+    ".agents/skills/soc-build/scripts/soc_project_init.py": {
+      "git_mode": "100644",
+      "sha256": "6ff685bc43dd70117ef2d518faa5f1fa6862fad6772d0a85a8fd0650b459b570",
+      "size": 51654
+    },
+    ".agents/skills/soc-build/setup.sh": {
+      "git_mode": "100755",
+      "sha256": "5d5ad44a0a36820c46bab24c436a9732787c7bc2961da6420b7cfe21ffd3c3ce",
+      "size": 1639
+    },
+    ".agents/skills/soc-build/templates/project/.gitignore": {
+      "git_mode": "100644",
+      "sha256": "8e1a5b631eb6c1c5cf6238f11622983a1ce10a78a47a1057f25aa93f83513e9f",
+      "size": 551
+    },
+    ".agents/skills/soc-build/templates/project/Makefile": {
+      "git_mode": "100644",
+      "sha256": "1efde951b556108f4cf58f1732bc9757313fa668a360af4ef5e3cf6414be5aea",
+      "size": 4663
+    },
+    ".agents/skills/soc-build/templates/project/scripts/build_fingerprint.py": {
+      "git_mode": "100755",
+      "sha256": "b27485d8aca8e2c79a2a7db58ead7934217dd950b3d2b19ca2676190da0d6cd3",
+      "size": 1627
+    },
+    ".agents/skills/soc-build/templates/project/scripts/cdc/sg_cdc.tcl": {
+      "git_mode": "100644",
+      "sha256": "8bd91f8939ede9654898814ea7b354a01893630564f726ebe4b50aec927bfdc0",
+      "size": 2293
+    },
+    ".agents/skills/soc-build/templates/project/scripts/cdc/vc_cdc.tcl": {
+      "git_mode": "100644",
+      "sha256": "e567bb38b9ff7486c7212f06b895f593084e209ab0bbc5b798327a2edfaa3a4c",
+      "size": 1134
+    },
+    ".agents/skills/soc-build/templates/project/scripts/check_repo_hygiene.py": {
+      "git_mode": "100755",
+      "sha256": "635a6f9d2ed039b4cbbdc8ce58d42f709a581ccf026c608cee2eb56f418927ff",
+      "size": 2068
+    },
+    ".agents/skills/soc-build/templates/project/scripts/clp/clp_rtl_upf_check.tcl": {
+      "git_mode": "100644",
+      "sha256": "b44ac09de9e52f6a5798df7d71489841a926df92648d03461440815b13c86cc0",
+      "size": 2764
+    },
+    ".agents/skills/soc-build/templates/project/scripts/common.mk": {
+      "git_mode": "100644",
+      "sha256": "18839c083369b80c5751bdfabb475c14cf86555385651fa8bd1b5148ee2a35b4",
+      "size": 28185
+    },
+    ".agents/skills/soc-build/templates/project/scripts/config.mk": {
+      "git_mode": "100644",
+      "sha256": "2b94157633cb79a0047ddaed42f3a27c27f9f480c33a0605cce8841c33abb430",
+      "size": 11095
+    },
+    ".agents/skills/soc-build/templates/project/scripts/dft/vc_dft.tcl": {
+      "git_mode": "100644",
+      "sha256": "84aedf60c15ff104306777910411d27f7d9c86beb2b85ca899f411e8d748626a",
+      "size": 3640
+    },
+    ".agents/skills/soc-build/templates/project/scripts/formal/formality_verify.tcl": {
+      "git_mode": "100644",
+      "sha256": "9807fe8f94adf5f1969ed3a70245133ae4bc40f5dddf83c6ee06fa1129ec529f",
+      "size": 4080
+    },
+    ".agents/skills/soc-build/templates/project/scripts/lint/sg_lint.tcl": {
+      "git_mode": "100644",
+      "sha256": "9b45d7ceb063e199adb948ea2b693d774e6e0fb0cfb14172bac93f83c52f26e9",
+      "size": 2157
+    },
+    ".agents/skills/soc-build/templates/project/scripts/lint/vc_lint.tcl": {
+      "git_mode": "100644",
+      "sha256": "a55ee974b03c0ca9b96f1335ee5f9b5a26cfc34cad2adf2d4c2b2f449cd54703",
+      "size": 1830
+    },
+    ".agents/skills/soc-build/templates/project/scripts/lint/waivers_third_party.tcl": {
+      "git_mode": "100644",
+      "sha256": "a19945d3867d79cc1e6647f3c04dd2aa411cc7eb7e924192ee41140053202b5e",
+      "size": 3687
+    },
+    ".agents/skills/soc-build/templates/project/scripts/local.mk.example": {
+      "git_mode": "100644",
+      "sha256": "adccfb703d0ca43e9365ee89a62a1fcc8057f7738fcf7efc5b4589e5b5bb12df",
+      "size": 391
+    },
+    ".agents/skills/soc-build/templates/project/scripts/paths.mk": {
+      "git_mode": "100644",
+      "sha256": "9258065c932a085b8c2ac6a3411492e203c78147dacc06ef9e42b1bfd24735be",
+      "size": 1021
+    },
+    ".agents/skills/soc-build/templates/project/scripts/rdc/vc_rdc.tcl": {
+      "git_mode": "100644",
+      "sha256": "7b4d2ad074eee17b0df29e0929936f72e24d55b6e24a56b526f1c6cbeb8f2f39",
+      "size": 1126
+    },
+    ".agents/skills/soc-build/templates/project/scripts/run_regression.py": {
+      "git_mode": "100755",
+      "sha256": "70a00b0b29806c1c7d12443843636ae405e13e2d9d4db8faa27bc7341d3022dd",
+      "size": 6838
+    },
+    ".agents/skills/soc-build/templates/project/scripts/setup": {
+      "git_mode": "100755",
+      "sha256": "3f479886067c06002c9839b3e83d3cc4e3b753f225c18edc7b2414515b092129",
+      "size": 2288
+    },
+    ".agents/skills/soc-build/templates/project/scripts/setup.csh": {
+      "git_mode": "100644",
+      "sha256": "06ff2f0243591a36ba995b096bd6839f353618f0b287d40823f2681461caac74",
+      "size": 5229
+    },
+    ".agents/skills/soc-build/templates/project/scripts/setup.sh": {
+      "git_mode": "100755",
+      "sha256": "338b3391a932346f62bbd2e5adb8f1c854f846c577e270f0a967a7fcb731ccff",
+      "size": 4943
+    },
+    ".agents/skills/soc-build/templates/project/scripts/syn/dc_synth.tcl": {
+      "git_mode": "100644",
+      "sha256": "7e090ca10962368d04f59db123322422a0522c2b9cb65a2c96bcfebe66aa33fe",
+      "size": 6305
+    },
+    ".agents/skills/soc-build/templates/project/scripts/syn/dc_upf_synth.tcl": {
+      "git_mode": "100644",
+      "sha256": "3327be5062c4fc3ea172ea4d9815779c4f4ca4519312af4489d62bf103a12a99",
+      "size": 7269
+    },
+    ".agents/skills/soc-build/templates/project/scripts/tcl/flow_common.tcl": {
+      "git_mode": "100644",
+      "sha256": "05c414e561ef89783f8dbb8eeaf9e92e5a9e3d9e9d7dafbb3a9331a534667f27",
+      "size": 2430
+    },
+    ".agents/skills/soc-build/templates/project/scripts/toolchains/vcs.mk": {
+      "git_mode": "100644",
+      "sha256": "faefef48d01c8d9b717b421cc370893b9ba356bf6b0f67a97eb81d1976f59049",
+      "size": 3551
+    },
+    ".agents/skills/soc-build/templates/project/scripts/toolchains/verilator.mk": {
+      "git_mode": "100644",
+      "sha256": "bd945c71b36beeec6f37cf108768283a5a23452f37611172e08ba774e7918df4",
+      "size": 1407
+    },
+    ".agents/skills/soc-build/templates/project/scripts/toolchains/xcelium.mk": {
+      "git_mode": "100644",
+      "sha256": "1f162ab6ce40e2ed968beda853e75af72cf037e822c67dff34349f436f93faa3",
+      "size": 866
+    },
+    ".agents/skills/soc-build/templates/project/scripts/validate_filelist.py": {
+      "git_mode": "100755",
+      "sha256": "ef08df8f225a950e658f101575441eed515905f87af064fc2e76f3b1905de3b8",
+      "size": 5639
+    },
+    ".agents/skills/soc-build/templates/project/scripts/vc_static/vc_flow_common.tcl": {
+      "git_mode": "100644",
+      "sha256": "bc10c360420d8adc8f607759d9fda2945e7e60586bb32c5d32791271fd4f6149",
+      "size": 4960
+    },
+    ".agents/skills/soc-build/templates/project/scripts/verilator/generic_main.cpp": {
+      "git_mode": "100644",
+      "sha256": "8d9f118a235ae7bfc0d865daa44b10e81c5fcd69c17448c2dbf7ddf569a3ab3e",
+      "size": 2413
+    },
+    ".agents/skills/soc-build/tests/test_mcp_server.py": {
+      "git_mode": "100644",
+      "sha256": "cb1ef15d7d54ae5d2815fc47a16634d101d213b5829f1b59329ec80ac7a31d0c",
+      "size": 29777
+    },
+    ".agents/skills/soc-build/tests/test_scaffold.py": {
+      "git_mode": "100644",
+      "sha256": "82c0f0cb64adabf5109ec57a053d00b224c234ba40692ddfc16c833d6f95d7da",
+      "size": 5017
+    },
+    ".agents/skills/soc-integrate/SKILL.md": {
+      "git_mode": "100644",
+      "sha256": "9981c32036d84385ef95394f50d7102bf64d729b027b3386e16d7bebb0086283",
+      "size": 1187
+    },
+    ".agents/skills/soc-integrate/mcp_server.py": {
+      "git_mode": "100644",
+      "sha256": "b9def84f9b3dbd6a37571f1a3f5af0a608f029a33fe0b6630232d1aa62ba14a9",
+      "size": 7981
+    },
+    ".agents/skills/soc-integrate/scripts/soc_integrate.py": {
+      "git_mode": "100644",
+      "sha256": "bf357e1a63d507c8914a7267264611cebb6d81955c78384ed598a22ebf5cb32b",
+      "size": 57910
+    },
+    ".agents/skills/soc-integrate/tests/test_parser.py": {
+      "git_mode": "100644",
+      "sha256": "e1a2cb007fd94cee9174110bfd7888107bec20239da0c96d8649f92a4e4b763e",
+      "size": 1436
+    },
+    ".agents/skills/soc-openroad/SKILL.md": {
+      "git_mode": "100644",
+      "sha256": "e62986c61972969538dedc7a20f7543f643883cb8fc677c90e11258b9ee5e330",
+      "size": 3661
+    },
+    ".agents/skills/soc-openroad/agents/openai.yaml": {
+      "git_mode": "100644",
+      "sha256": "b89aa9fa9fa29af57cd102937b4ad00b6e025ea19778021db0f53c9caa63093a",
+      "size": 232
+    },
+    ".agents/skills/soc-openroad/mcp_server.py": {
+      "git_mode": "100644",
+      "sha256": "32827c323f8b2fa4316d42c072caae2a280fb2241928a2e4544610a3c5fc51f5",
+      "size": 22174
+    },
+    ".agents/skills/soc-openroad/tests/test_mcp_server.py": {
+      "git_mode": "100644",
+      "sha256": "2c70d51245ffa82cb0b1b242856dd400b6d4d073e4617968a28e39408506d4ce",
+      "size": 9808
+    },
+    ".agents/skills/soc-pipeline/SKILL.md": {
+      "git_mode": "100644",
+      "sha256": "07d658b54bd00b375153c1e5e97c3ca966c56b87acfa51fb675acca5c98aee8a",
+      "size": 1490
+    },
+    ".agents/skills/soc-pipeline/agents/openai.yaml": {
+      "git_mode": "100644",
+      "sha256": "2e097ba59b128ba532beb32a0405df54a1052cdb2d1d2282f954cf40b11004c4",
+      "size": 258
+    },
+    ".agents/skills/vibe-soc-loop/SKILL.md": {
+      "git_mode": "100644",
+      "sha256": "e329f6be2a79db9fff9ad435b06f30fbb1a37b55b74d234463059b32793986cd",
+      "size": 2102
+    },
+    ".agents/skills/vibe-soc-loop/agents/openai.yaml": {
+      "git_mode": "100644",
+      "sha256": "0b1dd1a1bc51848251537c7574428b99dcdeda0efaa12f2cbc44f03ed6bfdc1b",
+      "size": 229
+    },
+    ".agents/skills/wavedrom-gen/LICENSE": {
+      "git_mode": "100644",
+      "sha256": "f576c6527513b9a9ced558b5bc17709765bdea1db97c51c6448c5e99c61b599c",
+      "size": 1071
+    },
+    ".agents/skills/wavedrom-gen/SKILL.md": {
+      "git_mode": "100644",
+      "sha256": "a7b9482cc4abe4758aaf067c775c39ddfd049f9f1e97a9ba249c1916f1119f2f",
+      "size": 6468
+    },
+    ".agents/skills/wavedrom-gen/agents/openai.yaml": {
+      "git_mode": "100644",
+      "sha256": "876c57154f86f12a697ba69957c03ddaf1566b6299e504472b852a2d38e59a5c",
+      "size": 338
+    },
+    ".agents/skills/wavedrom-gen/examples/a-pgm-mode-datasheet.json5": {
+      "git_mode": "100644",
+      "sha256": "31658b83b76acdb4c77487e6ed995b9829221b49997f49db04969a9411921288",
+      "size": 3090
+    },
+    ".agents/skills/wavedrom-gen/examples/a-pgm-mode-datasheet.svg": {
+      "git_mode": "100644",
+      "sha256": "83363618c82f196e7bf4e835c9b4c039fab615a3219c6da0eba04f419c42778e",
+      "size": 111833
+    },
+    ".agents/skills/wavedrom-gen/examples/async-fifo-cdc.json5": {
+      "git_mode": "100644",
+      "sha256": "42b7ecd27aed6792de9c05edbec8d16992f9d98517a595cb4b88ca86fffdf01b",
+      "size": 1899
+    },
+    ".agents/skills/wavedrom-gen/examples/async-fifo-cdc.svg": {
+      "git_mode": "100644",
+      "sha256": "914916ee4d0ed43b2aee67abf0981d359e1fa1e04fe5289c74cca9c9c9d85089",
+      "size": 141150
+    },
+    ".agents/skills/wavedrom-gen/examples/axi4-read-write.json5": {
+      "git_mode": "100644",
+      "sha256": "f8c2cb421cde2f05fac8693ccf4e5a6fc3d323c71fb60dd840133e4b79116bd3",
+      "size": 1993
+    },
+    ".agents/skills/wavedrom-gen/examples/axi4-read-write.svg": {
+      "git_mode": "100644",
+      "sha256": "a8c14a5a54d912adbb44f3217d8a3714dbfcc47ccc8f8d1b6baa2418621256e1",
+      "size": 151256
+    },
+    ".agents/skills/wavedrom-gen/examples/qspi-quad-io-read.json5": {
+      "git_mode": "100644",
+      "sha256": "7fab7acc5b58f0e73877b34b63407bdaabbe1a44aad7983145735a8023686979",
+      "size": 1315
+    },
+    ".agents/skills/wavedrom-gen/examples/qspi-quad-io-read.svg": {
+      "git_mode": "100644",
+      "sha256": "2fda0e1fd6472439bc42c9de4bf434b7d2b4ea7a1eedfd079b20022cbb6b65ef",
+      "size": 92062
+    },
+    ".agents/skills/wavedrom-gen/package-lock.json": {
+      "git_mode": "100644",
+      "sha256": "1bbd7cfd8db1ed248e31b59a95a7fcf4e3cdf9d75e442c9e79dd25656d4600a5",
+      "size": 18637
+    },
+    ".agents/skills/wavedrom-gen/package.json": {
+      "git_mode": "100644",
+      "sha256": "4bb0711b4297d43eb70f8621729332693e151d127b38af558f497a2ed359b388",
+      "size": 448
+    },
+    ".agents/skills/wavedrom-gen/references/datasheet-annotations.md": {
+      "git_mode": "100644",
+      "sha256": "0a4110d2fbaa631badf176f4e31a0662d958d8c59b9ea013438d68d000c1c011",
+      "size": 3014
+    },
+    ".agents/skills/wavedrom-gen/references/mcp-registration.md": {
+      "git_mode": "100644",
+      "sha256": "484ab2a9b2658bbec154c8c34a079eccf9a5d9d0867e0046bfbe5d56a835ff30",
+      "size": 1393
+    },
+    ".agents/skills/wavedrom-gen/references/mcp-tools.md": {
+      "git_mode": "100644",
+      "sha256": "2720ec347958d24c274bc51344697edb3e3a7e3af7d521ec889403dfe60609cb",
+      "size": 2057
+    },
+    ".agents/skills/wavedrom-gen/references/protocol-questions.md": {
+      "git_mode": "100644",
+      "sha256": "531094b1a59f6778b62f9957140c9dd5c2f2dc390d0183c5b39cd45273021d2a",
+      "size": 2771
+    },
+    ".agents/skills/wavedrom-gen/references/semantic-review.md": {
+      "git_mode": "100644",
+      "sha256": "2869fed09867a83d17d79307d2bfc52089e8a8e3523cd7bfbf638079005874a6",
+      "size": 1763
+    },
+    ".agents/skills/wavedrom-gen/references/wavejson-official.md": {
+      "git_mode": "100644",
+      "sha256": "342543cb8e581ce9a9d385654194a20a584eb4cacf943105db5694640432d476",
+      "size": 6682
+    },
+    ".agents/skills/wavedrom-gen/scripts/datasheet-annotations.cjs": {
+      "git_mode": "100644",
+      "sha256": "cc6e6a6b5cf879ff69a595c2633534c443d1536a2f6f0c70171f6250e88b1a47",
+      "size": 12720
+    },
+    ".agents/skills/wavedrom-gen/scripts/mcp-server.mjs": {
+      "git_mode": "100755",
+      "sha256": "1b2be7a491db07ea43662ccc1158307a76d0aee9e7b1ef13095e8c8fb0989457",
+      "size": 13385
+    },
+    ".agents/skills/wavedrom-gen/scripts/register-mcp.mjs": {
+      "git_mode": "100755",
+      "sha256": "66d5ef9fbaf9b416cc40f8ccc79614a729f4b0a076a5b22c252944fc3e6b7f92",
+      "size": 4088
+    },
+    ".agents/skills/wavedrom-gen/scripts/render-wavedrom.mjs": {
+      "git_mode": "100755",
+      "sha256": "99ac502d69c01521c479e48e1871b3822f2064f5abf056fce6464fd58852a9b6",
+      "size": 17452
+    },
+    ".agents/skills/wavedrom-gen/scripts/validate-wavejson.mjs": {
+      "git_mode": "100755",
+      "sha256": "1cce7207b4a6e2f1ca50dfc10f9e9e9e957f0478ee1eee1492858c5cf8bffbcb",
+      "size": 3008
+    },
+    ".agents/skills/wavedrom-gen/scripts/wavedrom-engine.mjs": {
+      "git_mode": "100644",
+      "sha256": "ed48ae3a9e0014c1d6f48cc0049f91d0f9f006e6bbc1d61f7e51eecc6679d83c",
+      "size": 2913
+    },
+    ".agents/skills/wavedrom-gen/scripts/wavejson-lint.cjs": {
+      "git_mode": "100644",
+      "sha256": "e6f4e73ef85c458fd14893b46c1429ded1e140e0ba70d49656e8b655f3902c0d",
+      "size": 6722
+    },
+    ".agents/skills/xml2yml/SKILL.md": {
+      "git_mode": "100644",
+      "sha256": "b743feb9d0cd2ba503d219d745fbf62104986838279407a10feb2e2798aa43c8",
+      "size": 2495
+    },
+    ".agents/skills/xml2yml/mcp_server.py": {
+      "git_mode": "100644",
+      "sha256": "b44e50b86ca096c5b85cf96f68ab36b0803fa53efbdb99c900c8bf7db632221b",
+      "size": 3138
+    },
+    ".agents/skills/xml2yml/references/demo_ipxact.xml": {
+      "git_mode": "100644",
+      "sha256": "9949d3517462914db455017202633d738d911439b8211f6d896e77d44d85a808",
+      "size": 2364
+    },
+    ".agents/skills/xml2yml/references/demo_spirit.xml": {
+      "git_mode": "100644",
+      "sha256": "82c9bd478148e137afc94f34fe7786c3e25530a15f5704409deafd0e9583929a",
+      "size": 4530
+    },
+    ".agents/skills/xml2yml/scripts/xml2yml.py": {
+      "git_mode": "100644",
+      "sha256": "59a518ccd63d8c5f360915cc9203e8ebd1029da0eedc1960305985463ac37231",
+      "size": 18393
+    },
+    ".agents/skills/xml2yml/tests/test_xml2yml.py": {
+      "git_mode": "100644",
+      "sha256": "58ac9e9c2be0e12760d353eb2c3a833d3e7620c3667170d847748f847193fe47",
+      "size": 4622
+    },
+    ".agents/skills/yml2reg/SKILL.md": {
+      "git_mode": "100644",
+      "sha256": "8db6742cc26b8322ed84b928a4bb9d718fd2602989b056dd182313c25bc9e711",
+      "size": 2417
+    },
+    ".agents/skills/yml2reg/mcp_server.py": {
+      "git_mode": "100644",
+      "sha256": "8b26ef39bc47aa63ab2cbf7576657e3322e3eb7ec3e24b6af1a362fb69d63a8d",
+      "size": 6573
+    },
+    ".agents/skills/yml2reg/references/demo_docs.yml": {
+      "git_mode": "100644",
+      "sha256": "d8543a2fda3ff0a787aa6aa0eef55a0a276f5c342055da9550813bedc6f856bf",
+      "size": 1419
+    },
+    ".agents/skills/yml2reg/references/demo_reg.yml": {
+      "git_mode": "100644",
+      "sha256": "121a6a62d617f9e0d6f55f855985f66e2b8289e29dbc1f61f88c7a54cd7b5b4e",
+      "size": 52579
+    },
+    ".agents/skills/yml2reg/references/demo_top.yml": {
+      "git_mode": "100644",
+      "sha256": "04c42614808a519694987948233ca044da9727741673a04a6684368a00ff3438",
+      "size": 296
+    },
+    ".agents/skills/yml2reg/scripts/yml2bus_adapters.py": {
+      "git_mode": "100644",
+      "sha256": "20e56aa8739119f5d2df4b6eb10bb278acab5b3802a0df2194cf24dee8a0066a",
+      "size": 4960
+    },
+    ".agents/skills/yml2reg/scripts/yml2docs.py": {
+      "git_mode": "100644",
+      "sha256": "9f79bcd013e8887a8524f1958ca998f0922010f801b820a97dd49f698533cd48",
+      "size": 5917
+    },
+    ".agents/skills/yml2reg/scripts/yml2excel.py": {
+      "git_mode": "100644",
+      "sha256": "fa1c2c5a78fbe8e5d80503d1a5fa50ea23147b4ce30c3b7226481f326cf0983f",
+      "size": 5966
+    },
+    ".agents/skills/yml2reg/scripts/yml2ral_lib.py": {
+      "git_mode": "100644",
+      "sha256": "a89e43f391cd62e98fbe0fcf345bea78b9fa90170ef2b8ce84a0e2d30520b4e2",
+      "size": 3844
+    },
+    ".agents/skills/yml2reg/scripts/yml2reg.py": {
+      "git_mode": "100644",
+      "sha256": "8df001cb41aae4451951bb9dd2902a27449ba93edf4739a9b3b6cef2698cfec8",
+      "size": 24753
+    },
+    ".agents/skills/yml2reg/scripts/yml2reg_c.py": {
+      "git_mode": "100644",
+      "sha256": "1d4e60f44409f5be87e4b3fa17b7463f1150a0b9e3b9559d75e2ecb039f08eea",
+      "size": 8299
+    },
+    ".agents/skills/yml2reg/scripts/yml2regmap_export.py": {
+      "git_mode": "100644",
+      "sha256": "fd6f5ee72b8cd4d5531ac17c06374302422f8a0f4f256911aa8bb986e92fc247",
+      "size": 3757
+    },
+    ".agents/skills/yml2reg/scripts/yml2regs_init.py": {
+      "git_mode": "100644",
+      "sha256": "d3ef788d2d65ed3eaa3e184617c791d466b2adf70b58aee59e93bf011adb7f51",
+      "size": 4211
+    },
+    ".agents/skills/yml2reg/scripts/yml2sv_define.py": {
+      "git_mode": "100644",
+      "sha256": "274480dbe12d81517b274f8f601229fde19f73f477318c6551f7a2c1375d7532",
+      "size": 3452
+    },
+    ".agents/skills/yml2reg/scripts/yml2sysmap.py": {
+      "git_mode": "100644",
+      "sha256": "bd98f24b18f25c766ea5c60489b612497a25e7677700be9ea730db5b21472848",
+      "size": 3144
+    },
+    ".agents/skills/yml2reg/scripts/yml2uvm_ral.py": {
+      "git_mode": "100644",
+      "sha256": "3cc679e247639995451176df5fe9ebc1286f8f6add4844cc0fa4226902ec320f",
+      "size": 15934
+    },
+    ".agents/skills/yml2reg/scripts/yml2uvm_ral_top.py": {
+      "git_mode": "100644",
+      "sha256": "0bc33c8f73fb4ccd333bffd671dcf597f19ef1203a592244d2449164f654b3f8",
+      "size": 5652
+    },
+    ".agents/skills/yml2reg/scripts/yml2xml.py": {
+      "git_mode": "100644",
+      "sha256": "0a91ae46c8502f9d6c4f6459bc25ec5b400f9270f32384a3324917d7fe84076e",
+      "size": 4894
+    },
+    ".agents/skills/yml2reg/scripts/yml_model.py": {
+      "git_mode": "100644",
+      "sha256": "d19043ef83235e77156c2a57efa58017689be410c181c914aa73bca0ef9de72f",
+      "size": 12899
+    },
+    "scripts/build_fingerprint.py": {
+      "git_mode": "100644",
+      "sha256": "b27485d8aca8e2c79a2a7db58ead7934217dd950b3d2b19ca2676190da0d6cd3",
+      "size": 1627
+    },
+    "scripts/cdc/sg_cdc.tcl": {
+      "git_mode": "100644",
+      "sha256": "8bd91f8939ede9654898814ea7b354a01893630564f726ebe4b50aec927bfdc0",
+      "size": 2293
+    },
+    "scripts/cdc/vc_cdc.tcl": {
+      "git_mode": "100644",
+      "sha256": "e567bb38b9ff7486c7212f06b895f593084e209ab0bbc5b798327a2edfaa3a4c",
+      "size": 1134
+    },
+    "scripts/check_repo_hygiene.py": {
+      "git_mode": "100755",
+      "sha256": "741e40f06ba1aa950ebb6408c470b7d8520d21e47d31246881e787e552e862ee",
+      "size": 9968
+    },
+    "scripts/check_repo_hygiene_v2.py": {
+      "git_mode": "100644",
+      "sha256": "741e40f06ba1aa950ebb6408c470b7d8520d21e47d31246881e787e552e862ee",
+      "size": 9968
+    },
+    "scripts/cleanup_task_worktree.sh": {
+      "git_mode": "100755",
+      "sha256": "297c6b0f11090191e7c1248b963c01c3a5fd94c41502f8e06c7b7724e4c112d2",
+      "size": 3138
+    },
+    "scripts/clp/clp_rtl_upf_check.tcl": {
+      "git_mode": "100644",
+      "sha256": "b44ac09de9e52f6a5798df7d71489841a926df92648d03461440815b13c86cc0",
+      "size": 2764
+    },
+    "scripts/common.mk": {
+      "git_mode": "100644",
+      "sha256": "18839c083369b80c5751bdfabb475c14cf86555385651fa8bd1b5148ee2a35b4",
+      "size": 28185
+    },
+    "scripts/config.mk": {
+      "git_mode": "100644",
+      "sha256": "2b94157633cb79a0047ddaed42f3a27c27f9f480c33a0605cce8841c33abb430",
+      "size": 11095
+    },
+    "scripts/dft/vc_dft.tcl": {
+      "git_mode": "100644",
+      "sha256": "84aedf60c15ff104306777910411d27f7d9c86beb2b85ca899f411e8d748626a",
+      "size": 3640
+    },
+    "scripts/formal/formality_verify.tcl": {
+      "git_mode": "100644",
+      "sha256": "9807fe8f94adf5f1969ed3a70245133ae4bc40f5dddf83c6ee06fa1129ec529f",
+      "size": 4080
+    },
+    "scripts/git-gh": {
+      "git_mode": "100755",
+      "sha256": "c37187fbe5f425a22c56f04fad99ac59e540d81b07a2146fdb503f57f410ec93",
+      "size": 331
+    },
+    "scripts/github_git_env.csh": {
+      "git_mode": "100644",
+      "sha256": "551078753f312cf83dd5ff79a7dfe7214e688f987829a92b60eed2e4ee0bcfcb",
+      "size": 1535
+    },
+    "scripts/github_git_env.sh": {
+      "git_mode": "100644",
+      "sha256": "012b21181ec157410ff9c19342506c7bd8bff791a7b003821ab9f95ea7dbf4c3",
+      "size": 2082
+    },
+    "scripts/lint/lint_autofix_compare.py": {
+      "git_mode": "100755",
+      "sha256": "97d02bc150f029435f6b89f02882ce9ae3d419b6175c0da8676407f438b9f9be",
+      "size": 7958
+    },
+    "scripts/lint/lint_report_local_repair.py": {
+      "git_mode": "100644",
+      "sha256": "4f1b20925cdc84ac0a6e9f2d305a7c05d54c0e93076f62eb7adda29a2d37ccb7",
+      "size": 11213
+    },
+    "scripts/lint/lint_strict_live_compare.py": {
+      "git_mode": "100644",
+      "sha256": "92111f4901ba78f5c4d81f9dfa0d3c2fd80906b5131a9632ac8c31ba85855d72",
+      "size": 26026
+    },
+    "scripts/lint/sg_lint.tcl": {
+      "git_mode": "100644",
+      "sha256": "9b45d7ceb063e199adb948ea2b693d774e6e0fb0cfb14172bac93f83c52f26e9",
+      "size": 2157
+    },
+    "scripts/lint/vc_lint.tcl": {
+      "git_mode": "100644",
+      "sha256": "a55ee974b03c0ca9b96f1335ee5f9b5a26cfc34cad2adf2d4c2b2f449cd54703",
+      "size": 1830
+    },
+    "scripts/lint/waivers_third_party.tcl": {
+      "git_mode": "100644",
+      "sha256": "a19945d3867d79cc1e6647f3c04dd2aa411cc7eb7e924192ee41140053202b5e",
+      "size": 3687
+    },
+    "scripts/local.mk.example": {
+      "git_mode": "100644",
+      "sha256": "99d0ec66ee2b1cf4db57b29469a7bc5c9ce0e5ad45f5d988db03be3a1daa50e6",
+      "size": 951
+    },
+    "scripts/loop_prompt_budget.py": {
+      "git_mode": "100755",
+      "sha256": "4761f630ada3a70b57282a0f6b9bd8a96928d9ff899c551bd353c410a065af48",
+      "size": 3346
+    },
+    "scripts/mcp_node.sh": {
+      "git_mode": "100755",
+      "sha256": "83ff3d9969d02fdaf3154ba2dca1bf69fe8ff04d1ee6a64ab586c208d8787ece",
+      "size": 209
+    },
+    "scripts/mcp_python.sh": {
+      "git_mode": "100755",
+      "sha256": "16f4c2169eaf93966a82619e4cf5fa9624e939725f3b7416328c2b3bbca23e7c",
+      "size": 211
+    },
+    "scripts/package_design_release.py": {
+      "git_mode": "100644",
+      "sha256": "aa6d4efd651e1655cd062f9d5dd266454bc8f36b14c83961187cfc545eb64e64",
+      "size": 9268
+    },
+    "scripts/paths.mk": {
+      "git_mode": "100644",
+      "sha256": "9258065c932a085b8c2ac6a3411492e203c78147dacc06ef9e42b1bfd24735be",
+      "size": 1021
+    },
+    "scripts/prepare_task_branch.sh": {
+      "git_mode": "100755",
+      "sha256": "8777e4ef8a153d8c2c238bd58703c34127aadb1dc6f1ea555560d8be0d1c4458",
+      "size": 1766
+    },
+    "scripts/prepare_task_worktree.sh": {
+      "git_mode": "100755",
+      "sha256": "527e1a9cafbc2685e4562d51da7a770869a8353e059977c19aa37e6c6af2a627",
+      "size": 2290
+    },
+    "scripts/rdc/vc_rdc.tcl": {
+      "git_mode": "100644",
+      "sha256": "7b4d2ad074eee17b0df29e0929936f72e24d55b6e24a56b526f1c6cbeb8f2f39",
+      "size": 1126
+    },
+    "scripts/run_regression.py": {
+      "git_mode": "100644",
+      "sha256": "70a00b0b29806c1c7d12443843636ae405e13e2d9d4db8faa27bc7341d3022dd",
+      "size": 6838
+    },
+    "scripts/setup": {
+      "git_mode": "100755",
+      "sha256": "3f479886067c06002c9839b3e83d3cc4e3b753f225c18edc7b2414515b092129",
+      "size": 2288
+    },
+    "scripts/setup.csh": {
+      "git_mode": "100644",
+      "sha256": "06ff2f0243591a36ba995b096bd6839f353618f0b287d40823f2681461caac74",
+      "size": 5229
+    },
+    "scripts/setup.sh": {
+      "git_mode": "100755",
+      "sha256": "338b3391a932346f62bbd2e5adb8f1c854f846c577e270f0a967a7fcb731ccff",
+      "size": 4943
+    },
+    "scripts/syn/dc_synth.tcl": {
+      "git_mode": "100644",
+      "sha256": "7e090ca10962368d04f59db123322422a0522c2b9cb65a2c96bcfebe66aa33fe",
+      "size": 6305
+    },
+    "scripts/syn/dc_upf_synth.tcl": {
+      "git_mode": "100644",
+      "sha256": "3327be5062c4fc3ea172ea4d9815779c4f4ca4519312af4489d62bf103a12a99",
+      "size": 7269
+    },
+    "scripts/syn/sky130hd_dc_setup.tcl": {
+      "git_mode": "100644",
+      "sha256": "94ba010b46cbc65ca6f16b2ee4514e7e515836aa19b4235a9dd1dce07aa6b523",
+      "size": 1305
+    },
+    "scripts/sync_agent_profiles.py": {
+      "git_mode": "100644",
+      "sha256": "39a41198e28ad8a5889f024f5416569ab2ad94b5ac86cf93f9f14ae0385239e9",
+      "size": 5112
+    },
+    "scripts/sync_grok_mcp_config.py": {
+      "git_mode": "100644",
+      "sha256": "5a75eb9d912c59b9264ca610edb0e1585d8ff24e4715ee8828c2f442182e8c6b",
+      "size": 3566
+    },
+    "scripts/sync_local_configs.sh": {
+      "git_mode": "100755",
+      "sha256": "4969f67e67ddb711636afeaff6cf6f303487165aa97ac54d7d363c9df80e3a26",
+      "size": 3189
+    },
+    "scripts/sync_loop_contracts.py": {
+      "git_mode": "100644",
+      "sha256": "7360aa4227fdd66996b0cdcfa81f9f4669e88cdac15a12f6259bee1c2f97aa50",
+      "size": 3192
+    },
+    "scripts/sync_loop_state_entrypoints.py": {
+      "git_mode": "100644",
+      "sha256": "1c63e6ad8584cc131fdebdb67ec4366eac27ba24ce585b98a5898f67973c50e2",
+      "size": 4095
+    },
+    "scripts/sync_mcp_configs.py": {
+      "git_mode": "100644",
+      "sha256": "f54db6219e8e9794ffd838dde90f7c8148d3fb11fb3a04034536361d7f03a8aa",
+      "size": 9269
+    },
+    "scripts/sync_mcp_runtime.py": {
+      "git_mode": "100644",
+      "sha256": "c4fab27175b64b58caa388a63d1ade175cc99b3ec9901b2a91abde5e11e2774f",
+      "size": 18523
+    },
+    "scripts/sync_mcp_runtime_lock.py": {
+      "git_mode": "100644",
+      "sha256": "444d958efc8b275d9be81367a15ae7c0c0d033574ae76aacb2ebf3e1061003c9",
+      "size": 2036
+    },
+    "scripts/sync_repo_hygiene_entrypoint.py": {
+      "git_mode": "100644",
+      "sha256": "68804726f3ed82007721fce86eb9e8209ae58ae0f4f0e08304ef825c1b76457d",
+      "size": 1586
+    },
+    "scripts/tcl/flow_common.tcl": {
+      "git_mode": "100644",
+      "sha256": "05c414e561ef89783f8dbb8eeaf9e92e5a9e3d9e9d7dafbb3a9331a534667f27",
+      "size": 2430
+    },
+    "scripts/tests/test_loop_contract_sync.py": {
+      "git_mode": "100644",
+      "sha256": "5668a5cea55f11816c3a563701e2749d7baaf6106569521d9263f5358269f49d",
+      "size": 1746
+    },
+    "scripts/tests/test_loop_prompt_budget.py": {
+      "git_mode": "100755",
+      "sha256": "c85435ff921da44dc9bfd8f7751bbfeef740259a5186246aca0fd1454b2af51a",
+      "size": 1291
+    },
+    "scripts/tests/test_mcp_runtime_sync.py": {
+      "git_mode": "100644",
+      "sha256": "a557d3910052b14528604b4ef06507770e7f9e7deb923cd9aa987bf900f5eedd",
+      "size": 4781
+    },
+    "scripts/tests/test_prepare_task_branch.py": {
+      "git_mode": "100644",
+      "sha256": "30d422336ba2f848324507b262187eb501e5def1f55f5312ee15585558ef74fe",
+      "size": 3820
+    },
+    "scripts/tests/test_prepare_task_worktree.py": {
+      "git_mode": "100755",
+      "sha256": "18e49b5b5bcff20b1719b10ca8cc08c35b9d83954bcba8a94841f73c9ebd160c",
+      "size": 8679
+    },
+    "scripts/tests/test_public_eda_flows.py": {
+      "git_mode": "100644",
+      "sha256": "8b6f06571d5cb71766ac9eae46e11ef0d71a14704b5cbd60e3f10cd3669ecc0f",
+      "size": 7194
+    },
+    "scripts/tests/test_repo_hygiene_v2.py": {
+      "git_mode": "100644",
+      "sha256": "12f4ac9bd1850fcaa6f7dbf18a822993e5d3edc6860048b98c45332dd2111637",
+      "size": 5048
+    },
+    "scripts/tests/test_run_regression.py": {
+      "git_mode": "100644",
+      "sha256": "d69a226146194596aa6068e24ed9063fe7023a6b50d51b664ae1cb60fb9d8663",
+      "size": 4462
+    },
+    "scripts/tests/test_soc_reviewer_contract.py": {
+      "git_mode": "100644",
+      "sha256": "32ea06ea36720ea635e8b3e157ac5558e9435af55b95c5a4846e4207ca7c63cf",
+      "size": 3165
+    },
+    "scripts/toolchains/vcs.mk": {
+      "git_mode": "100644",
+      "sha256": "faefef48d01c8d9b717b421cc370893b9ba356bf6b0f67a97eb81d1976f59049",
+      "size": 3551
+    },
+    "scripts/toolchains/verilator.mk": {
+      "git_mode": "100644",
+      "sha256": "bd945c71b36beeec6f37cf108768283a5a23452f37611172e08ba774e7918df4",
+      "size": 1407
+    },
+    "scripts/toolchains/xcelium.mk": {
+      "git_mode": "100644",
+      "sha256": "1f162ab6ce40e2ed968beda853e75af72cf037e822c67dff34349f436f93faa3",
+      "size": 866
+    },
+    "scripts/validate_filelist.py": {
+      "git_mode": "100644",
+      "sha256": "ef08df8f225a950e658f101575441eed515905f87af064fc2e76f3b1905de3b8",
+      "size": 5639
+    },
+    "scripts/vc_static/vc_flow_common.tcl": {
+      "git_mode": "100644",
+      "sha256": "bc10c360420d8adc8f607759d9fda2945e7e60586bb32c5d32791271fd4f6149",
+      "size": 4960
+    },
+    "scripts/verilator/generic_main.cpp": {
+      "git_mode": "100644",
+      "sha256": "8d9f118a235ae7bfc0d865daa44b10e81c5fcd69c17448c2dbf7ddf569a3ab3e",
+      "size": 2413
+    }
+  },
+  "import_paths": [
+    ".agents/agents",
+    ".agents/rules",
+    ".agents/scripts",
+    ".agents/skills",
+    ".agents/mcp-servers.json",
+    ".agents/mcp-requirements.txt",
+    ".agents/loop_policy.json",
+    "scripts"
+  ],
+  "schema_version": 1,
+  "upstream_url": "https://github.com/siliconpeasant/vibe_soc.git",
+  "validation": "integrity_and_static_inventory_only"
+}

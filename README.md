@@ -11,7 +11,7 @@ project-owned MCP definitions. Existing copy-based `init` remains supported.
 
 claude_kit keeps cross-project RTL/DV roles, protocol and VIP packs, project-profile schemas, a repository-local CLI, artifact/evidence contracts, and an optional thin MCP bridge in one versioned repository. A consumer project normally needs only a pinned submodule plus a small profile or adapter.
 
-The kit is deliberately project-neutral. It does not contain project RTL/DV source, simulator scripts, build files, waveform databases, licensed tools, or ETX runner logic.
+The kit is deliberately project-neutral. It does not contain consumer-project RTL/DV source, waveform databases, licensed tools, or site-specific runner logic. Its pinned upstream snapshot includes generic generator/build templates, kept separate from kit and project adapters.
 
 ## Status
 
@@ -35,6 +35,10 @@ The repository currently provides a runnable Python MVP with:
 - a task planner that maps work to roles, skills, packs, project commands, and evidence gates;
 - project initialization templates;
 - fixtures and automated tests.
+
+Maintainers can [stage and compare vibe_soc updates](docs/upstream-updates.md)
+without rewriting consumer MCP settings. The bundled snapshot is source material;
+upstream server and skill activation remains subject to compatibility tests.
 
 The following are intentionally future work rather than hidden project-specific behavior:
 

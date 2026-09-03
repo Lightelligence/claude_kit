@@ -1,0 +1,91 @@
+---
+name: soc-build
+description: Create and operate canonical SoC project/module scaffolds through registered MCP tools for filelists, lint, compile, simulation, regression, coverage, and synthesis. Use for SoC project setup and any EDA Make-target execution.
+---
+
+# SoC Build
+
+Use the registered `soc-build` MCP server. Do not import its FastMCP object directly and do not replace EDA tool calls with shell commands.
+
+## Runtime setup
+
+Project `.codex/config.toml` registers the MCP servers for this direct repo install. If the launcher reports missing Python modules, run:
+
+```bash
+.agents/scripts/setup_mcp_env.sh
+```
+
+This installs the shared runtime under `${XDG_CACHE_HOME:-$HOME/.cache}/silicon-crew/venv`, outside the repository package. Do not package `.venv`.
+
+## Canonical project layout
+
+Every chip module and IP uses the same structure:
+
+```text
+<module>/
+├── docs/
+├── de/rtl/          # RTL + filelist.f/filelist.mk
+├── de/lint/         # lint configuration or reviewed collateral
+├── de/cdc/          # CDC configuration or reviewed collateral
+├── de/rdc/          # RDC configuration or reviewed collateral
+├── de/dft/          # DFT SGDC/Tcl/waiver collateral
+├── de/formal/       # formal configuration or reviewed collateral
+├── de/run/          # transient lint/build output
+├── de/syn/          # SDC, synthesis and STA output
+├── dv/tb/           # testbench source
+├── dv/verif/        # reusable verification source
+├── dv/tests/        # regression test lists
+├── dv/sim/          # simulation logs/images/waves
+├── dv/cov/          # coverage databases/reports
+└── Makefile
+```
+
+Pipeline artifacts remain restricted to `docs/`, `de/rtl/`, `de/run/`, `de/syn/`,
+`dv/tb/`, and `dv/sim/`; the additional directories are reserved for their
+specialized flow configuration and collateral.
+
+Create structure with `soc_init`, `soc_add_chip`, or `soc_add_ip`. Do not create legacy root `rtl/`, `sim/`, `syn/`, or `constraints/` directories.
+
+## Tools
+
+| Tool | Purpose |
+|---|---|
+| `soc_init` | initialize a SoC project |
+| `soc_add_chip` | add a chip module |
+| `soc_add_ip` | add a digital/third-party IP |
+| `soc_flist` | generate a Verilog/SystemVerilog filelist |
+| `soc_lint` | project-filelist lint with Verilator (default) / SpyGlass / optional VC Static; accepts `rtl_top` |
+| `soc_cdc` | SpyGlass CDC (default) or optional VC Static; accepts `rtl_top` |
+| `soc_rdc` | optional VC Static RDC check; accepts `rtl_top` |
+| `soc_dft` | optional VC SpyGlass DFT / TestMAX (default `dft_scan_ready`); accepts `rtl_top` |
+| `soc_comp` | compile; accepts `top_module` |
+| `soc_sim` | compile then simulate; accepts simulator/test/seed/top |
+| `soc_regress` | test/seed matrix regression |
+| `soc_coverage` | single or regression coverage |
+| `soc_syn` | project-filelist synthesis; accepts `rtl_top` and `syn_tool` (`yosys` or `dc`) |
+| `soc_formal` | Formality equivalence from an immutable registered DC snapshot; UPF is optional |
+| `soc_verdi` | open Verdi; `scope=de` loads RTL/source, `scope=dv` loads sim DB/waves |
+
+All names, simulators, tests, seeds, and job counts are validated. A nonzero process exit or timeout is an MCP tool error.
+
+Successful `soc_sim` and `soc_syn` responses end with a machine-readable
+`LOOP_EVIDENCE=<json>` line containing `run_id`, `source_fingerprint`, and
+`tool_family`. The server hashes the resolved source manifest before and after
+the Make target and rejects the run if RTL/filelist material changed. Pass the
+emitted run ID and fingerprint to `update_state.py` when closing `verif` or
+`syn`; never synthesize these values from the current checkout after the run.
+
+## Stage use
+
+- RTL agents call `soc_lint`; MCP allows Verilator (default), SpyGlass, or optional VC Static; no direct EDA fallback.
+- CDC/RDC side-lane (`soc-cdc-engineer`) calls `soc_cdc` (SpyGlass default, `vc_static` extra) and/or `soc_rdc` (`vc_static` only).
+- DFT side-lane (`soc-dft-engineer`) generates collateral via `dft-gen`, then calls `soc_dft` (`vc_static` only).
+- Verification agents call `soc_sim` or `soc_regress`; no direct Make/simulator fallback.
+- Synthesis agents call `soc_syn`; use `syn_tool=dc` for Design Compiler or `syn_tool=yosys` for structural checks. Yosys output is not STA evidence.
+- Formal agents call `soc_formal` with the exact `run_id` and `source_fingerprint` emitted by `soc_syn`. Plain DC snapshots run ordinary RTL-to-netlist equivalence; snapshots containing both canonical and saved UPF run the UPF-aware mode.
+- Commercial simulator/license work must remain in the registered MCP process.
+- SpyGlass lint is run in no-GUI mode by default because local GUI/plugin availability may vary. If GUI is explicitly requested and plugin checkout fails, do not block lint triage on the GUI; use the generated text reports under `de/run/`.
+- When lint reports any real rule violation at error or warning severity, first query the local SoC AI knowledge base (`soc-ai-kb`) using the rule/tag name and diagnostic text. If the knowledge base has no relevant guidance, reason from the tool report, RTL, and local coding rules.
+- Lint fixes are review-gated: propose the root cause, supporting report lines, and a concrete patch plan to the user. Do not apply a final RTL fix, waiver, or severity downgrade until the user confirms. Temporary repro edits must be clearly marked and restored before any commit.
+
+For Verilog code review, read `.agents/rules/04_verilog_coding_style.md` (project coding rule; companion short contract is `.agents/rules/04_coding_style.md`) and report mandatory (M), should (S), and recommend (R) findings with file/line evidence.

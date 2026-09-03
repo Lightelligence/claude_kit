@@ -71,7 +71,8 @@ evidence that all MCP tools, EDA flows, licenses or external services work.
 Validate native discovery in the installed Claude Code version, MCP schemas,
 safe functional fixtures and the selected licensed flows separately.
 
-This feature does not bundle silicon-crew/vibe_soc source or deploy xverif,
-drawio, Atlassian, simulator binaries or license settings. Preserve those
-existing MCP definitions during migration. External code needs a verified
-redistribution license before it can be included in a public kit release.
+The kit retains a pinned silicon-crew/vibe_soc source snapshot with a separate
+[upstream update procedure](upstream-updates.md). Source availability does not
+automatically activate those servers or their original project policies.
+It does not deploy xverif, drawio, Atlassian, simulator binaries or license
+settings. Preserve existing MCP definitions until migration validation passes.

@@ -78,6 +78,23 @@ def build_parser() -> argparse.ArgumentParser:
     version = subparsers.add_parser("version", help="Show kit version")
     version.set_defaults(handler=lambda args: {"version": __version__})
 
+    upstream = subparsers.add_parser("upstream", help="Stage and review pinned vibe_soc updates (maintainer only)")
+    upstream_commands = upstream.add_subparsers(dest="upstream_command", required=True)
+    stage = upstream_commands.add_parser("stage", help="Fetch an isolated candidate without activating it")
+    stage.add_argument("--source", type=Path, help="Optional read-only local upstream Git repository")
+    stage.add_argument("--ref", default="main", help="Upstream ref or commit to pin")
+    stage.add_argument("--output", required=True, type=Path, help="New candidate directory")
+    stage.set_defaults(handler=handle_upstream)
+    upstream_check = upstream_commands.add_parser("check", help="Check snapshot integrity and static inventory; does not run MCPs")
+    upstream_check.add_argument("--candidate", type=Path, help="Defaults to this kit's bundled snapshot")
+    upstream_check.set_defaults(handler=handle_upstream)
+    upstream_diff = upstream_commands.add_parser("diff", help="Compare candidate files and capability contracts against this kit")
+    upstream_diff.add_argument("--candidate", required=True, type=Path)
+    upstream_diff.set_defaults(handler=handle_upstream)
+    upstream_apply = upstream_commands.add_parser("apply", help="Replace this kit checkout's pristine snapshot; does not roll out a release")
+    upstream_apply.add_argument("--candidate", required=True, type=Path)
+    upstream_apply.set_defaults(handler=handle_upstream)
+
     attach = subparsers.add_parser("attach", help="Link shared kit resources without overwriting project configuration")
     attach.add_argument("--project-root", help="Project root")
     attach.add_argument("--dry-run", action="store_true", help="Check conflicts and report planned changes without writing")
@@ -239,6 +256,21 @@ def handle_init(args: argparse.Namespace) -> int:
     created = init_project(root, args.kit_path, args.force, args.with_adapter, args.with_mcp, args.minimal, args.no_skills)
     _json_print({"project_root": str(root), "created": created, "status": "passed"})
     return 0
+
+
+def handle_upstream(args: argparse.Namespace) -> dict[str, Any]:
+    from .upstream import apply_snapshot, bundled_snapshot, diff_snapshots, inspect_snapshot, stage_snapshot
+
+    current = bundled_snapshot()
+    if args.upstream_command == "stage":
+        return stage_snapshot(args.output, source=args.source, ref=args.ref)
+    if args.upstream_command == "check":
+        manifest = inspect_snapshot(args.candidate or current)
+        return {"status": "checked", "commit": manifest["commit"], "file_count": len(manifest["files"]),
+                "capabilities": manifest["capabilities"], "functional_validation": "not_run"}
+    if args.upstream_command == "diff":
+        return diff_snapshots(current if current.exists() else None, args.candidate)
+    return apply_snapshot(args.candidate, current)
 
 
 def handle_attach(args: argparse.Namespace) -> int:
