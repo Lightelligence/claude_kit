@@ -37,6 +37,7 @@ class ModulefileTests(unittest.TestCase):
             self.assertIn("only changes the shell environment", rendered)
             self.assertIn("does not install", rendered)
             self.assertIn("edit project files", rendered)
+            self.assertNotIn("PROJ_DIR", rendered)
 
     def test_tcl_special_characters_are_escaped(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
