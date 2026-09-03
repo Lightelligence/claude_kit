@@ -18,6 +18,8 @@ class KitError(Exception):
 
 
 PROFILE_NAMES = (
+    ".claude/project.toml",
+    ".claude/project.json",
     ".ai/project.toml",
     ".claude-kit/project.toml",
     ".ai/project.json",
@@ -93,7 +95,7 @@ def discover_profile(root: Path, explicit: str | Path | None = None) -> Path | N
     for name in PROFILE_NAMES:
         path = root / name
         if path.is_file():
-            return path.resolve()
+            return _project_path(root, name, "profile")
     return None
 
 
@@ -350,12 +352,32 @@ def _front_matter(path: Path) -> dict[str, str]:
     if not lines or lines[0].strip() != "---":
         return {"id": path.stem}
     result: dict[str, str] = {}
+    block_key: str | None = None
+    block_lines: list[str] = []
+
+    def finish_block() -> None:
+        if block_key is not None:
+            # Catalog metadata is a one-line summary, not a YAML round-trip.
+            result[block_key] = " ".join(part.strip() for part in block_lines if part.strip())
+
     for line in lines[1:]:
         if line.strip() == "---":
+            finish_block()
             break
-        if ":" in line:
+        if block_key is not None and (not line.strip() or line[0].isspace()):
+            block_lines.append(line)
+            continue
+        finish_block()
+        block_key, block_lines = None, []
+        if line and not line[0].isspace() and ":" in line:
             key, value = line.split(":", 1)
-            result[key.strip()] = value.strip().strip("\"'")
+            value = value.strip()
+            if value in {">", ">-", ">+", "|", "|-", "|+"}:
+                block_key = key.strip()
+            else:
+                result[key.strip()] = value.strip("\"'")
+    else:
+        finish_block()
     result.setdefault("id", path.stem)
     return result
 

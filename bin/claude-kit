@@ -1,6 +1,29 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import os
+import shutil
 import sys
+
+# A module selects the tested interpreter before loading Python >=3.11 code.
+# Keep this bootstrap compatible with older system python3 installations.
+selected_python = os.environ.get("CLAUDE_KIT_PYTHON")
+bootstrap_path = os.environ.pop("_CLAUDE_KIT_BOOTSTRAP_PATH", None)
+if selected_python:
+    selected_path = shutil.which(selected_python)
+    if not selected_path:
+        raise SystemExit("claude-kit: CLAUDE_KIT_PYTHON is not executable")
+    selected_path = os.path.abspath(selected_path)
+    if os.path.normcase(selected_path) != os.path.normcase(os.path.abspath(sys.executable)) and bootstrap_path != selected_path:
+        # One handoff permits venv symlinks and interpreter shims without an
+        # exec loop. Consume the marker above so child kit calls select anew.
+        os.environ["_CLAUDE_KIT_BOOTSTRAP_PATH"] = selected_path
+        try:
+            os.execv(selected_path, [selected_path, str(Path(__file__).resolve())] + sys.argv[1:])
+        except OSError as exc:
+            raise SystemExit("claude-kit: cannot start selected Python: " + str(exc))
+
+if sys.version_info < (3, 11):
+    raise SystemExit("claude-kit: Python >=3.11 is required; load the approved runtime module")
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))

@@ -4,6 +4,11 @@
 
 A reusable Claude Code kit for RTL and DV engineering.
 
+For a shared installation loaded with `module add claude_kit`, see
+[shared installation and project attachment](docs/shared-installation.md).
+`claude-kit attach` links the shared resources without copying them or replacing
+project-owned MCP definitions. Existing copy-based `init` remains supported.
+
 claude_kit keeps cross-project RTL/DV roles, protocol and VIP packs, project-profile schemas, a repository-local CLI, artifact/evidence contracts, and an optional thin MCP bridge in one versioned repository. A consumer project normally needs only a pinned submodule plus a small profile or adapter.
 
 The kit is deliberately project-neutral. It does not contain project RTL/DV source, simulator scripts, build files, waveform databases, licensed tools, or ETX runner logic.

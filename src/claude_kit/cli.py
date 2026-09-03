@@ -78,6 +78,16 @@ def build_parser() -> argparse.ArgumentParser:
     version = subparsers.add_parser("version", help="Show kit version")
     version.set_defaults(handler=lambda args: {"version": __version__})
 
+    attach = subparsers.add_parser("attach", help="Link shared kit resources without overwriting project configuration")
+    attach.add_argument("--project-root", help="Project root")
+    attach.add_argument("--dry-run", action="store_true", help="Check conflicts and report planned changes without writing")
+    attach.set_defaults(handler=handle_attach)
+
+    modulefile = subparsers.add_parser("modulefile", help="Print a Tcl modulefile for an installed kit release")
+    modulefile.add_argument("--kit-root", type=Path, required=True, help="Installed source release containing bin/claude-kit")
+    modulefile.add_argument("--python", type=Path, required=True, help="Tested Python executable for this release")
+    modulefile.set_defaults(handler=handle_modulefile)
+
     init = subparsers.add_parser("init", help="Create minimal project integration files")
     init.add_argument("--project-root", help="Project root")
     init.add_argument("--kit-path", default="third_party/claude_kit", help="Pinned kit path written into project files")
@@ -228,6 +238,20 @@ def handle_init(args: argparse.Namespace) -> int:
     root = _root(args.project_root)
     created = init_project(root, args.kit_path, args.force, args.with_adapter, args.with_mcp, args.minimal, args.no_skills)
     _json_print({"project_root": str(root), "created": created, "status": "passed"})
+    return 0
+
+
+def handle_attach(args: argparse.Namespace) -> int:
+    from .deployment import attach_project
+
+    _json_print(attach_project(_root(args.project_root), dry_run=args.dry_run))
+    return 0
+
+
+def handle_modulefile(args: argparse.Namespace) -> int:
+    from .modulefile import render_modulefile
+
+    print(render_modulefile(args.kit_root, args.python), end="")
     return 0
 
 
