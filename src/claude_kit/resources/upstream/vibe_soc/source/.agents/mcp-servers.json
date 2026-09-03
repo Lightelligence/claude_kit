@@ -1,0 +1,158 @@
+{
+  "schema_version": 1,
+  "launcher": "scripts/mcp_python.sh",
+  "client_prefix": "silicon-crew:",
+  "servers": [
+    {
+      "name": "soc-build",
+      "script": ".agents/skills/soc-build/mcp_server.py",
+      "default_enabled": true,
+      "startup_timeout_sec": 120,
+      "tool_timeout_sec": 43200
+    },
+    {
+      "name": "soc-integrate",
+      "script": ".agents/skills/soc-integrate/mcp_server.py",
+      "default_enabled": false,
+      "startup_timeout_sec": 120,
+      "tool_timeout_sec": 300
+    },
+    {
+      "name": "yml2reg",
+      "script": ".agents/skills/yml2reg/mcp_server.py",
+      "default_enabled": true,
+      "startup_timeout_sec": 120,
+      "tool_timeout_sec": 300
+    },
+    {
+      "name": "xml2yml",
+      "script": ".agents/skills/xml2yml/mcp_server.py",
+      "default_enabled": true,
+      "startup_timeout_sec": 120,
+      "tool_timeout_sec": 300
+    },
+    {
+      "name": "lib-db-gen",
+      "script": ".agents/skills/lib-db-gen/mcp_server.py",
+      "default_enabled": true,
+      "startup_timeout_sec": 120,
+      "tool_timeout_sec": 3600
+    },
+    {
+      "name": "dft-gen",
+      "script": ".agents/skills/dft-gen/mcp_server.py",
+      "default_enabled": true,
+      "startup_timeout_sec": 120,
+      "tool_timeout_sec": 300
+    },
+    {
+      "name": "gen-asic-memmap",
+      "script": ".agents/skills/gen-asic-memmap/mcp_server.py",
+      "default_enabled": true,
+      "startup_timeout_sec": 120,
+      "tool_timeout_sec": 300
+    },
+    {
+      "name": "gen-memwrap",
+      "script": ".agents/skills/gen-memwrap/mcp_server.py",
+      "default_enabled": true,
+      "startup_timeout_sec": 120,
+      "tool_timeout_sec": 300
+    },
+    {
+      "name": "excel-yml-gen",
+      "script": ".agents/skills/excel-yml-gen/mcp_server.py",
+      "default_enabled": true,
+      "startup_timeout_sec": 120,
+      "tool_timeout_sec": 300
+    },
+    {
+      "name": "upf-gen",
+      "script": ".agents/skills/upf-gen/mcp_server.py",
+      "default_enabled": true,
+      "startup_timeout_sec": 120,
+      "tool_timeout_sec": 43200
+    },
+    {
+      "name": "crg-req-to-design",
+      "script": ".agents/skills/crg-req-to-design/mcp_server.py",
+      "default_enabled": true,
+      "startup_timeout_sec": 120,
+      "tool_timeout_sec": 300
+    },
+    {
+      "name": "crg-gen",
+      "script": ".agents/skills/crg-gen/mcp_server.py",
+      "default_enabled": true,
+      "startup_timeout_sec": 120,
+      "tool_timeout_sec": 600
+    },
+    {
+      "name": "io-top-gen",
+      "script": ".agents/skills/io-top-gen/mcp_server.py",
+      "default_enabled": true,
+      "startup_timeout_sec": 120,
+      "tool_timeout_sec": 600
+    },
+    {
+      "name": "cr-tree-diag-gen",
+      "script": ".agents/skills/cr-tree-diag-gen/mcp_server.py",
+      "default_enabled": true,
+      "startup_timeout_sec": 120,
+      "tool_timeout_sec": 300
+    },
+    {
+      "name": "noc-gen",
+      "script": ".agents/skills/noc-gen/mcp_server.py",
+      "default_enabled": true,
+      "startup_timeout_sec": 120,
+      "tool_timeout_sec": 600
+    },
+    {
+      "name": "soc-openroad",
+      "script": ".agents/skills/soc-openroad/mcp_server.py",
+      "default_enabled": false,
+      "startup_timeout_sec": 120,
+      "tool_timeout_sec": 7500
+    },
+    {
+      "name": "wavedrom-gen",
+      "command": "/bin/sh",
+      "args": [
+        "scripts/mcp_node.sh",
+        ".agents/skills/wavedrom-gen/scripts/mcp-server.mjs",
+        "--stdio"
+      ],
+      "cwd": ".",
+      "default_enabled": true,
+      "startup_timeout_sec": 180,
+      "tool_timeout_sec": 300
+    },
+    {
+      "name": "openroad-mcp",
+      "command": "/usr/bin/env",
+      "args": [
+        "-u",
+        "PYTHONHOME",
+        "-u",
+        "PYTHONPATH",
+        "FASTMCP_SHOW_SERVER_BANNER=false",
+        "LOG_LEVEL=ERROR",
+        ".openroad-mcp-venv/bin/openroad-mcp",
+        "--log-level",
+        "ERROR"
+      ],
+      "cwd": ".",
+      "default_enabled": false,
+      "startup_timeout_sec": 30,
+      "tool_timeout_sec": 120
+    },
+    {
+      "name": "drawio",
+      "url": "https://mcp.draw.io/mcp",
+      "default_enabled": true,
+      "startup_timeout_sec": 30,
+      "tool_timeout_sec": 120
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+# Upstream lock hashes use exact Git blob bytes, independent of checkout EOL policy.
+src/claude_kit/resources/upstream/vibe_soc/** -text

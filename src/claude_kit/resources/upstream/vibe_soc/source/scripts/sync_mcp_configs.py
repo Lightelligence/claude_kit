@@ -1,0 +1,243 @@
+#!/usr/bin/env python3
+"""Generate or check the repository's Codex and generic MCP configs."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+
+ROOT = Path(__file__).resolve().parents[1]
+MANIFEST = ROOT / ".agents/mcp-servers.json"
+CODEX_CONFIG = ROOT / ".codex/config.toml"
+GENERIC_CONFIG = ROOT / ".mcp.json"
+
+
+def load_manifest() -> dict[str, Any]:
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    if manifest.get("schema_version") != 1:
+        raise ValueError("unsupported MCP manifest schema_version")
+    launcher = manifest.get("launcher")
+    servers = manifest.get("servers")
+    if not isinstance(launcher, str) or Path(launcher).is_absolute():
+        raise ValueError("manifest launcher must be a repository-relative path")
+    if not isinstance(servers, list) or not servers:
+        raise ValueError("manifest servers must be a non-empty list")
+
+    names: set[str] = set()
+    for server in servers:
+        if not isinstance(server, dict):
+            raise ValueError("every manifest server must be an object")
+        name = server.get("name")
+        script = server.get("script")
+        command = server.get("command")
+        url = server.get("url")
+        transport_keys = [key for key in ("script", "command", "url") if server.get(key) is not None]
+        if not isinstance(name, str) or not name or name in names:
+            raise ValueError(f"invalid or duplicate MCP server name: {name!r}")
+        if len(transport_keys) != 1:
+            raise ValueError(f"server {name}: set exactly one of script, command, or url")
+        if script is not None:
+            if not isinstance(script, str) or Path(script).is_absolute():
+                raise ValueError(f"server {name}: script must be repository-relative")
+        elif command is not None:
+            if not isinstance(command, str) or not command:
+                raise ValueError(f"server {name}: command must be a non-empty string")
+            args = server.get("args", [])
+            if not isinstance(args, list) or not all(isinstance(arg, str) for arg in args):
+                raise ValueError(f"server {name}: args must be a list of strings")
+            cwd = server.get("cwd")
+            if cwd is not None and (not isinstance(cwd, str) or Path(cwd).is_absolute()):
+                raise ValueError(f"server {name}: cwd must be repository-relative")
+        else:
+            if not isinstance(url, str) or not url.startswith(("http://", "https://")):
+                raise ValueError(f"server {name}: url must be an http(s) endpoint")
+            headers = server.get("headers")
+            if headers is not None:
+                if not isinstance(headers, dict) or not all(
+                    isinstance(k, str) and isinstance(v, str) for k, v in headers.items()
+                ):
+                    raise ValueError(f"server {name}: headers must be a string-to-string object")
+        for field in ("startup_timeout_sec", "tool_timeout_sec"):
+            value = server.get(field)
+            if not isinstance(value, int) or value <= 0:
+                raise ValueError(f"server {name}: {field} must be a positive integer")
+        if not isinstance(server.get("default_enabled"), bool):
+            raise ValueError(f"server {name}: default_enabled must be boolean")
+        names.add(name)
+    return manifest
+
+
+def toml_string(value: str) -> str:
+    return json.dumps(value, ensure_ascii=False)
+
+
+def is_remote_server(server: dict[str, Any]) -> bool:
+    return "url" in server
+
+
+def client_server_name(server: dict[str, Any], prefix: str) -> str:
+    """Remote/official HTTP servers keep their bare name; local silicon-crew ones are prefixed."""
+    if is_remote_server(server):
+        return server["name"]
+    return f"{prefix}{server['name']}"
+
+
+def render_codex_mcp_server(
+    server: dict[str, Any], launcher: str, *, enabled: bool | None = None
+) -> list[str]:
+    is_enabled = server["default_enabled"] if enabled is None else enabled
+    if is_remote_server(server):
+        lines = [
+            f"[mcp_servers.{server['name']}]",
+            f"enabled = {str(is_enabled).lower()}",
+            f"url = {toml_string(server['url'])}",
+        ]
+        headers = server.get("headers")
+        if headers:
+            lines.append(f"http_headers = {json.dumps(headers, ensure_ascii=False)}")
+        lines.extend(
+            [
+                f"startup_timeout_sec = {server['startup_timeout_sec']}",
+                f"tool_timeout_sec = {server['tool_timeout_sec']}",
+                "",
+            ]
+        )
+        return lines
+
+    if "script" in server:
+        command = "/bin/sh"
+        cwd = "."
+        args = [launcher, server["script"]]
+    else:
+        command = server["command"]
+        cwd = server.get("cwd")
+        args = server.get("args", [])
+    cwd_line = [f"cwd = {toml_string(cwd)}"] if cwd is not None else []
+    return [
+        f"[mcp_servers.{server['name']}]",
+        f"enabled = {str(is_enabled).lower()}",
+        f"command = {toml_string(command)}",
+        *cwd_line,
+        f"args = {json.dumps(args, ensure_ascii=False)}",
+        f"startup_timeout_sec = {server['startup_timeout_sec']}",
+        f"tool_timeout_sec = {server['tool_timeout_sec']}",
+        "",
+    ]
+
+
+def render_codex(manifest: dict[str, Any]) -> str:
+    launcher = manifest["launcher"]
+    lines = [
+        "# Generated by scripts/sync_mcp_configs.py from .agents/mcp-servers.json.",
+        "# Edit the manifest, then run: python3 scripts/sync_mcp_configs.py --write",
+        "",
+    ]
+    for server in manifest["servers"]:
+        lines.extend(render_codex_mcp_server(server, launcher))
+
+    lines.extend(
+        [
+            "[[hooks.SessionStart]]",
+            'matcher = "startup|resume|clear|compact"',
+            "",
+            "[[hooks.SessionStart.hooks]]",
+            'type = "command"',
+            'command = \'bash "$(git rev-parse --show-toplevel)/.codex/hooks/session-start.sh"\'',
+            "timeout = 30",
+            'statusMessage = "Loading silicon-crew workflow"',
+            "",
+            "[[hooks.PreToolUse]]",
+            'matcher = "Bash|functions.exec_command|exec_command"',
+            "",
+            "[[hooks.PreToolUse.hooks]]",
+            'type = "command"',
+            "command = 'bash \"$(git rev-parse --show-toplevel)/.codex/hooks/pre-tool-use.sh\"'",
+            "timeout = 30",
+            'statusMessage = "Checking EDA command policy"',
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def render_generic(manifest: dict[str, Any]) -> str:
+    prefix = manifest.get("client_prefix", "")
+    launcher = manifest["launcher"]
+    servers: dict[str, dict[str, Any]] = {}
+    for server in manifest["servers"]:
+        key = client_server_name(server, prefix)
+        if is_remote_server(server):
+            rendered: dict[str, Any] = {
+                "type": "http",
+                "url": server["url"],
+            }
+            if server.get("headers"):
+                rendered["headers"] = server["headers"]
+        elif "script" in server:
+            rendered = {
+                "type": "stdio",
+                "command": "sh",
+                "args": [launcher, server["script"]],
+            }
+        else:
+            rendered = {
+                "type": "stdio",
+                "command": server["command"],
+                "args": server.get("args", []),
+            }
+            if "cwd" in server:
+                rendered["cwd"] = server["cwd"]
+        servers[key] = rendered
+    return json.dumps({"mcpServers": servers}, indent=2, ensure_ascii=False) + "\n"
+
+
+def expected_configs() -> dict[Path, str]:
+    manifest = load_manifest()
+    return {
+        CODEX_CONFIG: render_codex(manifest),
+        GENERIC_CONFIG: render_generic(manifest),
+    }
+
+
+def check() -> int:
+    mismatches: list[Path] = []
+    for path, expected in expected_configs().items():
+        actual = path.read_text(encoding="utf-8") if path.is_file() else ""
+        if actual != expected:
+            mismatches.append(path)
+    if mismatches:
+        for path in mismatches:
+            print(f"[MCP-CONFIG] OUT-OF-DATE: {path.relative_to(ROOT)}", file=sys.stderr)
+        print("Run: python3 scripts/sync_mcp_configs.py --write", file=sys.stderr)
+        return 2
+    print("[MCP-CONFIG] Configs match .agents/mcp-servers.json")
+    return 0
+
+
+def write() -> int:
+    for path, content in expected_configs().items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+        print(f"[MCP-CONFIG] Wrote {path.relative_to(ROOT)}")
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--check", action="store_true", help="verify configs (default)")
+    mode.add_argument("--write", action="store_true", help="regenerate both configs")
+    args = parser.parse_args()
+    try:
+        return write() if args.write else check()
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"[MCP-CONFIG] ERROR: {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
