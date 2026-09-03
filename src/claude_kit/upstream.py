@@ -122,6 +122,24 @@ def _real_directory(path: Path) -> None:
             raise KitError(f"Snapshot parent is not a directory: {item}")
 
 
+def _stable_ast(value: Any) -> str:
+    """Version-independent compact AST representation for static contracts.
+
+ast.dump changed its empty-field defaults across supported Python releases.
+Keep those presentation changes out of the pinned capability inventory.
+"""
+    if isinstance(value, ast.AST):
+        fields = []
+        for name, item in ast.iter_fields(value):
+            if item == [] or (item is None and not (isinstance(value, ast.Constant) and name == "value")):
+                continue
+            fields.append(f"{name}={_stable_ast(item)}")
+        return f"{type(value).__name__}({', '.join(fields)})"
+    if isinstance(value, list):
+        return "[" + ", ".join(_stable_ast(item) for item in value) + "]"
+    return repr(value)
+
+
 def _tool_contracts(script: Path) -> list[dict[str, str]]:
     try:
         tree = ast.parse(script.read_bytes(), filename=script.name)
@@ -141,8 +159,8 @@ def _tool_contracts(script: Path) -> list[dict[str, str]]:
                 for kw in call.keywords:
                     if kw.arg == "name" and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
                         name = kw.value.value
-            result.append({"name": name, "arguments": ast.dump(node.args, include_attributes=False),
-                           "returns": ast.dump(node.returns, include_attributes=False) if node.returns else ""})
+            result.append({"name": name, "arguments": _stable_ast(node.args),
+                           "returns": _stable_ast(node.returns) if node.returns else ""})
     return sorted(result, key=lambda item: item["name"])
 
 

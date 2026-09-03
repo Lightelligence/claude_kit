@@ -1,4 +1,5 @@
 import subprocess
+import ast
 import sys
 import time
 import unittest
@@ -6,10 +7,14 @@ from unittest.mock import patch
 from pathlib import Path
 
 from claude_kit.core import KitError
-from claude_kit.upstream import _run_git_process, _stage_from_repo
+from claude_kit.upstream import _run_git_process, _stage_from_repo, _stable_ast
 
 
 class UpstreamProcessTests(unittest.TestCase):
+    def test_ast_contract_is_independent_of_dump_empty_field_defaults(self):
+        args = ast.parse("def f(x: int = None): pass").body[0].args
+        self.assertEqual(_stable_ast(args), "arguments(args=[arg(arg='x', annotation=Name(id='int', ctx=Load()))], defaults=[Constant(value=None)])")
+
     def test_tree_scan_does_not_fetch_excluded_blob_sizes(self):
         def git(repo, *args):
             if args[0] == "rev-parse":

@@ -10,6 +10,9 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
+    env:
+      # compileall must not dirty the byte-preserving upstream snapshot.
+      PYTHONPYCACHEPREFIX: ${{ runner.temp }}/claude-kit-pycache
 
     steps:
       - name: Check out repository
