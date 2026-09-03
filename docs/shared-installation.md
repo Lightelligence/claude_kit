@@ -5,10 +5,12 @@ need the same roles, skills and protocol guidance. A site can provide that
 installation through Environment Modules:
 
 ```sh
+export PROJ_DIR="$(git rev-parse --show-toplevel)"
 module add claude_kit/<approved-version>
-claude-kit attach --project-root . --dry-run
-claude-kit attach --project-root .
+claude-kit attach --dry-run
+claude-kit attach
 claude-kit doctor --strict
+cd "$PROJ_DIR"
 claude
 ```
 
@@ -17,6 +19,28 @@ install packages, edit a checkout, start MCP processes, or launch EDA. Start
 Claude Code from the project after loading the module so its MCP children
 inherit the selected runtime. Explicit version selection keeps team upgrades
 predictable; an administrator may provide an unversioned module default.
+
+`PROJ_DIR` selects the project at runtime; no checkout name is stored in the
+shared module. An explicit `--project-root` overrides it. If it is absent,
+the kit discovers the nearest project from the current directory. If it is
+set, it must name an existing absolute directory; an empty, missing or invalid
+directory is an error, not a fallback to a different project. Re-export it
+when switching checkouts and restart Claude so MCP children inherit it.
+The module never sets or overwrites `PROJ_DIR`.
+
+New shared attachment MCP entries omit `--project-root`, letting the kit
+resolve `PROJ_DIR` itself without shell expansion. For an explicit argument,
+the kit also accepts literal `$PROJ_DIR` or `${PROJ_DIR}`. Existing entries
+with `--project-root .` remain unchanged for compatibility; remove that
+argument pair explicitly when migrating them to environment selection.
+Project profile paths remain relative to the selected root (for example,
+`.claude/project.toml`); profile `project.root = "."` is not a checkout pin.
+
+External regression storage is a separate project setting, not inferred from
+the checkout's basename. A profile can use `root = "${REGRESSION_ROOT}"` under
+`[artifacts.regression]` with the actual run directory supplied by the project
+environment. Missing variables must be resolved before artifact lookup; do
+not scan a shared parent or substitute another checkout's results.
 
 ## Site administrator
 

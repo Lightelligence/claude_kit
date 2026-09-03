@@ -15,7 +15,7 @@ from .core import (
     doctor,
     discover_regression_artifacts,
     evidence_template,
-    find_project_root,
+    resolve_project_root,
     init_project,
     inspect_project,
     load_profile,
@@ -40,7 +40,7 @@ def _json_print(value: Any) -> None:
 
 
 def _root(value: str | None) -> Path:
-    return find_project_root(Path(value).resolve() if value else None)
+    return resolve_project_root(value)
 
 
 def _project_output(root: Path, value: Path) -> Path:
@@ -64,7 +64,7 @@ def _project_input(root: Path, value: Path, label: str) -> Path:
 
 
 def _add_project_options(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--project-root", help="Project root; defaults to the nearest Git root")
+    parser.add_argument("--project-root", help="Project root; defaults to PROJ_DIR, then nearest project root")
     parser.add_argument("--profile", help="Profile path relative to project root")
 
 
