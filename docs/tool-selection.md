@@ -161,8 +161,11 @@ not override models or permission settings. The catalog prints names and
 descriptions, not server credentials. Existing disabled-server and organization
 policies can still affect availability; check `/mcp` inside the session.
 
-This launcher has local unit coverage. Native ETX Claude acceptance is still
-pending; do not treat profile configuration alone as verified token savings.
+This launcher passed native ETX Claude Code 2.1.267 acceptance with the debug
+profile: only kit and xverif connected, 50 MCP tools were advertised, and actual
+profile lookup and bit evaluation returned valid results in 13.37 seconds.
+The checkout status was unchanged. This verifies selected-server routing, not
+every profile or a measured model-token savings percentage.
 
 ## Script placement
 
@@ -193,3 +196,30 @@ operation, expected result, observed result, and artifact path. Distinguish:
 Do not label mocked unit tests, an empty success envelope, a tool catalog, or
 missing-license skips as end-to-end business PASS. Use disposable fixtures for
 mutations; never test deletion or publication on unrelated live project data.
+
+### Current ETX verification scope (2026-09-13)
+
+This is an integration snapshot, not a promise that every backend operation has
+passed. The baseline discovered 218 tools across 16 stdio servers, including
+disabled optional servers. The eight active stdio servers advertised 89 tools
+and 63,682 compact-JSON UTF-8 schema bytes; the HTTP drawing server is excluded.
+Do not interpret bytes as model tokens.
+
+| Capability | Actual evidence | Remaining acceptance |
+| --- | --- | --- |
+| Kit compact catalogs | Local process/compatibility tests; 14 to 9 tools | Project compact rollout and native Claude acceptance |
+| Task profiles/session launcher | Local tests; seven profiles parsed on ETX; native Claude debug profile connects only two servers and successfully invokes both | Other profiles and representative RTL/DV quality checks |
+| Register generation | All 13 yml2reg MCP entrypoints generated nonempty outputs; XML/JSON/XLSX parsing where applicable | Generated HDL compilation and project-specific semantic checks |
+| Bit conversion/slice/eval/check | Real MCP values 255/-1, 190, 17, and matched=true | Upstream MCP documentation correction for eval/check |
+| SVA list/scan/parse/explain | Four real MCP responses against an owned property fixture | Broader temporal-semantic cases |
+| xdebug action discovery/schema | Real MCP catalog and schema calls | Complete FSDB/design/session action matrix |
+| Coverage action discovery | Real MCP call passes after wiring the selected Python interpreter | VDB queries, reports, exports and exclusion lifecycle |
+| Language navigation | After lifecycle fix, eight real MCP file-navigation calls pass across two workspaces | Current Verible lacks workspace/symbol; removal from default surface is being verified |
+| Bazel build/integration | Initialize and tool discovery | Actual scoped lint/compile and other selected business operations |
+| CRG and OpenROAD | Initialize and tool discovery | Disposable generation/build scenarios and prerequisites |
+| Disabled generic generators and Make adapters | Initialize and tool discovery | Individual functional fixtures; not enabled in normal sessions |
+| Atlassian and HTTP drawing | Atlassian discovery only; drawing untested | Authorized non-mutating service checks; never create issues merely to test |
+
+Project-only helper migration passed 13 checks, including generated-file
+synchronization and existing instruction budgets. The old script paths remain
+compatibility launchers. None of these results proves full-project signoff.
