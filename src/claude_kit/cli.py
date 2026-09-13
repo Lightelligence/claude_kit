@@ -232,6 +232,12 @@ def build_parser() -> argparse.ArgumentParser:
     mcp_subparsers = mcp.add_subparsers(dest="mcp_command", required=True)
     serve = mcp_subparsers.add_parser("serve", help="Serve MCP over stdio")
     _add_project_options(serve)
+    serve.add_argument(
+        "--tool-profile",
+        choices=("compact", "full"),
+        default="full",
+        help="Advertised MCP tool profile (default: full)",
+    )
     serve.add_argument("--allow-exec", action="store_true", help="Expose run_check and run_checks to the bridge")
     serve.set_defaults(handler=handle_mcp)
 
@@ -517,7 +523,7 @@ def handle_mcp(args: argparse.Namespace) -> int:
     from .mcp_server import serve
 
     root = _root(args.project_root)
-    serve(root, args.profile, args.allow_exec)
+    serve(root, args.profile, args.allow_exec, args.tool_profile)
     return 0
 
 

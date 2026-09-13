@@ -31,6 +31,18 @@ from .core import (
 )
 
 
+_TOOL_PROFILES = ("compact", "full")
+_CATALOG_CATEGORIES = ("roles", "packs", "providers", "skills", "workflows", "checks")
+_CATALOG_TOOL_NAMES = frozenset({
+    "list_roles",
+    "list_packs",
+    "list_providers",
+    "list_skills",
+    "list_workflows",
+    "list_checks",
+})
+
+
 def _read_message() -> tuple[dict[str, Any] | None, str]:
     first_line = sys.stdin.buffer.readline()
     if not first_line:
@@ -77,7 +89,9 @@ def _write_message(value: dict[str, Any], framing: str) -> None:
     sys.stdout.buffer.flush()
 
 
-def _tool_definitions(allow_exec: bool) -> list[dict[str, Any]]:
+def _tool_definitions(allow_exec: bool, tool_profile: str = "full") -> list[dict[str, Any]]:
+    if tool_profile not in _TOOL_PROFILES:
+        raise KitError("tool_profile must be compact or full")
     tools = [
         {
             "name": "get_project_profile",
@@ -224,6 +238,20 @@ def _tool_definitions(allow_exec: bool) -> list[dict[str, Any]]:
                 },
             },
         })
+    if tool_profile == "compact":
+        tools = [tool for tool in tools if tool["name"] not in _CATALOG_TOOL_NAMES]
+        tools.insert(1, {
+            "name": "list_catalog",
+            "description": "List one reusable kit catalog by category.",
+            "inputSchema": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["category"],
+                "properties": {
+                    "category": {"type": "string", "enum": list(_CATALOG_CATEGORIES)},
+                },
+            },
+        })
     return tools
 
 
@@ -236,6 +264,21 @@ def _bool_argument(arguments: dict[str, Any], name: str, default: bool = False) 
     if not isinstance(value, bool):
         raise KitError(f"{name} must be a boolean")
     return value
+
+
+def _catalog_category(arguments: dict[str, Any]) -> str:
+    if "category" not in arguments:
+        raise KitError("list_catalog requires category")
+    unknown = sorted(str(key) for key in arguments if key != "category")
+    if unknown:
+        raise KitError(f"list_catalog unknown argument: {unknown[0]}")
+    category = arguments["category"]
+    if not isinstance(category, str):
+        raise KitError("list_catalog category must be a string")
+    if category not in _CATALOG_CATEGORIES:
+        values = ", ".join(_CATALOG_CATEGORIES)
+        raise KitError(f"list_catalog category must be one of: {values}")
+    return category
 
 
 def _call_tool(
@@ -255,6 +298,18 @@ def _call_tool(
         return _text_result(skill_catalog())
     if name == "list_workflows":
         return _text_result(workflow_catalog())
+    if name == "list_catalog":
+        category = _catalog_category(arguments)
+        if category == "roles":
+            return _text_result(role_catalog())
+        if category == "packs":
+            return _text_result(pack_catalog())
+        if category == "providers":
+            return _text_result(provider_catalog())
+        if category == "skills":
+            return _text_result(skill_catalog())
+        if category == "workflows":
+            return _text_result(workflow_catalog())
 
     profile_path, profile = load_profile(root, explicit_profile)
     if name == "plan_task":
@@ -284,6 +339,8 @@ def _call_tool(
             },
         })
     if name == "list_checks":
+        return _text_result(command_menu(profile))
+    if name == "list_catalog":
         return _text_result(command_menu(profile))
     if name == "resolve_context":
         task = arguments.get("task", "")
@@ -362,7 +419,12 @@ def _call_tool(
     raise KitError(f"Unknown tool: {name}")
 
 
-def serve(root: Path, explicit_profile: str | None = None, allow_exec: bool = False) -> None:
+def serve(
+    root: Path,
+    explicit_profile: str | None = None,
+    allow_exec: bool = False,
+    tool_profile: str = "full",
+) -> None:
     while True:
         request, framing = _read_message()
         if request is None:
@@ -379,7 +441,7 @@ def serve(root: Path, explicit_profile: str | None = None, allow_exec: bool = Fa
             elif method == "notifications/initialized":
                 continue
             elif method == "tools/list":
-                result = {"tools": _tool_definitions(allow_exec)}
+                result = {"tools": _tool_definitions(allow_exec, tool_profile)}
             elif method == "tools/call":
                 params = request.get("params") or {}
                 if not isinstance(params, dict):
