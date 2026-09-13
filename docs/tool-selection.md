@@ -137,7 +137,34 @@ forcing `ENABLE_TOOL_SEARCH=true` can fail if it cannot handle `tool_reference`.
 Verify the actual configured model and gateway before changing this setting.
 See [Claude Code's MCP documentation](https://code.claude.com/docs/en/mcp#configure-tool-search).
 
-## Where scripts belong
+## Select a session's MCP servers
+
+Projects can define `.claude/tool-profiles.json` alongside `.mcp.json`:
+
+```json
+{"schema_version":1,"profiles":{"rtl":{"description":"RTL editing and checks","servers":["soc-build-bazel","soc-lsp","claude-kit"]}}}
+```
+
+Server names must exactly match the project's registrations. Add separate debug,
+register-generation or physical-design profiles as needed; the kit does not
+invent project-specific server names or change their configuration.
+
+```sh
+python3 third_party/claude_kit/bin/claude-kit tool-profiles --project-root .
+python3 third_party/claude_kit/bin/claude-kit session --project-root . --tools rtl
+```
+
+The second command opens native Claude Code. Enter normal prompts there; no
+Python command is needed for each MCP call. Optional native arguments follow `--`.
+The launcher uses a temporary strict MCP config, removes it after exit, and does
+not override models or permission settings. The catalog prints names and
+descriptions, not server credentials. Existing disabled-server and organization
+policies can still affect availability; check `/mcp` inside the session.
+
+This launcher has local unit coverage. Native ETX Claude acceptance is still
+pending; do not treat profile configuration alone as verified token savings.
+
+## Script placement
 
 | Kind | Canonical location |
 | --- | --- |

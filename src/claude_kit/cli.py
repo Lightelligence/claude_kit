@@ -78,6 +78,18 @@ def build_parser() -> argparse.ArgumentParser:
     version = subparsers.add_parser("version", help="Show kit version")
     version.set_defaults(handler=lambda args: {"version": __version__})
 
+    tool_profiles = subparsers.add_parser(
+        "tool-profiles", help="List project MCP tool profiles without exposing server credentials"
+    )
+    tool_profiles.add_argument("--project-root", help="Project root")
+    tool_profiles.set_defaults(handler=handle_tool_profiles)
+
+    session = subparsers.add_parser("session", help="Launch native Claude with a selected project MCP profile")
+    session.add_argument("--project-root", help="Project root")
+    session.add_argument("--tools", required=True, help="Name from tool-profiles")
+    session.add_argument("claude_args", nargs=argparse.REMAINDER, help="Native Claude arguments after --")
+    session.set_defaults(handler=handle_session)
+
     upstream = subparsers.add_parser("upstream", help="Stage and review pinned vibe_soc updates (maintainer only)")
     upstream_commands = upstream.add_subparsers(dest="upstream_command", required=True)
     stage = upstream_commands.add_parser("stage", help="Fetch an isolated candidate without activating it")
@@ -557,6 +569,21 @@ def handle_evidence_template(args: argparse.Namespace) -> int:
     else:
         print(content, end="")
     return 0
+
+
+def handle_tool_profiles(args: argparse.Namespace) -> dict[str, Any]:
+    from .tool_profiles import profile_catalog
+
+    return {"profiles": profile_catalog(_root(args.project_root))}
+
+
+def handle_session(args: argparse.Namespace) -> int:
+    from .session import launch_session
+
+    arguments = args.claude_args
+    if arguments[:1] == ["--"]:
+        arguments = arguments[1:]
+    return launch_session(_root(args.project_root), args.tools, arguments)
 
 
 def main(argv: list[str] | None = None) -> int:
