@@ -26,9 +26,21 @@ and output_format="json". Report the actual extracted value.
 
 这两个例子的预期结果分别是 unsigned=255/signed_value=-1 和 unsigned=190。
 表达式计算使用 `xverif_bit_eval`；不要假设它支持所有 C/Python literal 语法。
-当前 ETX 验证发现工具说明中的 `0x10 + 0x1` 示例返回 PARSE_ERROR，
-`xverif_bit_check.values` 实际被当作文件路径而非数值；这两项接口约定仍待修复和复测。
-遇到这些错误应报告失败，不能把错误响应当成计算结果或改用心算冒充工具输出。
+当前 ETX 验证发现工具说明中的 `0x10 + 0x1` 示例返回 PARSE_ERROR。
+以下 MCP 参数已经实测通过：
+
+```text
+Call xverif_bit_eval with expr="8'h10 + 8'h01" and output_format="json".
+Report the actual result; the expected unsigned value is 17.
+
+Call xverif_bit_check with expr="actual == expected",
+vars={"actual":"8'h11","expected":"8'h11"}, and output_format="json".
+Report matched from the actual response.
+```
+
+`xverif_bit_check.values` 是变量绑定 JSON 文件路径，不是预期数值；也不能与 `vars` 同时传入。
+比较表达式应明确写出相等或其它条件；工具返回 `matched` 表示表达式真假。
+遇到错误应报告失败，不能把错误响应当成结果或改用心算冒充工具输出。
 
 ## 读取规则
 
