@@ -644,6 +644,7 @@ def _preferred_command_name(preferred: str, commands: dict[str, Any]) -> str | N
 def command_menu(
     profile: dict[str, Any],
     preferred_commands: list[str] | None = None,
+    scope: str | None = None,
 ) -> list[dict[str, Any]]:
     """Return a selectable, project-neutral check menu."""
 
@@ -663,6 +664,20 @@ def command_menu(
         command = commands.get(name)
         definition = command if isinstance(command, dict) else None
         policy = command_selection_policy(name, definition)
+        applies_to = (definition or {}).get("applies_to")
+        if isinstance(applies_to, str):
+            applies_to = [applies_to]
+        declared_scope = isinstance(applies_to, list) and bool(applies_to)
+        outside_scope = bool(scope and declared_scope and scope not in applies_to and "all" not in applies_to)
+        unknown_dv_lint = scope == "dv" and policy["category"] == "lint" and not declared_scope
+        if outside_scope or unknown_dv_lint:
+            policy["recommended"] = False
+            if policy["selection"] == "suggested":
+                policy["selection"] = "optional"
+            policy["recommendation_reason"] = (
+                "Check scope does not match this workflow" if outside_scope else
+                "Confirm this lint checks DV sources before selecting it"
+            )
         entry = {
             "name": name,
             "status": "available" if definition is not None else "missing",
@@ -793,7 +808,7 @@ def resolve_plan(
         "skills": skill_ids,
         "skill_sources": skill_sources,
         "required_facts": required_facts,
-        "check_plan": command_menu(profile, preferred_commands),
+        "check_plan": command_menu(profile, preferred_commands, selected.get("scope")),
         "check_selection": {
             "mode": "engineer_selects",
             "multi_select": True,

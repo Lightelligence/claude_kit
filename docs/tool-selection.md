@@ -6,6 +6,12 @@ available. A bundled skill or a Python source file does not enable a server.
 
 ## Start with the task, not the complete tool catalog
 
+Project checks may declare `applies_to = ["rtl"]`, `["dv"]`, `["rtl", "dv"]`,
+or `["all"]`. Task plans do not recommend checks outside the workflow scope.
+Unscoped lint is optional in DV plans until its DV source coverage is confirmed.
+Checks remain selectable and simulation confirmation requirements are unchanged.
+This describes source applicability, not filesystem or execution permissions.
+
 | Your task | Start here | Do not confuse it with |
 | --- | --- | --- |
 | Understand a module or plan a change | Kit project profile/context and the relevant RTL/DV skill | A build or a verification result |

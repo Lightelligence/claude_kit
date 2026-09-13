@@ -122,6 +122,34 @@ class CoreTests(unittest.TestCase):
             ["soc_lint", "soc_comp", "soc_sim", "soc_regress"],
         )
 
+    def test_workflow_checks_respect_source_scope(self) -> None:
+        commands = {
+            "rtl_check": {"category": "lint", "applies_to": ["rtl"]},
+            "dv_check": {"category": "lint", "applies_to": "dv"},
+            "legacy_lint": {"category": "lint"},
+            "compile": {"category": "compile", "applies_to": ["rtl", "dv"]},
+            "simulation": {"category": "simulation", "applies_to": "all"},
+        }
+        profile = {"build": {"commands": commands}}
+        dv = {item["name"]: item for item in command_menu(profile, scope="dv")}
+        self.assertFalse(dv["rtl_check"]["recommended"])
+        self.assertFalse(dv["legacy_lint"]["recommended"])
+        self.assertTrue(dv["dv_check"]["recommended"])
+        self.assertTrue(dv["compile"]["recommended"])
+        self.assertTrue(dv["simulation"]["requires_confirmation"])
+        self.assertFalse(dv["simulation"]["recommended"])
+        rtl = {item["name"]: item for item in command_menu(profile, scope="rtl")}
+        self.assertTrue(rtl["rtl_check"]["recommended"])
+        self.assertFalse(rtl["dv_check"]["recommended"])
+        unscoped = {item["name"]: item for item in command_menu(profile)}
+        self.assertTrue(unscoped["legacy_lint"]["recommended"])
+        profile_path, real_profile = load_profile(FIXTURE)
+        real_profile["build"] = profile["build"]
+        plan = resolve_plan(FIXTURE, profile_path, real_profile, "dv-change", None, None, "Update DV environment")
+        planned = {item["name"]: item for item in plan["check_plan"]}
+        self.assertFalse(planned["rtl_check"]["recommended"])
+        self.assertFalse(planned["legacy_lint"]["recommended"])
+
     def test_mcp_backed_check_is_profiled_but_not_shell_executed(self) -> None:
         profile = {
             "project": {"id": "mcp_fixture"},
