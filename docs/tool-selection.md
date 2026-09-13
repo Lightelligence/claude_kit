@@ -162,10 +162,11 @@ descriptions, not server credentials. Existing disabled-server and organization
 policies can still affect availability; check `/mcp` inside the session.
 
 This launcher passed native ETX Claude Code 2.1.267 acceptance with the debug
-profile: only kit and xverif connected, 50 MCP tools were advertised, and actual
-profile lookup and bit evaluation returned valid results in 13.37 seconds.
-The checkout status was unchanged. This verifies selected-server routing, not
-every profile or a measured model-token savings percentage.
+profile after correcting inherited PROJ_DIR handling in the repo-local launcher.
+Only kit and xverif connected. The run took 12.53 seconds, advertised 45 tools,
+and verified the absolute xin_1 root through inspect_design, a passed profile
+validation and bit result 17. Checkout status remained unchanged. This proves
+the tested debug profile's routing and calls, not every capability or token cost.
 
 ## Script placement
 
@@ -207,14 +208,15 @@ Do not interpret bytes as model tokens.
 
 | Capability | Actual evidence | Remaining acceptance |
 | --- | --- | --- |
-| Kit compact catalogs | Local process/compatibility tests; 14 to 9 tools | Project compact rollout and native Claude acceptance |
+| Kit compact catalogs | Local compatibility tests; actual ETX catalog is 9 tools / 2,523 schema bytes; native Claude calls succeed | Broader task quality checks |
 | Task profiles/session launcher | Local tests; seven profiles parsed on ETX; native Claude debug profile connects only two servers and successfully invokes both | Other profiles and representative RTL/DV quality checks |
 | Register generation | All 13 yml2reg MCP entrypoints generated nonempty outputs; XML/JSON/XLSX parsing where applicable | Generated HDL compilation and project-specific semantic checks |
 | Bit conversion/slice/eval/check | Real MCP values 255/-1, 190, 17, and matched=true | Upstream MCP documentation correction for eval/check |
 | SVA list/scan/parse/explain | Four real MCP responses against an owned property fixture | Broader temporal-semantic cases |
 | xdebug action discovery/schema | Real MCP catalog and schema calls | Complete FSDB/design/session action matrix |
 | Coverage action discovery | Real MCP call passes after wiring the selected Python interpreter | VDB queries, reports, exports and exclusion lifecycle |
-| Language navigation | After lifecycle fix, eight real MCP file-navigation calls pass across two workspaces | Current Verible lacks workspace/symbol; removal from default surface is being verified |
+| Language navigation | Eight real MCP file-navigation calls pass across two workspaces; actual catalog contains four supported tools | Broader project-level navigation cases; workspace/symbol is not advertised |
+| Source log locations | Real resolve/context/stats/annotate calls return complete results on an owned log/map/source fixture | Large or malformed log cases |
 | Bazel build/integration | Initialize and tool discovery | Actual scoped lint/compile and other selected business operations |
 | CRG and OpenROAD | Initialize and tool discovery | Disposable generation/build scenarios and prerequisites |
 | Disabled generic generators and Make adapters | Initialize and tool discovery | Individual functional fixtures; not enabled in normal sessions |

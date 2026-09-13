@@ -126,9 +126,11 @@ python3 third_party/claude_kit/bin/claude-kit session --project-root . --tools r
 查询清单只显示名称和描述，不打印 server 凭据。
 项目禁用列表或组织策略仍可能影响可用性，进入会话后用 `/mcp` 核对。
 
-该入口已通过本地测试及 ETX 原生 Claude Code 2.1.267 的 debug 场景验收：
-只连接 kit 和 xverif，暴露 50 个 MCP 工具，13.37 秒完成实际 profile 查询和 bit 计算，
-checkout 状态未变。这验证了工具筛选与调用，不代表所有场景均已验证，也不是实际 token 节省比例。
+该入口已通过本地测试及 ETX 原生 Claude Code 2.1.267 的 debug 场景验收。
+修复继承 PROJ_DIR 导致跨 checkout 的问题后，只连接 kit 和 xverif，
+用时 12.53 秒、暴露 45 个工具，并通过 inspect_design 核验 xin_1 的绝对路径、
+profile 校验通过、bit 结果为 17，项目状态仍未变。这证明已测 debug 场景的路由和调用，
+不是所有功能通过的结论，也不是实际 token 节省比例。
 
 ## 脚本归属
 
@@ -158,14 +160,15 @@ stdio servers 暴露 89 个工具，紧凑 JSON schema 共 63,682 UTF-8 字节�
 
 | 能力 | 已取得的证据 | 仍需验证 |
 | --- | --- | --- |
-| kit 精简目录 | 本地进程/兼容测试通过，14→9 个工具 | 项目精简配置的实际注册与调用 |
+| kit 精简目录 | 本地兼容测试；实际 ETX 注册 9 个工具、2,523 schema 字节，原生 Claude 调用成功 | 更多任务质量检查 |
 | 场景入口 | 7 个配置解析通过；原生 Claude debug 场景只连接 2 个服务，实际调用两者成功 | 其余场景与代表性 RTL/DV 任务质量 |
 | 寄存器生成 | 13 个 yml2reg MCP 入口产生非空文件，适用时检查 XML/JSON/XLSX 可解析 | 生成 HDL 的编译与项目语义检查 |
 | bit 工具 | 真实 MCP 转换、切片、计算、比较分别得到 255/-1、190、17、matched=true | 上游 MCP 参数说明修正 |
 | SVA | list/scan/parse/explain 对隔离 property fixture 返回实际结果 | 更多时序语义案例 |
 | xdebug | 实际 action guide 和 schema 调用 | 完整 FSDB/design/session 操作矩阵 |
 | coverage | 修复 Python 路径后，真实 MCP action 目录查询通过 | VDB 查询、报告、导出、exclusion 生命周期 |
-| LSP | 修复后，两个工作目录下 4 个文件导航工具共 8 次真实 MCP 调用通过 | 当前 Verible 不支持 workspace/symbol，需从默认接口移除并核对 |
+| LSP | 两个工作目录下 4 个导航工具共 8 次真实调用通过；实际目录仅含 4 个受支持工具 | 更多项目级导航案例；workspace/symbol 不再暴露 |
+| 日志位置 | resolve/context/stats/annotate 对隔离日志、映射和源码返回完整结果 | 大日志和异常输入 |
 | Bazel build/integration | 握手和工具列表通过 | 定向 lint/compile 和各项业务操作 |
 | CRG/OpenROAD | 握手和工具列表通过 | 隔离生成/构建案例与运行前置条件 |
 | 禁用的通用生成器/Make adapters | 握手和工具列表通过 | 各自功能 fixture；日常会话不启用 |

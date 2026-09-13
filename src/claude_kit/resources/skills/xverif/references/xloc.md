@@ -11,13 +11,18 @@ xloc 将 UVM/仿真日志中的长文件路径压缩为 `L_XXXXXXXX`，同时保
 
 ## 入口
 
-命令行：
+在 Claude Code 中直接请求 MCP 工具（占位符替换成实际文件）：
 
-```bash
-xloc resolve L_00000001 --map out/sim.log.xloc.jsonl
-xloc context L_00000001 --map out/sim.log.xloc.jsonl --line 42 --before 5 --after 5
-xloc stats out/sim.log --top 20
-xloc annotate out/sim.log --map out/sim.log.xloc.jsonl
+```text
+Call xverif_loc_stats with log_path="<log>", map_path="<map>", top=20.
+Report hotspots and whether the response is complete.
+
+Call xverif_loc_resolve with loc_id="L_00000001", map_path="<map>".
+
+Call xverif_loc_context with loc_id="L_00000001", map_path="<map>",
+line=42, before=5, after=5. Quote only relevant source lines.
+
+Call xverif_loc_annotate with log_path="<log>", map_path="<map>".
 ```
 
 ## 工作流
@@ -31,8 +36,9 @@ xloc annotate out/sim.log --map out/sim.log.xloc.jsonl
 
 默认 XOUT 是 resolve/context/stats/annotate 各自的 token-efficient 领域文本；
 只有稳定字段编程、结构化持久化或用户明确要求时，`resolve/context/stats` 使用
-`--json`，`annotate` 使用 `--format json`。
-`stats --top` 截断会显式设置 `response_truncated` 和
+MCP 参数 `output_format="json"`。原生 CLI 对应 `--json`（annotate 为 `--format json`），
+只用于明确选择 CLI 的维护/诊断，不因普通 MCP 调用失败自动切换。
+`stats` 的 `top` 截断会显式设置 `response_truncated` 和
 `truncation_scopes=["rows"]`。
 
 ## 排障
