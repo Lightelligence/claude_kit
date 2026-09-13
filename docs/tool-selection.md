@@ -217,8 +217,10 @@ Do not interpret bytes as model tokens.
 | Coverage action discovery | Real MCP call passes after wiring the selected Python interpreter | VDB queries, reports, exports and exclusion lifecycle |
 | Language navigation | Eight real MCP file-navigation calls pass across two workspaces; actual catalog contains four supported tools | Broader project-level navigation cases; workspace/symbol is not advertised |
 | Source log locations | Real resolve/context/stats/annotate calls return complete results on an owned log/map/source fixture | Large or malformed log cases |
-| Bazel build/integration | Initialize and tool discovery | Actual scoped lint/compile and other selected business operations |
-| CRG and OpenROAD | Initialize and tool discovery | Disposable generation/build scenarios and prerequisites |
+| Bazel RTL lint | Real soc_lint invokes VCS-only axi_narrow lint; compilation/linking completes and the check reports 21 warnings, zero errors/fatals | Clean positive fixture; existing design warning failures are not a tool PASS |
+| Bazel integration | Real workspace validation, target listing, dependency/build-graph queries and vendor-entry snippet generation | Vendor parser correction under verification; three real missing IP paths remain; other build operations unverified |
+| CRG, memory-map, Excel and clock diagrams | Seven real generator calls produce nonempty outputs from copied examples; generated Draw.io XML and Excalidraw JSON parse successfully | Generated HDL compilation, project semantics and diagram visual review |
+| OpenROAD | Initialize and tool discovery | Disposable build scenarios and prerequisites |
 | Disabled generic generators and Make adapters | Initialize and tool discovery | Individual functional fixtures; not enabled in normal sessions |
 | Atlassian and HTTP drawing | Atlassian discovery only; drawing untested | Authorized non-mutating service checks; never create issues merely to test |
 

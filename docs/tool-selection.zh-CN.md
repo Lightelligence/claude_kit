@@ -169,8 +169,10 @@ stdio servers 暴露 89 个工具，紧凑 JSON schema 共 63,682 UTF-8 字节�
 | coverage | 修复 Python 路径后，真实 MCP action 目录查询通过 | VDB 查询、报告、导出、exclusion 生命周期 |
 | LSP | 两个工作目录下 4 个导航工具共 8 次真实调用通过；实际目录仅含 4 个受支持工具 | 更多项目级导航案例；workspace/symbol 不再暴露 |
 | 日志位置 | resolve/context/stats/annotate 对隔离日志、映射和源码返回完整结果 | 大日志和异常输入 |
-| Bazel build/integration | 握手和工具列表通过 | 定向 lint/compile 和各项业务操作 |
-| CRG/OpenROAD | 握手和工具列表通过 | 隔离生成/构建案例与运行前置条件 |
+| Bazel RTL lint | 实际 soc_lint 执行 axi_narrow 的 VCS-only lint；编译链接完成，检查报告 21 个 warning、零 error/fatal | 干净的正向 fixture；设计 warning 导致的失败不能写成检查通过 |
+| Bazel integration | 实际 workspace 校验、target 列表、依赖/构建图查询及 vendor 配置片段生成 | vendor 解析修复正在验证；三个真实 IP 路径缺失仍存在，其余构建操作未测 |
+| CRG、memory-map、Excel、时钟树图 | 七个生成器实际调用均用复制的示例产生非空文件；Draw.io XML、Excalidraw JSON 可解析 | 生成 HDL 编译、项目语义与图形视觉检查 |
+| OpenROAD | 握手和工具列表通过 | 隔离构建案例与运行前置条件 |
 | 禁用的通用生成器/Make adapters | 握手和工具列表通过 | 各自功能 fixture；日常会话不启用 |
 | Atlassian/HTTP 绘图 | 仅 Atlassian 工具列表通过；绘图未测 | 非破坏性服务验证，不为测试创建真实工单 |
 
