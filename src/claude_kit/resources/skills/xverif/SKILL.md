@@ -56,12 +56,13 @@ description: >
 4. 对选定 action 调用 action-specific schema，不猜字段；MCP 同时遵守
    `session_contract`，resource variant 必须有 session，`requires:none` variant 禁止
    session。schema 返回 `skill_guidance` 时必须读取其中指定的本 skill reference。
-5. 对关键接口或一组关键信号，先按 schema 生成 JSON config，并通过
+5. 仅对 xdebug 的关键接口或一组关键信号，先按 schema 生成 JSON config，并通过
    `list.load`、`stream.config.load`、`axi.config.load` 或 `apb.config.load`
    加载，再用对应 list/get/show/validate/describe 确认解析结果。
-6. config load 成功后读取响应中的 `recommended_actions`，第一项应为
+6. 上述 xdebug config load 成功后读取响应中的 `recommended_actions`，第一项应为
    `value.at`；它接受 `signal`、`list`、`apb`、`stream`、`axi` 中恰好一个
    selector，以及 `time` 或有序且不重复的 `times`。多个时间点一次提交。
+   bit、entry、日志位置及独立 SVA 查询不需要 xdebug guide、config 或 waveform session。
 7. 先执行最小受限查询，再根据证据扩展。
 8. 输出结论、signal/path、time/range、value、file:line、action/tool、error/finding；
    同时报告 canonical 完整性字段并保留 action-specific status 与 unknowns。
