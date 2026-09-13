@@ -13,13 +13,22 @@ xbit 是确定性 bit/value/expression calculator。遇到 SV literal、slice、
 
 ## 入口
 
-命令行：
+在 Claude Code 中优先使用注册的 MCP 工具。以下是输入给 Claude 的提示词，
+不是终端命令：
 
-```bash
-xbit conv "8'shff" --json
-tools/xbit slice "32'hdead_beef" 15 8 --json
-xbit eval "valid && ready" --var valid=1'b1 --var ready=1'b0 --json
+```text
+Call xverif_bit_convert with value="8'shff" and output_format="json".
+Report unsigned and signed_value from the actual result.
+
+Call xverif_bit_slice with value="32'hdeadbeef", msb=15, lsb=8,
+and output_format="json". Report the actual extracted value.
 ```
+
+这两个例子的预期结果分别是 unsigned=255/signed_value=-1 和 unsigned=190。
+表达式计算使用 `xverif_bit_eval`；不要假设它支持所有 C/Python literal 语法。
+当前 ETX 验证发现工具说明中的 `0x10 + 0x1` 示例返回 PARSE_ERROR，
+`xverif_bit_check.values` 实际被当作文件路径而非数值；这两项接口约定仍待修复和复测。
+遇到这些错误应报告失败，不能把错误响应当成计算结果或改用心算冒充工具输出。
 
 ## 读取规则
 
