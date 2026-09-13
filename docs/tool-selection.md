@@ -230,6 +230,7 @@ Do not interpret bytes as model tokens.
 | Coverage action discovery | Real MCP call passes after wiring the selected Python interpreter | VDB queries, reports, exports and exclusion lifecycle |
 | Language navigation | Eight real MCP file-navigation calls pass across two workspaces; actual catalog contains four supported tools | Broader project-level navigation cases; workspace/symbol is not advertised |
 | Source log locations | Real resolve/context/stats/annotate calls return complete results on an owned log/map/source fixture | Large or malformed log cases |
+| Entry fields | Real explain/validate/decode calls pass the documented two-beat example: 0xab234 with opcode=4, route=0x23, payload=0xab and matching source provenance | Additional layouts, bit orders and invalid-input cases |
 | Bazel RTL lint | Real soc_lint invokes VCS-only axi_narrow lint; compilation/linking completes and the check reports 21 warnings, zero errors/fatals | Clean positive fixture; existing design warning failures are not a tool PASS |
 | Bazel integration | Real workspace validation, target listing, dependency/build-graph queries and vendor-entry snippet generation; corrected parser identifies 24 actual repositories | Three real missing IP paths remain; other build operations unverified |
 | CRG, memory-map, Excel and clock diagrams | Seven real generator calls produce nonempty outputs from copied examples; generated Draw.io XML and Excalidraw JSON parse successfully | Generated HDL compilation, project semantics and diagram visual review |
