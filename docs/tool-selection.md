@@ -174,7 +174,8 @@ Projects can define `.claude/tool-profiles.json` alongside `.mcp.json`:
 {"schema_version":1,"profiles":{"rtl":{"description":"RTL editing and checks","servers":["soc-build-bazel","soc-lsp","claude-kit"]}}}
 ```
 
-Server names must exactly match the project's registrations. Add separate debug,
+Server names must exactly match keys in the selected configuration source:
+the catalog specified by `mcp_config`, or `.mcp.json` when that field is absent. Add separate debug,
 register-generation or physical-design profiles as needed; the kit does not
 invent project-specific server names or change their configuration.
 
@@ -183,7 +184,17 @@ python3 third_party/claude_kit/bin/claude-kit tool-profiles --project-root .
 python3 third_party/claude_kit/bin/claude-kit session --project-root . --tools rtl
 ```
 
-The second command opens native Claude Code. Enter normal prompts there; no
+For a project with a debug profile, start xverif work from the terminal with:
+
+```sh
+python3 third_party/claude_kit/bin/claude-kit session --project-root . --tools debug
+```
+
+A profile launch starts a new Claude process; it does not dynamically add tools
+to an already-open plain session. If a server is missing, check the full catalog
+and profile name first; do not clear local disabled-server settings to troubleshoot.
+
+The session command opens native Claude Code. Enter normal prompts there; no
 Python command is needed for each MCP call. Optional native arguments follow `--`.
 The launcher uses a temporary strict MCP config, removes it after exit, and does
 not override models or permission settings. The catalog prints names and

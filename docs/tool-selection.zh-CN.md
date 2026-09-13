@@ -134,7 +134,8 @@ claude
 下面的启动命令在终端执行，**不是发送给 Claude 的 prompt**。进入 Claude 后
 直接用自然语言描述任务，需要时通过 `/mcp` 查看服务。
 
-项目可在 `.claude/tool-profiles.json` 中定义配置，server 名称必须与 `.mcp.json` 完全一致：
+项目可在 `.claude/tool-profiles.json` 中定义配置。server 名称必须与所选配置源中的键完全一致：
+设置 `mcp_config` 时使用该完整目录，否则使用 `.mcp.json`。
 
 ```json
 {"schema_version":1,"profiles":{"rtl":{"description":"RTL editing and checks","servers":["soc-build-bazel","soc-lsp","claude-kit"]}}}
@@ -144,6 +145,15 @@ claude
 python3 third_party/claude_kit/bin/claude-kit tool-profiles --project-root .
 python3 third_party/claude_kit/bin/claude-kit session --project-root . --tools rtl
 ```
+
+例如，已配置 debug 场景的项目需要调用 xverif 时，在终端启动：
+
+```sh
+python3 third_party/claude_kit/bin/claude-kit session --project-root . --tools debug
+```
+
+启动新场景会开启新的 Claude 进程，不会给已打开的普通会话动态增加工具。
+若提示找不到 server，先核对完整目录和场景名称；不要为了排错清空本地禁用列表。
 
 第二条命令启动原生 Claude Code，此后直接输入自然语言，无须为每次 MCP 调用运行 Python。
 可分别配置 debug、寄存器生成和物理设计场景；额外的原生 Claude 参数放在 `--` 之后。
