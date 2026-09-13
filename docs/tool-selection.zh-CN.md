@@ -158,6 +158,12 @@ profile 校验通过、bit 结果为 17，项目状态仍未变。这证明已�
 
 ## 如何阅读验证结果
 
+项目可将完整 server 定义存入 `.claude/mcp-catalog.json`，并在
+`.claude/tool-profiles.json` 顶层配置 `"mcp_config": ".claude/mcp-catalog.json"`。
+场景入口从此目录选取服务；路径必须留在项目内。不设置时仍使用 `.mcp.json`。
+仅增加该字段不会改变默认启动：项目配置生成器还需把默认子集输出到 `.mcp.json`，
+并保留本地禁用设置。
+
 记录源码版本、解释器/工具版本、host/backend、操作、期望值、实际值、artifact 路径。
 明确区分：静态/schema 检查、MCP 握手/工具列表、真实业务调用、真实 Claude 选工具、未测/外部前置缺失。
 mock 单测、空成功响应、目录列举和缺 license 的 SKIP 都不等于业务端到端通过。

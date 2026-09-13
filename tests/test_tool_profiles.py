@@ -60,6 +60,21 @@ class ToolProfileTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.tempdir.cleanup()
 
+    def test_explicit_catalog_keeps_optional_servers_outside_default_config(self):
+        catalog=self.root/'.claude/mcp-catalog.json'
+        catalog.write_text(json.dumps(self.mcp_config),encoding='utf-8')
+        self.profile_config['mcp_config']='.claude/mcp-catalog.json'
+        self._write({'mcpServers':{'rtl-tools':self.mcp_config['mcpServers']['rtl-tools']}},self.profile_config)
+        selected=select_tool_profile(self.root,'debug')
+        self.assertIn('wave-tools',selected['mcpServers'])
+        self.assertNotIn('wave-tools',json.loads((self.root/'.mcp.json').read_text())['mcpServers'])
+
+    def test_catalog_path_cannot_escape_project(self):
+        for filename in ('../outside.json',str(self.root/'.mcp.json')):
+            self.profile_config['mcp_config']=filename
+            self._write(self.mcp_config,self.profile_config)
+            with self.assertRaises(ToolProfileError): select_tool_profile(self.root,'rtl')
+
     def test_cli_catalog_does_not_expose_server_secrets(self) -> None:
         from claude_kit.cli import main
 

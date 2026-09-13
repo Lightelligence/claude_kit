@@ -12,7 +12,7 @@ class ToolProfileError(ValueError):
 _SCHEMA_VERSION = 1
 _MCP_CONFIG_NAME = ".mcp.json"
 _PROFILE_CONFIG_NAME = ".claude/tool-profiles.json"
-_PROFILE_DOCUMENT_FIELDS = frozenset({"schema_version", "profiles"})
+_PROFILE_DOCUMENT_FIELDS = frozenset({"schema_version", "profiles", "mcp_config"})
 _PROFILE_FIELDS = frozenset({"description", "servers"})
 
 
@@ -96,8 +96,8 @@ def _name(value: Any, label: str) -> str:
     return value
 
 
-def _load_mcp_servers(root: Path) -> dict[str, dict[str, Any]]:
-    path = _safe_project_file(root, _MCP_CONFIG_NAME, "Project MCP configuration")
+def _load_mcp_servers(root: Path, filename: str = _MCP_CONFIG_NAME) -> dict[str, dict[str, Any]]:
+    path = _safe_project_file(root, filename, "Project MCP configuration")
     config = _read_json(path, "Project MCP configuration")
     _reject_unknown_fields(config, frozenset({"mcpServers"}), "Project MCP configuration")
     if "mcpServers" not in config:
@@ -116,7 +116,7 @@ def _load_profiles(root: Path, registered_servers: dict[str, dict[str, Any]]) ->
     path = _safe_project_file(root, _PROFILE_CONFIG_NAME, "Tool-profile configuration")
     document = _read_json(path, "Tool-profile configuration")
     _reject_unknown_fields(document, _PROFILE_DOCUMENT_FIELDS, "Tool-profile configuration")
-    _require_fields(document, _PROFILE_DOCUMENT_FIELDS, "Tool-profile configuration")
+    _require_fields(document, frozenset({"schema_version", "profiles"}), "Tool-profile configuration")
     if type(document["schema_version"]) is not int or document["schema_version"] != _SCHEMA_VERSION:
         raise ToolProfileError("Tool-profile configuration schema_version must be 1")
     profiles = document["profiles"]
@@ -159,7 +159,14 @@ def _load_profiles(root: Path, registered_servers: dict[str, dict[str, Any]]) ->
 
 def _load_project_configuration(root: Path) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
     resolved_root = _project_root(root)
-    servers = _load_mcp_servers(resolved_root)
+    document = _read_json(
+        _safe_project_file(resolved_root, _PROFILE_CONFIG_NAME, "Tool-profile configuration"),
+        "Tool-profile configuration",
+    )
+    filename = _name(document.get("mcp_config", _MCP_CONFIG_NAME), "mcp_config")
+    if Path(filename).is_absolute() or ".." in Path(filename).parts:
+        raise ToolProfileError("mcp_config must be a project-relative path without traversal")
+    servers = _load_mcp_servers(resolved_root, filename)
     profiles = _load_profiles(resolved_root, servers)
     return servers, profiles
 

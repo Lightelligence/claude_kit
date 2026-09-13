@@ -183,6 +183,14 @@ the tested debug profile's routing and calls, not every capability or token cost
 
 ## Script placement
 
+Projects may keep the complete server definitions in `.claude/mcp-catalog.json`
+and set `"mcp_config": ".claude/mcp-catalog.json"` at the top level of
+`.claude/tool-profiles.json`. Profile sessions then use that catalog rather
+than `.mcp.json`; the path must remain inside the project. Without this optional
+field, existing projects continue to use `.mcp.json`. This alone does not change
+default startup: the project's config generator must also emit its selected
+default subset into `.mcp.json`. Preserve local disabled-server settings.
+
 | Kind | Canonical location |
 | --- | --- |
 | Reusable kit implementation | `src/claude_kit/` with tests and a documented CLI/MCP entry |
