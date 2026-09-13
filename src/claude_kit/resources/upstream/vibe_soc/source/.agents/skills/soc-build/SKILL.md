@@ -1,11 +1,14 @@
 ---
 name: soc-build
-description: Create and operate canonical SoC project/module scaffolds through registered MCP tools for filelists, lint, compile, simulation, regression, coverage, and synthesis. Use for SoC project setup and any EDA Make-target execution.
+description: Scaffold and operate Make-based SoC projects through registered MCP tools. Not for Bazel projects or automatic simulation after DV edits.
 ---
 
 # SoC Build
 
 Use the registered `soc-build` MCP server. Do not import its FastMCP object directly and do not replace EDA tool calls with shell commands.
+
+Use this skill only for a project using this Make backend. Existing Bazel projects
+use their project adapter; similarly named tools are not interchangeable.
 
 ## Runtime setup
 
@@ -19,7 +22,8 @@ This installs the shared runtime under `${XDG_CACHE_HOME:-$HOME/.cache}/silicon-
 
 ## Canonical project layout
 
-Every chip module and IP uses the same structure:
+New modules scaffolded by this Make backend use the following structure;
+do not reorganize an existing project's layout to match it:
 
 ```text
 <module>/
@@ -80,7 +84,7 @@ emitted run ID and fingerprint to `update_state.py` when closing `verif` or
 - RTL agents call `soc_lint`; MCP allows Verilator (default), SpyGlass, or optional VC Static; no direct EDA fallback.
 - CDC/RDC side-lane (`soc-cdc-engineer`) calls `soc_cdc` (SpyGlass default, `vc_static` extra) and/or `soc_rdc` (`vc_static` only).
 - DFT side-lane (`soc-dft-engineer`) generates collateral via `dft-gen`, then calls `soc_dft` (`vc_static` only).
-- Verification agents call `soc_sim` or `soc_regress`; no direct Make/simulator fallback.
+- After DV edits, propose applicable inspection and compile-only checks. Run simulation, regression, coverage, synthesis, or CDC only when selected by the engineer; reuse selections already made for this task. Report each selected check's result. An approved `soc_sim` includes compilation, so do not repeat it unnecessarily. No direct Make/simulator fallback.
 - Synthesis agents call `soc_syn`; use `syn_tool=dc` for Design Compiler or `syn_tool=yosys` for structural checks. Yosys output is not STA evidence.
 - Formal agents call `soc_formal` with the exact `run_id` and `source_fingerprint` emitted by `soc_syn`. Plain DC snapshots run ordinary RTL-to-netlist equivalence; snapshots containing both canonical and saved UPF run the UPF-aware mode.
 - Commercial simulator/license work must remain in the registered MCP process.
