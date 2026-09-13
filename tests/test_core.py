@@ -150,6 +150,16 @@ class CoreTests(unittest.TestCase):
         self.assertFalse(planned["rtl_check"]["recommended"])
         self.assertFalse(planned["legacy_lint"]["recommended"])
 
+    def test_invalid_check_scope_is_reported(self) -> None:
+        for scope in ([], ["dvv"], 123, [None], "", {"rtl": True}):
+            with self.subTest(scope=scope):
+                _, profile = load_profile(FIXTURE)
+                profile["build"] = {"commands": {"syntax": {
+                    "argv": ["echo", "unused"], "applies_to": scope,
+                }}}
+                issues = validate_profile(FIXTURE, profile)
+                self.assertTrue(any(item["level"] == "error" and "applies_to" in item["message"] for item in issues))
+
     def test_mcp_backed_check_is_profiled_but_not_shell_executed(self) -> None:
         profile = {
             "project": {"id": "mcp_fixture"},

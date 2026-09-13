@@ -216,6 +216,13 @@ def validate_profile(root: Path, profile: dict[str, Any]) -> list[dict[str, str]
             add("error", f"build.commands.{name} must be an object")
             continue
         argv = command.get("argv")
+        if "applies_to" in command:
+            scopes = command["applies_to"]
+            scopes = [scopes] if isinstance(scopes, str) else scopes
+            if not isinstance(scopes, list) or not scopes or not all(
+                isinstance(item, str) and item in {"rtl", "dv", "all"} for item in scopes
+            ):
+                add("error", f"build.commands.{name}.applies_to must contain rtl, dv or all")
         mcp_tool = command.get("mcp_tool")
         if mcp_tool is not None:
             if not isinstance(mcp_tool, str) or not mcp_tool.strip():
