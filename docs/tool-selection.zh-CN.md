@@ -62,6 +62,18 @@ Show my validation choices without running them.
 - **Rules**：稳定的项目约束。不要在每个 skill 中复制完整工具列表和环境配置。
 - **Script**：维护或执行实现。通常由 Claude/入口调用，不要求工程师手写 Python。
 
+Skill 名称是工作指引，不是 shell 命令或 MCP 函数。在 Claude Code 中说明任务并
+点名相关 skill，Claude 再按需使用内置文件工具和 MCP。不要为每次修改固定调用
+一整套 catalog/profile/context。例如：
+
+```text
+Use rtl-design guidance to review <rtl-file> for <specific-concern>.
+Read only missing project context. Do not compile or simulate.
+```
+
+如果 Claude 找不到该 skill，再查询 kit 的 `skills` 目录并读取所选指引。目录里
+存在一个条目，不代表对应的原生 Claude slash command 或 subagent 已经安装。
+
 ## RTL 工程师：常用 prompt
 
 以下输入 Claude Code 对话框，不是 shell 命令。替换尖括号中的任务事实。

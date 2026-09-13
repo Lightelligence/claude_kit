@@ -120,6 +120,20 @@ acceptance is a separate check.
 - **Maintenance scripts** synchronize or validate configuration. Engineers
   normally use Claude's MCP tools instead of manually invoking those scripts.
 
+A skill name is guidance, not a shell command or an MCP function. In Claude
+Code, describe the task and name the relevant skill; Claude uses its built-in
+file tools and the selected MCP operations as needed. There is no mandatory
+sequence of catalog/profile/context calls for every edit. For example:
+
+```text
+Use rtl-design guidance to review <rtl-file> for <specific-concern>.
+Read only missing project context. Do not compile or simulate.
+```
+
+If Claude cannot find that skill, ask it to inspect the kit's `skills` catalog
+and resolve the selected guidance. A catalog entry alone does not mean a native
+Claude slash command or subagent has been installed.
+
 ## Effective RTL prompts
 
 Replace angle-bracket placeholders with your actual task facts.
