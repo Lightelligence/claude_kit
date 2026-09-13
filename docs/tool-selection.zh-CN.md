@@ -120,6 +120,20 @@ and output_format="json". Report the actual result.
 
 ## 按场景启动 Claude Code
 
+已验证的 xin_1 配置中，日常在终端直接运行即可：
+
+```bash
+claude
+```
+
+默认仅加载 kit、Bazel build 和 LSP，共 3 个服务、23 个 MCP 工具。
+完整工具定义仍保存在独立目录；需要波形、覆盖率或 bit 分析时再启动 debug 场景，
+该场景为 2 个服务、45 个工具。以上是实际工具数量，不是模型 token 节省比例，
+也不表示全部工具已完成验证。
+
+下面的启动命令在终端执行，**不是发送给 Claude 的 prompt**。进入 Claude 后
+直接用自然语言描述任务，需要时通过 `/mcp` 查看服务。
+
 项目可在 `.claude/tool-profiles.json` 中定义配置，server 名称必须与 `.mcp.json` 完全一致：
 
 ```json

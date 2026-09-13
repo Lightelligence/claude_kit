@@ -152,6 +152,22 @@ See [Claude Code's MCP documentation](https://code.claude.com/docs/en/mcp#config
 
 ## Select a session's MCP servers
 
+In the tested xin_1 integration, ordinary terminal startup is now sufficient:
+
+```bash
+claude
+```
+
+Its project default contains kit, Bazel build and LSP: 3 servers / 23 advertised
+MCP tools, verified with native Claude Code 2.1.267. Optional server definitions
+remain in the separate catalog. For waveform/coverage/bit work, start a debug
+profile instead; its two servers advertise 45 tools. These are tool counts,
+not measured model-token savings. The full task objective still requires the
+remaining capability checks listed below.
+
+Run the launcher commands below in your terminal, **not as Claude prompts**.
+Inside Claude, describe your task normally and inspect `/mcp` if needed.
+
 Projects can define `.claude/tool-profiles.json` alongside `.mcp.json`:
 
 ```json
