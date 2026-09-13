@@ -107,7 +107,28 @@ Call xverif_bit_slice with value="32'hdeadbeef", msb=15, lsb=8,
 and output_format="json". Report the actual result.
 ```
 
-## scripts 应放在哪里？
+## 按场景启动 Claude Code
+
+项目可在 `.claude/tool-profiles.json` 中定义配置，server 名称必须与 `.mcp.json` 完全一致：
+
+```json
+{"schema_version":1,"profiles":{"rtl":{"description":"RTL editing and checks","servers":["soc-build-bazel","soc-lsp","claude-kit"]}}}
+```
+
+```sh
+python3 third_party/claude_kit/bin/claude-kit tool-profiles --project-root .
+python3 third_party/claude_kit/bin/claude-kit session --project-root . --tools rtl
+```
+
+第二条命令启动原生 Claude Code，此后直接输入自然语言，无须为每次 MCP 调用运行 Python。
+可分别配置 debug、寄存器生成和物理设计场景；额外的原生 Claude 参数放在 `--` 之后。
+入口使用临时 strict MCP 配置，退出后删除，不改模型和权限设置。
+查询清单只显示名称和描述，不打印 server 凭据。
+项目禁用列表或组织策略仍可能影响可用性，进入会话后用 `/mcp` 核对。
+
+该入口已通过本地单元测试，ETX 原生 Claude 验收尚未完成，不能仅凭配置推断实际 token 节省。
+
+## 脚本归属
 
 | 内容 | 归属 |
 | --- | --- |
