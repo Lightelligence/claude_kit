@@ -17,11 +17,22 @@
 | 查询已有 FSDB/design DB | xverif debug guide → schema → managed session/query | 不生成新的仿真数据库 |
 | 查询已有 VDB | xverif coverage tools | 与 build server 执行 coverage 不同 |
 | bit 计算、解释 SVA | xverif bit/SVA | 不需要为了简单计算打开波形数据库 |
+| 从已知 byte fragments 拼接 descriptor/header 字段 | xentry decode + 字段布局配置 | 不负责波形提取、valid/ready 判断或协议语义；先取得有效数据片段 |
 | 生成寄存器/RAL/CRG | 已启用的专用 generator | 不手改生成的 RTL |
 | 综合、CDC、物理实现 | 明确选择的项目 MCP lane | 不自动成为每个 DV 改动的必做项 |
 | 交付检查 | evidence review / delivery workflow | 普通 dev 不必启动完整交付流程 |
 
 Bazel 项目使用项目的 Bazel adapter。通用 Make server 中同名的 `soc_comp` 不是可以随意替换的后端。
+
+不熟悉布局时用 `xverif_entry_explain`；只检查配置/输入是否合法时用
+`xverif_entry_validate`；需要字段值时用 `xverif_entry_decode`。
+不要每次解码都顺序调用三个工具。解码结果包含 raw 字段和来源，不会推断握手或枚举含义。
+
+```text
+Use xverif_entry_decode with config_path=<layout.yaml>, input_path=<beats.jsonl>,
+and output_format="json". Report the requested fields, their raw values and
+source fragments. Do not open a waveform session or infer protocol semantics.
+```
 
 ## Tool、skill、agent 和 script 的区别
 
@@ -172,7 +183,7 @@ stdio servers 暴露 89 个工具，紧凑 JSON schema 共 63,682 UTF-8 字节�
 | Bazel RTL lint | 实际 soc_lint 执行 axi_narrow 的 VCS-only lint；编译链接完成，检查报告 21 个 warning、零 error/fatal | 干净的正向 fixture；设计 warning 导致的失败不能写成检查通过 |
 | Bazel integration | 实际 workspace 校验、target 列表、依赖/构建图查询及 vendor 配置片段生成；修复后的解析器识别 24 个真实仓库 | 三个真实 IP 路径缺失仍存在，其余构建操作未测 |
 | CRG、memory-map、Excel、时钟树图 | 七个生成器实际调用均用复制的示例产生非空文件；Draw.io XML、Excalidraw JSON 可解析 | 生成 HDL 编译、项目语义与图形视觉检查 |
-| OpenROAD | 握手和工具列表通过 | 隔离构建案例与运行前置条件 |
+| OpenROAD | 隔离设计的 config/SDC 生成、空输出状态查询实际通过 | 本地综合缺少 orfs_dir/SILICON_CREW_ORFS_DIR；有限范围的 runner 检查未找到 ORFS 路径或 PATH 中的 openroad/yosys，容器方式未验证 |
 | Memory wrapper | 实际 catalog 生成；修复后 96×24 逻辑接口适配到足够大的 128×32 宏，VCS 编译/仿真报告显示定向地址与掩码测试通过 | 其他 memory/FIFO 类型、物理 lib/lef 可用性与完整 signoff 尚未验证 |
 | 禁用的通用生成器/Make adapters | 握手和工具列表通过 | 各自功能 fixture；日常会话不启用 |
 | Atlassian/HTTP 绘图 | 仅 Atlassian 工具列表通过；绘图未测 | 非破坏性服务验证，不为测试创建真实工单 |

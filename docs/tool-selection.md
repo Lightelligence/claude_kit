@@ -17,12 +17,25 @@ available. A bundled skill or a Python source file does not enable a server.
 | Inspect existing waveform/design data | xverif debug catalog, action schema, managed session/query | Producing new FSDB/design databases |
 | Inspect existing coverage data | xverif coverage catalog/schema/session/query | The build server's coverage execution command |
 | Calculate bit fields or explain SVA | xverif bit or SVA tools | Guessing the result in prose or attempting a waveform session |
+| Assemble descriptor/header fields from known byte fragments | xentry decode with a field-layout config | Waveform extraction, valid/ready detection or protocol interpretation; obtain the accepted fragments first |
 | Generate register RTL/RAL or CRG | The enabled register/CRG generator | Hand-editing generated output |
 | Perform synthesis, CDC or physical design | The explicitly selected project lane | Routine work automatically required after a DV change |
 | Prepare a delivery | Evidence review and the project's delivery workflow | An ordinary development iteration or automatic signoff |
 
 In a Bazel project, prefer its registered Bazel adapter. A generic Make-based
 server with a similarly named `soc_comp` is not an interchangeable backend.
+
+For entry decoding, use `xverif_entry_explain` to inspect an unfamiliar layout,
+`xverif_entry_validate` when checking only input/config validity, and
+`xverif_entry_decode` when you need field values. Do not automatically call all
+three for every decode. The decoder assembles selected bits and returns raw
+fields with provenance; it does not infer handshake acceptance or enum meaning.
+
+```text
+Use xverif_entry_decode with config_path=<layout.yaml>, input_path=<beats.jsonl>,
+and output_format="json". Report the requested fields, their raw values and
+source fragments. Do not open a waveform session or infer protocol semantics.
+```
 
 ## What each layer does
 
@@ -220,7 +233,7 @@ Do not interpret bytes as model tokens.
 | Bazel RTL lint | Real soc_lint invokes VCS-only axi_narrow lint; compilation/linking completes and the check reports 21 warnings, zero errors/fatals | Clean positive fixture; existing design warning failures are not a tool PASS |
 | Bazel integration | Real workspace validation, target listing, dependency/build-graph queries and vendor-entry snippet generation; corrected parser identifies 24 actual repositories | Three real missing IP paths remain; other build operations unverified |
 | CRG, memory-map, Excel and clock diagrams | Seven real generator calls produce nonempty outputs from copied examples; generated Draw.io XML and Excalidraw JSON parse successfully | Generated HDL compilation, project semantics and diagram visual review |
-| OpenROAD | Initialize and tool discovery | Disposable build scenarios and prerequisites |
+| OpenROAD | Actual isolated config/SDC generation and empty-output status query pass | Local synthesis cannot start without orfs_dir/SILICON_CREW_ORFS_DIR; bounded runner discovery found no ORFS path or openroad/yosys on PATH. Container execution remains unverified |
 | Memory wrappers | Actual catalog-backed MCP generation; corrected 96x24 logical interface maps to a sufficient 128x32 macro; VCS compile/simulation report passes the bounded address/mask test | Other memory/FIFO variants, physical lib/lef availability, and full signoff remain unverified |
 | Disabled generic generators and Make adapters | Initialize and tool discovery | Individual functional fixtures; not enabled in normal sessions |
 | Atlassian and HTTP drawing | Atlassian discovery only; drawing untested | Authorized non-mutating service checks; never create issues merely to test |
