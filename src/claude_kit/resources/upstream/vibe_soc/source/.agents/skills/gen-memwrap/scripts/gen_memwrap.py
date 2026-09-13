@@ -144,14 +144,18 @@ def match_macro(
     if exact_name:
         for m in macros:
             if m.name == exact_name:
+                if want_ports and m.ports != want_ports:
+                    raise ValueError(f"ExactMacro {exact_name} has incompatible ports")
+                if m.depth < depth or m.width < width:
+                    raise ValueError(f"ExactMacro {exact_name} is smaller than requested {depth}x{width}")
+                if strict and (m.depth != depth or m.width != width):
+                    raise ValueError(f"ExactMacro {exact_name} does not match requested dimensions")
                 return m
         raise ValueError(f"ExactMacro not in catalog: {exact_name}")
 
     candidates = list(macros)
     if want_ports:
-        filtered = [m for m in candidates if m.ports == want_ports]
-        if filtered:
-            candidates = filtered
+        candidates = [m for m in candidates if m.ports == want_ports]
 
     exact = [m for m in candidates if m.depth == depth and m.width == width]
     if exact:
@@ -168,8 +172,11 @@ def match_macro(
     same_w = [m for m in candidates if m.width == width and m.depth >= depth]
     if same_w:
         return sorted(same_w, key=lambda m: m.depth)[0]
-    # else closest area
-    return min(candidates, key=lambda m: abs(m.depth * m.width - depth * width))
+    # A larger area alone cannot provide the requested address/data dimensions.
+    sufficient = [m for m in candidates if m.depth >= depth and m.width >= width]
+    if not sufficient:
+        raise ValueError(f"No compatible catalog macro covers requested {depth}x{width}")
+    return min(sufficient, key=lambda m: (m.depth * m.width, m.depth, m.width, m.name))
 
 
 def generated_to_macro(g: GeneratedMacro) -> Macro:
@@ -557,6 +564,62 @@ def emit_beh_tpram(
 # ---------------------------------------------------------------------------
 # Wrap emitters
 # ---------------------------------------------------------------------------
+
+
+def emit_capacity_wrap(path, wrap, macro, depth, width, bit_write,
+                       platform, dual=False, async_clk=False):
+    """Keep logical ports stable while padding a larger physical memory."""
+    if macro.depth < depth or macro.width < width:
+        raise ValueError("Physical memory cannot cover the logical dimensions")
+    if platform == "sky130" and macro.width % max(1, macro.write_size):
+        raise ValueError("Physical OpenRAM width must be divisible by its write-mask granule")
+    physical = wrap + "__physical"
+    if dual:
+        emit_tpram_wrap_openram(path, physical, macro, macro.depth, macro.width,
+                               bit_write, async_clk)
+    elif platform == "sky130":
+        emit_spram_wrap_openram(path, physical, macro, macro.depth, macro.width, bit_write)
+    else:
+        emit_spram_wrap_fakeram(path, physical, macro.name, macro.depth, macro.width, bit_write)
+    implementation = path.read_text(encoding="utf-8")
+    aw, paw = addr_width(depth), addr_width(macro.depth)
+    granule = max(1, macro.write_size) if platform == "sky130" else 1
+    masks = (width + granule - 1) // granule
+    pmasks = (macro.width + granule - 1) // granule
+    def pad(signal, logical, physical):
+        return signal if logical == physical else "{" + str(physical-logical) + "'b0, " + signal + "}"
+    ports, links, wires = [], [], []
+    def input_port(name, bits=None):
+        ports.append("  input " + (f"[{bits-1}:0] " if bits else "") + name)
+    def output_port(name):
+        ports.append(f"  output [{width-1}:0] {name}")
+        wires.extend([f"  wire [{macro.width-1}:0] physical_{name};",
+                      f"  assign {name} = physical_{name}[{width-1}:0];"])
+        links.append(f".{name}(physical_{name})")
+    clocks = ['clka','clkb'] if dual and async_clk else ['clk']
+    for name in clocks:
+        input_port(name)
+        links.append(f".{name}({name})")
+    for name in (['ena','wea','enb'] if dual else ['me','we']):
+        input_port(name)
+        address = 'addrb' if name == 'enb' else ('addra' if dual else 'addr')
+        expr = f"{name} && ({{1'b0, {address}}} < {aw+1}'d{depth})" if name in {'ena','enb','me'} else name
+        links.append(f".{name}({expr})")
+    for name in (['addra','addrb'] if dual else ['addr']):
+        input_port(name, aw)
+        links.append(f".{name}({pad(name,aw,paw)})")
+    data = 'dina' if dual else 'din'
+    input_port(data, width)
+    links.append(f".{data}({pad(data,width,macro.width)})")
+    if bit_write:
+        input_port('wem', masks)
+        links.append(f".wem({pad('wem',masks,pmasks)})")
+    for name in (['douta','doutb'] if dual else ['dout']):
+        output_port(name)
+    lines = [f"module {wrap} (", ',\n'.join(ports), ');', *wires,
+             f"  {physical} u_physical (", '    ' + ',\n    '.join(links),
+             '  );', 'endmodule', '', implementation]
+    write_text(path, lines)
 
 
 def emit_spram_wrap_openram(
@@ -1142,18 +1205,17 @@ def process_row(
         if macro.assets.get("v") is None and req.platform == "nangate45":
             # emit FakeRAM behavioral model with macro name
             beh_path = beh_dir / f"{macro.name}.v"
-            nmask = req.width if bit_write else req.width
+            nmask = macro.width
             emit_beh_spram(beh_path, macro.name, macro.depth, macro.width, nmask)
             # also place under rtl for filelist convenience
             copy_asset(beh_path, rtl_dir, "v")
             assets_copied["v"] = str(rtl_dir / f"{macro.name}.v")
             notes.append("generated FakeRAM behavioral .v")
 
-        # depth/width must match macro for wiring
-        depth, width = macro.depth, macro.width
-        if depth != req.depth or width != req.width:
+        depth, width = req.depth, req.width
+        if macro.depth != depth or macro.width != width:
             notes.append(
-                f"macro resized match: requested {req.depth}x{req.width} → {depth}x{width}"
+                f"logical {depth}x{width} adapted to physical {macro.depth}x{macro.width}"
             )
     else:
         depth, width = req.depth, req.width
@@ -1164,10 +1226,7 @@ def process_row(
         base = req.name or wrap_base_name("spram", depth, width, req.platform, bit_write)
         wrap = base if base.endswith("_wrap") else base + "_wrap"
         path = rtl_dir / f"{wrap}.v"
-        if req.platform == "sky130":
-            emit_spram_wrap_openram(path, wrap, macro, depth, width, bit_write)
-        else:
-            emit_spram_wrap_fakeram(path, wrap, macro.name, depth, width, bit_write)
+        emit_capacity_wrap(path, wrap, macro, depth, width, bit_write, req.platform)
         return GenResult(req, wrap, path, macro.name, assets_copied, "; ".join(notes))
 
     # --- TPRAM ---
@@ -1176,9 +1235,8 @@ def process_row(
         wrap = base if base.endswith("_wrap") else base + "_wrap"
         path = rtl_dir / f"{wrap}.v"
         if macro is not None and req.platform == "sky130":
-            emit_tpram_wrap_openram(
-                path, wrap, macro, depth, width, bit_write, req.async_clk
-            )
+            emit_capacity_wrap(path, wrap, macro, depth, width, bit_write,
+                               req.platform, dual=True, async_clk=req.async_clk)
             return GenResult(req, wrap, path, macro.name, assets_copied, "; ".join(notes))
         # behavioral dual-port
         beh_mod = f"tpram_{depth}d{width}w_beh"
@@ -1197,10 +1255,7 @@ def process_row(
         ram_wrap = ram_base + "_wrap"
         ram_path = rtl_dir / f"{ram_wrap}.v"
         if not ram_path.is_file():
-            if req.platform == "sky130":
-                emit_spram_wrap_openram(ram_path, ram_wrap, macro, depth, width, bit_write)
-            else:
-                emit_spram_wrap_fakeram(ram_path, ram_wrap, macro.name, depth, width, bit_write)
+            emit_capacity_wrap(ram_path, ram_wrap, macro, depth, width, bit_write, req.platform)
         base = req.name or wrap_base_name("sfifo", depth, width, req.platform, bit_write)
         wrap = base if base.endswith("_wrap") else base + "_wrap"
         path = rtl_dir / f"{wrap}.v"
@@ -1217,7 +1272,8 @@ def process_row(
         t_path = rtl_dir / f"{t_wrap}.v"
         if not t_path.is_file():
             if macro is not None and req.platform == "sky130":
-                emit_tpram_wrap_openram(t_path, t_wrap, macro, depth, width, bit_write, True)
+                emit_capacity_wrap(t_path, t_wrap, macro, depth, width, bit_write,
+                                   req.platform, dual=True, async_clk=True)
             else:
                 beh_mod = f"tpram_{depth}d{width}w_beh"
                 beh_path = rtl_dir / f"{beh_mod}.v"
