@@ -122,11 +122,33 @@ Claude Code 的 Tool Search 可以按需加载 MCP 定义，但内部代理和�
 普通 summary/query 使用 URG，exclusion 操作才需要 Verdi Python NPI。
 因此 summary 成功不证明 exclusion 可用，列出 actions 也不证明 VDB 可读。
 
+| 要回答的问题 | 选择的 action | 如何理解 |
+| --- | --- | --- |
+| RTL 哪些行、分支执行过？ | `code_coverage.summary` | 数据库必须实际收集了对应 code metrics。 |
+| 哪些 covergroup/coverpoint 命中过？ | `functional_coverage.summary` | 功能覆盖率可以独立存在，不要求有 RTL code coverage。 |
+| assertion 和 cover property 的结果如何？ | `assert.summary` | 不能代替 code coverage 或 functional coverage。 |
+
+line/branch 返回空结果表示未返回匹配数据，不代表 0% 或 100%。仅有功能覆盖率
+的 VDB 可能合法地没有 URG module/assertion 报告。如果当前安装版本因此拒绝打开，
+应报告错误和版本，不要伪造缺失文件，也不要自动启动仿真。
+功能覆盖率分数可能采用 coverpoint/cross 分数平均值，而非返回计数的简单比值；保留工具
+给出的分数，并说明计分依据。
+
 ```text
 Use the debug tool profile to inspect the existing VDB at <absolute-vdb-path>.
 Query code_coverage.summary for line and branch only. Report coverage gaps and
 the database identity. Do not run simulation, change exclusions, or export a
 full report. Close only the coverage session opened for this task.
+```
+
+DV 功能覆盖率问题可以这样问：
+
+```text
+Inspect <absolute-vdb-path> with functional_coverage.summary, grouped by
+covergroup. Show the lowest-scoring groups and explain the score basis.
+Report unavailable metrics explicitly; do not interpret missing RTL metrics
+as zero coverage. Reuse this task's session, then close it. Do not simulate
+or modify exclusions.
 ```
 
 需要详细缺口时，先缩小到具体 instance 和 metric；同一次 export 尽量批量指定

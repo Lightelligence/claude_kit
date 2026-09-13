@@ -1,5 +1,9 @@
 # Choosing Claude Code tools for RTL and DV
 
+This guide is for engineers working in a project attached to claude_kit.
+The project's `.mcp.json` and Claude settings determine which servers are
+available. A bundled skill or a Python source file does not enable a server.
+
 ## Coverage queries versus coverage generation
 
 `soc_coverage` belongs to the project build/coverage flow; `xverif_cov_*` reads
@@ -10,6 +14,19 @@ Summary/query uses URG; exclusion operations additionally require Verdi Python
 NPI. Successful summaries do not prove exclusion support, and listing actions
 does not prove VDB access.
 
+| Question | Selected action | Interpretation |
+| --- | --- | --- |
+| Which RTL lines or branches were exercised? | `code_coverage.summary` | Requires those code metrics to have been collected. |
+| Which covergroups/coverpoints were exercised? | `functional_coverage.summary` | Functional coverage can exist without RTL code coverage. |
+| What happened to assertions and cover properties? | `assert.summary` | Assertion results are not a substitute for code or functional coverage. |
+
+An empty line/branch result means no matching data was returned, not 0% or
+100% coverage. A VDB containing only functional coverage may legitimately lack
+URG's module/assertion report files. If the installed server rejects it, report
+the error and version; do not fabricate missing files or start a simulation.
+Functional scores can use coverpoint/cross averaging rather than the simple
+ratio of the displayed counts. Preserve the tool's score and explain its basis.
+
 ```text
 Use the debug tool profile to inspect the existing VDB at <absolute-vdb-path>.
 Query code_coverage.summary for line and branch only. Report coverage gaps and
@@ -17,15 +34,21 @@ the database identity. Do not run simulation, change exclusions, or export a
 full report. Close only the coverage session opened for this task.
 ```
 
+For a DV functional-coverage question:
+
+```text
+Inspect <absolute-vdb-path> with functional_coverage.summary, grouped by
+covergroup. Show the lowest-scoring groups and explain the score basis.
+Report unavailable metrics explicitly; do not interpret missing RTL metrics
+as zero coverage. Reuse this task's session, then close it. Do not simulate
+or modify exclusions.
+```
+
 For detailed gaps, narrow the instances and metrics first. Batch related
 instances into one export to avoid repeated URG runs. Prefer compact output;
 choose JSON for programmatic consumption. Exclusions require an engineering
 decision, not automatic score improvement. Persist reasons before closing a
 dirty session; do not discard them or clean other tasks' sessions casually.
-
-This guide is for engineers working in a project attached to claude_kit.
-The project's `.mcp.json` and Claude settings determine which servers are
-available. A bundled skill or a Python source file does not enable a server.
 
 ## Start with the task, not the complete tool catalog
 
