@@ -1,5 +1,28 @@
 # Choosing Claude Code tools for RTL and DV
 
+## Coverage queries versus coverage generation
+
+`soc_coverage` belongs to the project build/coverage flow; `xverif_cov_*` reads
+an existing VDB. An FSDB alone is not a coverage database. Supply an explicit
+VDB path, inspect the selected action schema, and open a task-owned coverage
+session. Do not enumerate every action for a focused question.
+Summary/query uses URG; exclusion operations additionally require Verdi Python
+NPI. Successful summaries do not prove exclusion support, and listing actions
+does not prove VDB access.
+
+```text
+Use the debug tool profile to inspect the existing VDB at <absolute-vdb-path>.
+Query code_coverage.summary for line and branch only. Report coverage gaps and
+the database identity. Do not run simulation, change exclusions, or export a
+full report. Close only the coverage session opened for this task.
+```
+
+For detailed gaps, narrow the instances and metrics first. Batch related
+instances into one export to avoid repeated URG runs. Prefer compact output;
+choose JSON for programmatic consumption. Exclusions require an engineering
+decision, not automatic score improvement. Persist reasons before closing a
+dirty session; do not discard them or clean other tasks' sessions casually.
+
 This guide is for engineers working in a project attached to claude_kit.
 The project's `.mcp.json` and Claude settings determine which servers are
 available. A bundled skill or a Python source file does not enable a server.

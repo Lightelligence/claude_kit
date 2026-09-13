@@ -114,6 +114,26 @@ Claude Code 的 Tool Search 可以按需加载 MCP 定义，但内部代理和�
 
 ## xverif 的正确用法
 
+### Coverage：查询现有结果，不是生成覆盖率
+
+`soc_coverage` 属于项目构建/覆盖率流程；`xverif_cov_*` 用于读取已有 VDB。
+只有 FSDB 时不能直接做 VDB coverage 查询。给出明确的数据库路径，先查询
+所需 action 的 schema，再打开自己的 coverage session；不要遍历所有 actions。
+普通 summary/query 使用 URG，exclusion 操作才需要 Verdi Python NPI。
+因此 summary 成功不证明 exclusion 可用，列出 actions 也不证明 VDB 可读。
+
+```text
+Use the debug tool profile to inspect the existing VDB at <absolute-vdb-path>.
+Query code_coverage.summary for line and branch only. Report coverage gaps and
+the database identity. Do not run simulation, change exclusions, or export a
+full report. Close only the coverage session opened for this task.
+```
+
+需要详细缺口时，先缩小到具体 instance 和 metric；同一次 export 尽量批量指定
+相关 instances，避免重复调用 URG。优先读取紧凑结果，仅在需要程序处理时选择 JSON。
+排除规则是验证决策，不是“提高 coverage 数字”的自动修复。持久化 reason 后再关闭
+有修改的 session；不要随意确认丢弃，也不要清理其他任务的 session。
+
 Debug 先看 `xverif_tools`，再看所选 action 的 `xverif_debug_get_schema`。
 只有需要数据库的 action variant 才打开 managed session；结束后关闭自己的 session。
 Coverage 使用独立的 `xverif_cov_*` 生命周期，不混用参数。action 数量不是 MCP tool 数量。
