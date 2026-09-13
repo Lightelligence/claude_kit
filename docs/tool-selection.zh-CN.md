@@ -172,7 +172,7 @@ stdio servers 暴露 89 个工具，紧凑 JSON schema 共 63,682 UTF-8 字节�
 | 能力 | 已取得的证据 | 仍需验证 |
 | --- | --- | --- |
 | kit 精简目录 | 本地兼容测试；实际 ETX 注册 9 个工具、2,523 schema 字节，原生 Claude 调用成功 | 更多任务质量检查 |
-| 场景入口 | 7 个配置解析通过；原生 Claude debug 场景只连接 2 个服务，实际调用两者成功 | 其余场景与代表性 RTL/DV 任务质量 |
+| 场景入口 | 7 个配置解析通过；原生 debug 连接 2 个服务，RTL/DV 各连接 3 个服务、暴露 23 个工具，根目录和只读调用正确 | 实际开发质量与未限制调用时的行为；RTL 回答将 lint 概括成“不做 elaboration”不准确 |
 | 寄存器生成 | 13 个 yml2reg MCP 入口产生非空文件，适用时检查 XML/JSON/XLSX 可解析 | 生成 HDL 的编译与项目语义检查 |
 | bit 工具 | 真实 MCP 转换、切片、计算、比较分别得到 255/-1、190、17、matched=true | 上游 MCP 参数说明修正 |
 | SVA | list/scan/parse/explain 对隔离 property fixture 返回实际结果 | 更多时序语义案例 |
@@ -191,3 +191,9 @@ stdio servers 暴露 89 个工具，紧凑 JSON schema 共 63,682 UTF-8 字节�
 
 项目 helper 迁移通过 13 项检查，包括生成文件一致性和原有指令预算；旧路径保留兼容入口。
 以上不是整个项目的 signoff 结论。
+
+Claude Code 2.1.267 原生 RTL/DV 建议测试（ETX run 34765507485）分别耗时
+14.93s、10.31s，无超时、无 checkout 改动。DV 回答保持仿真需显式选择，未将
+回归/覆盖率/综合/CDC 变成自动要求。测试只允许三个只读工具，因此不能证明
+未限制调用时也绝不会执行。另需注意：RTL-only VCS lint 包含 RTL 编译和展开，
+“不检查 DV testbench”不等于“不做 elaboration”。

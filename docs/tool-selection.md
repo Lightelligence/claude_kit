@@ -222,7 +222,7 @@ Do not interpret bytes as model tokens.
 | Capability | Actual evidence | Remaining acceptance |
 | --- | --- | --- |
 | Kit compact catalogs | Local compatibility tests; actual ETX catalog is 9 tools / 2,523 schema bytes; native Claude calls succeed | Broader task quality checks |
-| Task profiles/session launcher | Local tests; seven profiles parsed on ETX; native Claude debug profile connects only two servers and successfully invokes both | Other profiles and representative RTL/DV quality checks |
+| Task profiles/session launcher | Local tests; seven profiles parsed on ETX; native debug connects two servers; native RTL/DV each connect three servers and advertise 23 tools, with correct root and read-only calls | Actual implementation quality and unrestricted tool-selection behavior; RTL answer incorrectly generalized “no elaboration” for lint |
 | Register generation | All 13 yml2reg MCP entrypoints generated nonempty outputs; XML/JSON/XLSX parsing where applicable | Generated HDL compilation and project-specific semantic checks |
 | Bit conversion/slice/eval/check | Real MCP values 255/-1, 190, 17, and matched=true | Upstream MCP documentation correction for eval/check |
 | SVA list/scan/parse/explain | Four real MCP responses against an owned property fixture | Broader temporal-semantic cases |
@@ -242,3 +242,11 @@ Do not interpret bytes as model tokens.
 Project-only helper migration passed 13 checks, including generated-file
 synchronization and existing instruction budgets. The old script paths remain
 compatibility launchers. None of these results proves full-project signoff.
+
+Native RTL/DV guidance was checked on Claude Code 2.1.267 (ETX run 34765507485):
+14.93s and 10.31s respectively, no timeout, no checkout changes. The DV answer
+kept simulation opt-in and did not make regression/coverage/synthesis/CDC
+automatic requirements. Only three read-only tools were allowed by the test;
+this is not evidence of unrestricted execution safety. Also, RTL-only VCS lint
+can compile and elaborate RTL: “no DV testbench” must not be generalized into
+“no elaboration.”
