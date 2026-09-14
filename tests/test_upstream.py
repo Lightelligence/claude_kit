@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -10,6 +11,7 @@ from unittest.mock import patch
 
 from claude_kit.core import KitError
 from claude_kit.upstream import (
+    _run_git_process,
     apply_snapshot,
     diff_snapshots,
     inspect_snapshot,
@@ -32,6 +34,9 @@ class UpstreamSnapshotTests(unittest.TestCase):
         self._git("config", "user.email", "claude-kit-test@example.invalid")
         self._git("config", "commit.gpgSign", "false")
         self._git("config", "core.autocrlf", "false")
+        # Disposable repos must have no detached writers when cleanup begins.
+        self._git("config", "maintenance.auto", "false")
+        self._git("config", "gc.auto", "0")
         hooks = self.workspace / "empty-hooks"
         hooks.mkdir()
         self._git("config", "core.hooksPath", str(hooks))
@@ -122,6 +127,46 @@ class UpstreamSnapshotTests(unittest.TestCase):
 
     def _manifest_bytes(self, snapshot: Path) -> bytes:
         return (snapshot / "manifest.json").read_bytes()
+
+    def test_temporary_repositories_do_not_launch_background_maintenance(self) -> None:
+        # Trace only our disposable local fixtures, never a real remote's URLs.
+        # A detached Git child can recreate .git while TemporaryDirectory cleans up.
+        run = subprocess.run
+        events = []
+
+        def record(result):
+            for line in (result.stderr or b"").splitlines():
+                try:
+                    event = json.loads(line)
+                except ValueError:
+                    continue
+                if event.get("event") == "child_start":
+                    events.append(event)
+            return result
+
+        def traced_run(*args, **kwargs):
+            return record(run(*args, **kwargs))
+
+        def traced_git(*args, **kwargs):
+            return record(_run_git_process(*args, **kwargs))
+
+        with patch.dict(os.environ, {"GIT_TRACE2_EVENT": "1"}):
+            with patch("subprocess.run", side_effect=traced_run):
+                self._create_fixture()
+            # Exercise the real remote-fetch path using only this local fixture.
+            # The new bare repo must not inherit the source repo's safety config.
+            with patch("claude_kit.upstream.UPSTREAM_URL", self.repo.as_uri()):
+                with patch("claude_kit.upstream._run_git_process", side_effect=traced_git):
+                    staged = self.workspace / "fetched"
+                    stage_snapshot(staged)
+                    inspect_snapshot(staged)
+        self.assertTrue(any("upload-pack" in arg for event in events
+                            for arg in event.get("argv", [])),
+                        "Trace must observe the real local fetch, not silently collect nothing")
+        maintenance = [event["argv"] for event in events
+                       if event.get("child_class") == "maintenance"
+                       or event.get("argv", [])[:2] in (["git", "maintenance"], ["git", "gc"])]
+        self.assertEqual(maintenance, [], "Temporary repo launched automatic maintenance")
 
     def test_stage_uses_pinned_git_bytes_and_leaves_dirty_repo_untouched(self) -> None:
         commit = self._create_fixture()

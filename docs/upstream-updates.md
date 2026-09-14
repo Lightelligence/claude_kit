@@ -17,6 +17,9 @@ python3 -m unittest discover -s tests -q
 
 `stage` uses Git partial fetching from the fixed upstream URL into a temporary
 bare repository, then retrieves only the selected tool-source blobs in batches.
+Automatic Git maintenance is disabled only in that disposable repository so a
+detached writer cannot race temporary-directory cleanup. This does not change
+the user's Git configuration or suppress cleanup errors.
 Use Git >=2.31 for this network path. It records the resolved commit.
 Use `--ref <commit>` for reproducibility, or
 `--source /path/to/vibe_soc --ref origin/main` to use existing Git objects without

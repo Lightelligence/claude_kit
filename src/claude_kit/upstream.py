@@ -393,6 +393,11 @@ temporary bare repo. No upstream launchers, hooks or install scripts are run.
     with tempfile.TemporaryDirectory(prefix="claude-kit-fetch-") as name:
         repo = Path(name)
         _git(repo, "init", "--bare", "--quiet", "--template=")
+        # Fetch may launch detached maintenance even for a tiny repo. Keep all
+        # writers inside this scope so they cannot race TemporaryDirectory cleanup.
+        # This config belongs only to our disposable repo, never the user's source.
+        _git(repo, "config", "maintenance.auto", "false")
+        _git(repo, "config", "gc.auto", "0")
         _git(repo, "remote", "add", "origin", UPSTREAM_URL)
         _git(repo, "config", "remote.origin.promisor", "true")
         _git(repo, "config", "remote.origin.partialclonefilter", "blob:none")
