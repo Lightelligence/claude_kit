@@ -49,7 +49,9 @@ Do not simulate, collect coverage, run regression, synthesize, or run CDC.
 ```
 
 ETX `34806397148` 已通过注册 Make/VCS 工具编译和展开生成的参数化 wrapper。
-这不是仿真或所有后端的验收；filelist 修复的实际 MCP 复验尚待完成。
+这不是仿真或所有后端的验收。适配 kit `6848cbd` 后，实际 MCP 的十个用例全部
+通过（`34806987896`），包括浅层/递归扫描和纯文本返回；另有 38 项 mock EDA
+单元测试与十项项目约束检查通过，并再次成功完成编译，没有运行仿真。
 
 不熟悉布局时用 `xverif_entry_explain`；只检查配置/输入是否合法时用
 `xverif_entry_validate`；需要字段值时用 `xverif_entry_decode`。
@@ -363,12 +365,13 @@ stdio servers 暴露 89 个工具，紧凑 JSON schema 共 63,682 UTF-8 字节�
 | Entry 字段 | explain/validate/decode 实际通过两拍示例：0xab234，opcode=4、route=0x23、payload=0xab，来源记录正确 | 其他布局、bit 顺序及异常输入 |
 | Bazel RTL lint | 实际 soc_lint 执行 axi_narrow 的 VCS-only lint；编译链接完成，检查报告 21 个 warning、零 error/fatal | 干净的正向 fixture；设计 warning 导致的失败不能写成检查通过 |
 | Bazel integration | 实际 workspace 校验、target 列表、依赖/构建图查询及 vendor 配置片段生成；修复后的解析器识别 24 个真实仓库 | 三个真实 IP 路径缺失仍存在，其余构建操作未测 |
-| RTL 集成 | 适配 `db47a17` 的版本锁定修复后，10 个注册工具的同一组 15 个生命周期/反例用例全部通过（ETX run `34803830123`）；不支持的声明明确报错，wrapper 参数已声明，删除模块后映射不再恢复 | 生成 HDL 尚未编译或仿真；不是完整 SystemVerilog 语法支持或项目连接 signoff |
+| RTL 集成 | 适配 `db47a17` 后十个工具的十五个生命周期/反例用例通过（`34803830123`）；生成的参数化 wrapper 也通过注册 VCS 工具的编译展开（`34806987896`） | 其他生成 top 变体尚未编译或仿真；不是完整 SystemVerilog 语法支持或项目连接 signoff |
 | Library 准备 | 适配 kit `7e3eb42` 后，实际 helper 的同一组 7 个 `--no-run` 用例全部通过（ETX run `34805152537`）：数值范围空白保真、拒绝不支持的类型/数组、普通 ANSI/non-ANSI 生成、符号位宽警告、Tcl 生成、原文件保留及路径碰撞拒绝 | 属于 skill helper 准备阶段，不是 MCP 或 `.db` 编译验收。没有注册库 MCP，测试 PATH 中没有 lc_shell，编译器/license 尚未验证；未改变 LC 后端 |
 | CRG、memory-map、Excel、时钟树图 | 七个生成器实际调用均用复制的示例产生非空文件；Draw.io XML、Excalidraw JSON 可解析 | 生成 HDL 编译、项目语义与图形视觉检查 |
 | OpenROAD | 隔离设计的 config/SDC 生成、空输出状态查询实际通过 | 本地综合缺少 orfs_dir/SILICON_CREW_ORFS_DIR；有限范围的 runner 检查未找到 ORFS 路径或 PATH 中的 openroad/yosys，容器方式未验证 |
 | Memory wrapper | 实际 catalog 生成；修复后 96×24 逻辑接口适配到足够大的 128×32 宏，VCS 编译/仿真报告显示定向地址与掩码测试通过 | 其他 memory/FIFO 类型、物理 lib/lef 可用性与完整 signoff 尚未验证 |
-| 禁用的通用生成器/Make adapters | 握手和工具列表通过 | 各自功能 fixture；日常会话不启用 |
+| 可选 Make adapter | 适配 kit `6848cbd` 后十个实际用例通过：项目/chip/IP 脚手架、重复创建保护、浅层/递归/文本 filelist、非法后端拒绝、生成的参数化 wrapper 经注册 VCS 工具编译展开（`34806987896`） | 未验证仿真、回归、综合、CDC、GUI 或其他后端；仅用于 Make 项目，不替换当前 Bazel 流程 |
+| 其他禁用的通用生成器 | 有实现的服务完成握手和工具列表检查 | 各自功能 fixture；日常会话不启用；upstream 缺少实现的条目仍不可用 |
 | Atlassian/HTTP 绘图 | 仅 Atlassian 工具列表通过；绘图未测 | 非破坏性服务验证，不为测试创建真实工单 |
 
 项目 helper 迁移通过 13 项检查，包括生成文件一致性和原有指令预算；旧路径保留兼容入口。

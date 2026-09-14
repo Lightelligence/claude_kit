@@ -100,7 +100,10 @@ Do not simulate, collect coverage, run regression, synthesize, or run CDC.
 
 Registered Make/VCS compilation of a generated parameterized RTL wrapper passed
 on ETX (`34806397148`). This is compile/elaboration evidence, not simulation or
-acceptance of every backend. Filelist correction runtime acceptance is pending.
+acceptance of every backend. After applying kit `6848cbd`, all ten actual MCP
+cases pass (`34806987896`), including shallow/recursive selection and text-only
+output, plus 38 mocked-EDA unit tests and ten project-contract checks. The real
+compile was repeated successfully; no simulation was run.
 
 ### RTL integration is not build integration
 
@@ -439,13 +442,14 @@ are selected through task profiles. Do not interpret bytes as model tokens.
 | Entry fields | Real explain/validate/decode calls pass the documented two-beat example: 0xab234 with opcode=4, route=0x23, payload=0xab and matching source provenance | Additional layouts, bit orders and invalid-input cases |
 | Bazel RTL lint | Real soc_lint invokes VCS-only axi_narrow lint; compilation/linking completes and the check reports 21 warnings, zero errors/fatals | Clean positive fixture; existing design warning failures are not a tool PASS |
 | Bazel integration | Real workspace validation, target listing, dependency/build-graph queries and vendor-entry snippet generation; corrected parser identifies 24 actual repositories | Three real missing IP paths remain; other build operations unverified |
-| RTL integration | After the revision-locked `db47a17` fixes were adapted, all ten registered tools passed the same owned 15-case lifecycle/negative fixture (ETX run `34803830123`); unsupported declarations fail explicitly, wrapper parameters are declared and removed-module mappings stay removed | Generated HDL has not been compiled or simulated; this is not complete SystemVerilog syntax support or project-level connectivity signoff |
+| RTL integration | All ten tools passed the owned 15-case lifecycle/negative fixture after `db47a17` (`34803830123`); a generated parameterized wrapper also passes registered VCS compile/elaboration (`34806987896`) | Remaining generated-top variants have not been compiled or simulated; not complete SystemVerilog syntax support or project-level connectivity signoff |
 | Library preparation | After adapting kit `7e3eb42`, all seven actual helper `--no-run` cases pass (ETX run `34805152537`): numeric bus whitespace preserved, unsupported types/arrays rejected, ordinary ANSI/non-ANSI generation, explicit symbolic-width warning, Tcl generation, existing-file preservation and collision rejection | This is skill-helper preparation, not MCP or compiled DB acceptance. There is no registered library MCP and no `lc_shell` on the tested PATH; compiler/license availability remains unverified. The LC backend was not changed |
 | CRG, memory-map, Excel and clock diagrams | Seven real generator calls produce nonempty outputs from copied examples; generated Draw.io XML and Excalidraw JSON parse successfully | Generated HDL compilation, project semantics and diagram visual review |
 | OpenROAD | Actual isolated config/SDC generation and empty-output status query pass | Local synthesis cannot start without orfs_dir/SILICON_CREW_ORFS_DIR; bounded runner discovery found no ORFS path or openroad/yosys on PATH. Container execution remains unverified |
 | Memory wrappers | Actual catalog-backed MCP generation; corrected 96x24 logical interface maps to a sufficient 128x32 macro; VCS compile/simulation report passes the bounded address/mask test | Other memory/FIFO variants, physical lib/lef availability, and full signoff remain unverified |
 | Exported upstream memory adapter | Pristine snapshot checks, locked export and 9 capacity tests pass; isolated ETX MCP initialization and status pass | Generation fails without a configured ORFS platforms root. This newer exported source is not the previously validated project generator; do not replace it automatically or use an empty directory to bypass the dependency check |
-| Disabled generic generators and Make adapters | Initialize and tool discovery | Individual functional fixtures; not enabled in normal sessions |
+| Optional Make adapter | All ten actual cases pass after kit `6848cbd` adaptation: new project/chip/IP scaffolds, duplicate preservation, shallow/recursive/text filelists, invalid-backend rejection, and registered VCS compilation/elaboration of a generated parameterized wrapper (`34806987896`) | No simulation, regression, synthesis, CDC, GUI or other backend acceptance; use only for Make projects, not the consumer's Bazel flow |
+| Other disabled generic generators | Initialize and tool discovery where implemented | Individual functional fixtures; not enabled in normal sessions; absent upstream implementations remain unavailable |
 | Atlassian and HTTP drawing | Atlassian discovery only; drawing untested | Authorized non-mutating service checks; never create issues merely to test |
 
 Project-only helper migration passed 13 checks, including generated-file
