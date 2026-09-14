@@ -11,9 +11,11 @@ description: >
 
 这是唯一通用隐式入口。先判断用户要解决的问题，不要先猜 CLI/MCP。
 
-> **Coverage exclusion 必须先持久化再关闭 session。** `exclude.add` 的 reason 只存在于
-> 当前 xcov session；关闭 session 会永久丢失尚未导出的 reason。完成 coverage 分析后，
-> 必须先执行 `exclude.csv.export`，再执行 `export.exclude`，确认两类文件均成功后才能关闭。
+> **仅对获准的 exclusion 工作执行持久化。** 普通只读 coverage 查询不自动添加、修改或
+> 导出 exclusion，也不为关闭 session 而启动 NPI。若本 session 有需要保存的 exclusion
+> 状态或 reason，`exclude.add` 的 reason 只存在于当前 xcov session；关闭会永久丢失未导出的
+> reason。先确认获准的输出位置，再执行 `exclude.csv.export`、`export.exclude`，确认两类
+> 文件均成功后才能关闭。输出未获准或保存失败时报告阻塞，不丢弃待保存状态。
 > assert/function exclusion 先读取结构化 XOUT/JSON 的 `Axxxx`/`FCxxxx` gap；禁止使用已删除的
 > exclusion selector 参数。关闭或丢失 session 后，尚未导出的 reason 无法恢复。
 > Instance/covergroup/coverpoint/cross 容器使用专用 `exclude.instance.*` 与
