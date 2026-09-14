@@ -697,7 +697,7 @@
     {
       "path": ".agents/skills/crg-gen/scripts/crg_gen.py",
       "before_sha256": "ab494a6822b524f8c0e189655317061d38c971180eb946f09acb9615d6a54e40",
-      "after_sha256": "5763fa6060807ec18c633862a1298505d372c51bceab5867b227aa832d02733d",
+      "after_sha256": "faa7b5e18bc2898cf4d399ab9106dac16f43136e7cb8fd9eeaf126b550afca2a",
       "hunks": [
         {
           "before": [
@@ -708,6 +708,31 @@
             "    \"\"\"Use the active interpreter and propagate child failures to the MCP caller.\"\"\"",
             "    import subprocess",
             "    subprocess.run([sys.executable, script, *arguments], cwd=cwd, check=True)",
+            "",
+            "",
+            "def _crg_register_csv_contract(lines, design_name, protocol):",
+            "    \"\"\"Match the embedded APB regfile without changing SDC instance paths.\"\"\"",
+            "    if protocol != \"apb\":",
+            "        return lines",
+            "    legacy = design_name.upper() + \"_apb_reg\"",
+            "    module = legacy + \"file\"",
+            "    ports = {\"clk\": \"apb_clk\", \"rst_n\": \"apb_rst_n\",",
+            "             \"psel\": \"apb_sel\", \"penable\": \"apb_enable\",",
+            "             \"pwrite\": \"apb_write\", \"paddr\": \"apb_addr\",",
+            "             \"pwdata\": \"apb_wdata\", \"prdata\": \"apb_rdata\",",
+            "             \"pready\": \"apb_ready\", \"pslverr\": \"apb_slverr\"}",
+            "    result = []",
+            "    for line in lines:",
+            "        if line.startswith(\"inst \" + legacy + \" \"):",
+            "            line = \"inst \" + module + line[len(\"inst \" + legacy):]",
+            "        elif line.startswith(\"connect,\"):",
+            "            parts = line.split(\",\")",
+            "            owner, separator, port = parts[1].partition(\".\")",
+            "            if separator and owner in {legacy, module}:",
+            "                parts[1] = module + \".\" + ports.get(port.strip(), port.strip())",
+            "                line = \",\".join(parts)",
+            "        result.append(line)",
+            "    return result",
             "",
             "",
             "def main():"
@@ -732,6 +757,22 @@
           ],
           "after": [
             "    _run_generator(yml2reg_py, yml_file, protocol, cwd=gen_filepath)"
+          ]
+        },
+        {
+          "before": [
+            "    #for repeat_idx in range(len(print_line)-1, -1, -1) :",
+            "    #    if print_line.count(print_line[repeat_idx]) > 1 and \"connect\" in print_line[repeat_idx] :",
+            "    #        print_line.pop(repeat_idx)",
+            "    for line in print_line:"
+          ],
+          "after": [
+            "    #for repeat_idx in range(len(print_line)-1, -1, -1) :",
+            "    #    if print_line.count(print_line[repeat_idx]) > 1 and \"connect\" in print_line[repeat_idx] :",
+            "    #        print_line.pop(repeat_idx)",
+            "    print_line = _crg_register_csv_contract(",
+            "        print_line, top_corpus[top_info_index[\"design_name\"]][1], protocol)",
+            "    for line in print_line:"
           ]
         }
       ]

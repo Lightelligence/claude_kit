@@ -82,6 +82,29 @@ class CrgContractTests(unittest.TestCase):
                 namespace['_run_generator'](str(source), cwd=directory)
             self.assertEqual(context.exception.returncode, 7)
 
+    def test_csv_module_and_apb_ports_match_regfile_preserving_instance_paths(self):
+        namespace = self.namespace('crg_gen.py')
+        convert = namespace['_crg_register_csv_contract']
+        bus = {'clk': 'apb_clk', 'rst_n': 'apb_rst_n', 'psel': 'apb_sel',
+               'penable': 'apb_enable', 'pwrite': 'apb_write', 'paddr': 'apb_addr',
+               'pwdata': 'apb_wdata', 'prdata': 'apb_rdata', 'pready': 'apb_ready',
+               'pslverr': 'apb_slverr'}
+        inputs = ['inst DEMO_apb_reg u_DEMO_apb_reg',
+                  'connect,DEMO_apb_reg.first_status  ,first,W,input,',
+                  'connect,DEMO_apb_regfile.second_status,second,W,input,',
+                  'connect,OTHER_apb_reg.clk,other,I,input,', '#user_code kept']
+        inputs += ['connect,DEMO_apb_reg.' + port + '  ,wire_' + port + ',I,input,' for port in bus]
+        before = list(inputs)
+        output = convert(inputs, 'demo', 'apb')
+        self.assertEqual(output[0], 'inst DEMO_apb_regfile u_DEMO_apb_reg')
+        self.assertEqual(output[1], 'connect,DEMO_apb_regfile.first_status,first,W,input,')
+        self.assertEqual(output[2:5], inputs[2:5])
+        for index, (old, new) in enumerate(bus.items(), 5):
+            self.assertEqual(output[index], 'connect,DEMO_apb_regfile.' + new + ',wire_' + old + ',I,input,')
+        self.assertEqual(inputs, before)
+        self.assertEqual(convert(output, 'demo', 'apb'), output)
+        self.assertEqual(convert(inputs, 'demo', 'ahb'), inputs)
+
 
 if __name__ == '__main__':
     unittest.main()
