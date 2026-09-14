@@ -112,7 +112,10 @@ protocol outputs from the shipped `demo_docs.yml` pass registered VCS compilatio
 and elaboration (`34807660541`); this is not bus-transaction simulation evidence.
 UVM `.svh` outputs need a UVM package/library and a compile harness, not just an
 RTL filelist. A missing `uvm_pkg` is a compile-environment prerequisite, not proof
-that the generated RAL is malformed.
+that the generated RAL is malformed. After adding the installed UVM package, the
+current generated RAL still requires project `reg2apb_adapter` / `reg2ahb_adapter`
+/ `reg2dab_adapter` classes. RAL compilation is not yet accepted; do not add dummy
+adapter classes just to make the compile pass.
 
 `crg-req-to-design` turns requirements into design collateral;
 `crg-gen` turns the reviewed design Excel into clock/reset RTL, a top and its
@@ -126,7 +129,12 @@ by this reuse. Standalone `yml2reg` keeps its original naming and three protocol
 CRG remains APB-only until its other top-level bus contracts are validated; AHB/DAB
 fail explicitly. The parent also aligns CSV module/bus ports while preserving SDC
 instance paths, and propagates child errors to MCP. Apply the parent/helper
-adaptations together; the shared-backend ETX acceptance is still pending.
+adaptations together. Actual registered MCP acceptance (`34810018568`) confirms
+205 top connections match 205 unique regfile ports, including the previously
+omitted interrupts; the unchanged generated CSR RTL compiles/elaborates with VCS.
+The unsupported AHB request returns an MCP error. No simulation was run. Full CRG
+top elaboration remains unaccepted: real `sync`/`icg` and other primitive sources
+must be integrated, not replaced with stubs.
 
 ```text
 Use the reviewed CRG Excel <input> to generate into <owned-output-dir>.
@@ -462,7 +470,7 @@ are selected through task profiles. Do not interpret bytes as model tokens.
 | --- | --- | --- |
 | Kit compact catalogs | Local compatibility tests; actual ETX catalog is 9 tools / 2,523 schema bytes; native Claude calls succeed | Broader task quality checks |
 | Task profiles/session launcher | Local tests; seven profiles parsed on ETX; native debug connects two servers; native RTL/DV each connect three servers and advertise 23 tools, with correct root and read-only calls | Actual implementation quality and unrestricted tool-selection behavior; RTL answer incorrectly generalized “no elaboration” for lint |
-| Register generation | All 13 yml2reg MCP entrypoints generated nonempty outputs; XML/JSON/XLSX parsing where applicable | Generated HDL compilation and project-specific semantic checks |
+| Register generation | All 13 yml2reg MCP entrypoints generated nonempty outputs; XML/JSON/XLSX parsing where applicable; shipped APB/AHB/DAB RTL compiled/elaborated via VCS (`34807660541`) | RAL compilation is incomplete: installed UVM alone is insufficient without the project adapter types; transaction simulation and project-specific semantics are unverified |
 | Bit conversion/slice/eval/check | Real MCP values 255/-1, 190 and 17; true/false conditions, JSON file bindings and conflicting-source rejection verified | Shared MCP still advertises an invalid hex-expression example and misleading values description; [source fix](https://github.com/Lightelligence/xverif/pull/3) is under review. Follow the xbit skill's tested examples |
 | SVA list/scan/parse/explain | Four real MCP responses against an owned property fixture | Broader temporal-semantic cases |
 | xdebug waveform queries | Registered MCP guide/schema, session open, roots, two batched value queries (10 samples) matched fresh independent converter references; absent signal explicit, owned session closed, input/project unchanged | Complete FSDB/design/action matrix; native NPI coverage remains a separate failing path |
@@ -474,7 +482,7 @@ are selected through task profiles. Do not interpret bytes as model tokens.
 | Bazel integration | Real workspace validation, target listing, dependency/build-graph queries and vendor-entry snippet generation; corrected parser identifies 24 actual repositories | Three real missing IP paths remain; other build operations unverified |
 | RTL integration | All ten tools passed the owned 15-case lifecycle/negative fixture after `db47a17` (`34803830123`); a generated parameterized wrapper also passes registered VCS compile/elaboration (`34806987896`) | Remaining generated-top variants have not been compiled or simulated; not complete SystemVerilog syntax support or project-level connectivity signoff |
 | Library preparation | After adapting kit `7e3eb42`, all seven actual helper `--no-run` cases pass (ETX run `34805152537`): numeric bus whitespace preserved, unsupported types/arrays rejected, ordinary ANSI/non-ANSI generation, explicit symbolic-width warning, Tcl generation, existing-file preservation and collision rejection | This is skill-helper preparation, not MCP or compiled DB acceptance. There is no registered library MCP and no `lc_shell` on the tested PATH; compiler/license availability remains unverified. The LC backend was not changed |
-| CRG, memory-map, Excel and clock diagrams | Seven real generator calls produce nonempty outputs from copied examples; generated Draw.io XML and Excalidraw JSON parse successfully | Generated HDL compilation, project semantics and diagram visual review |
+| CRG, memory-map, Excel and clock diagrams | Seven actual generators produce nonempty outputs; Draw.io XML/Excalidraw JSON parse; CRG shared regfile has 205 matching ports/connections and passes VCS compile/elaboration; unsupported AHB fails through MCP (`34810018568`) | Full CRG needs real primitive integration; generated behavior, other HDL variants and diagram visual review remain unverified |
 | OpenROAD | Actual isolated config/SDC generation and empty-output status query pass | Local synthesis cannot start without orfs_dir/SILICON_CREW_ORFS_DIR; bounded runner discovery found no ORFS path or openroad/yosys on PATH. Container execution remains unverified |
 | Memory wrappers | Actual catalog-backed MCP generation; corrected 96x24 logical interface maps to a sufficient 128x32 macro; VCS compile/simulation report passes the bounded address/mask test | Other memory/FIFO variants, physical lib/lef availability, and full signoff remain unverified |
 | Exported upstream memory adapter | Pristine snapshot checks, locked export and 9 capacity tests pass; isolated ETX MCP initialization and status pass | Generation fails without a configured ORFS platforms root. This newer exported source is not the previously validated project generator; do not replace it automatically or use an empty directory to bypass the dependency check |

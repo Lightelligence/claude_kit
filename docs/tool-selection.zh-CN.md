@@ -264,7 +264,9 @@ profile 校验通过、bit 结果为 17，项目状态仍未变。这证明已�
 `yml2reg` 从 YAML 生成独立的 APB/AHB/DAB 寄存器 RTL。随附 `demo_docs.yml`
 的三种协议输出均已通过注册 VCS 工具的编译展开（`34807660541`），但没有进行
 总线事务仿真。UVM `.svh` 需要 UVM package/library 和编译 harness；缺少
-`uvm_pkg` 是编译环境前提不足，不能直接认定生成的 RAL 有语法错误。
+`uvm_pkg` 是编译环境前提不足，不能直接认定生成的 RAL 有语法错误。补上安装环境的
+UVM package 后，当前 RAL 仍依赖项目 `reg2apb_adapter` / `reg2ahb_adapter` /
+`reg2dab_adapter` 类型，因此尚未通过编译验收；不能添加空适配器类来凑通过。
 
 `crg-req-to-design` 将需求转换为设计资料；`crg-gen` 根据评审后的设计 Excel
 生成时钟/复位 RTL、顶层与寄存器组。完整顶层还需要项目真实的时钟/复位单元，
@@ -274,7 +276,10 @@ profile 校验通过、bit 结果为 17，项目状态仍未变。这证明已�
 server。独立 `yml2reg` 保留原有命名和三种协议，CRG 在其它顶层总线约定验证前
 仍仅开放 APB，对 AHB/DAB 明确报错。父脚本同步 CSV 模块/总线端口名，保留 SDC
 实例路径，并将子生成器失败传回 MCP。
-父脚本与 helper 必须配套适配；共享实现的 ETX 复验尚待完成。
+父脚本与 helper 必须配套适配。实际注册 MCP 验证（`34810018568`）确认：205 个
+顶层连接与 205 个唯一寄存器端口一致，包含此前遗漏的中断接口；未修改的生成 CSR
+RTL 通过 VCS 编译展开；AHB 请求正确返回 MCP 错误。没有运行仿真。完整 CRG
+顶层尚未验收，需要接入真实 `sync` / `icg` 等单元，不能使用占位模块。
 
 ```text
 Use the reviewed CRG Excel <input> to generate into <owned-output-dir>.
@@ -379,7 +384,7 @@ stdio servers 暴露 89 个工具，紧凑 JSON schema 共 63,682 UTF-8 字节�
 | 上游 memory 适配导出 | 原始快照校验、版本锁定导出与 9 项容量测试通过；隔离 ETX MCP 启动及 status 通过 | 未配置 ORFS platforms 路径，实际生成失败。此新版导出不是此前验证的项目生成器；不要自动替换，也不要用空目录绕过依赖检查 |
 | kit 精简目录 | 本地兼容测试；实际 ETX 注册 9 个工具、2,523 schema 字节，原生 Claude 调用成功 | 更多任务质量检查 |
 | 场景入口 | 7 个配置解析通过；原生 debug 连接 2 个服务，RTL/DV 各连接 3 个服务、暴露 23 个工具，根目录和只读调用正确 | 实际开发质量与未限制调用时的行为；RTL 回答将 lint 概括成“不做 elaboration”不准确 |
-| 寄存器生成 | 13 个 yml2reg MCP 入口产生非空文件，适用时检查 XML/JSON/XLSX 可解析 | 生成 HDL 的编译与项目语义检查 |
+| 寄存器生成 | 13 个 yml2reg MCP 入口产生非空文件，适用时检查 XML/JSON/XLSX 可解析；随附 APB/AHB/DAB RTL 经 VCS 编译展开通过（`34807660541`） | RAL 编译尚未通过：安装的 UVM 之外还需项目 adapter 类型；总线事务仿真和项目语义未验证 |
 | bit 工具 | 真实 MCP 转换、切片、计算得到 255/-1、190、17；真假条件、JSON 文件绑定与互斥参数检查通过 | 共享 MCP 仍有错误的 hex 表达式示例及 values 说明；[源修复](https://github.com/Lightelligence/xverif/pull/3) 待审，请使用 xbit skill 中已验证的例子 |
 | SVA | list/scan/parse/explain 对隔离 property fixture 返回实际结果 | 更多时序语义案例 |
 | xdebug 波形查询 | 注册 MCP guide/schema、会话、roots、两次批量查询共 10 个采样值与新生成的独立转换结果一致；不存在信号明确报告，自有会话正常关闭，输入及项目未变 | 完整 FSDB/design/action 矩阵；原生 NPI coverage 是另一条仍失败的路径 |
@@ -391,7 +396,7 @@ stdio servers 暴露 89 个工具，紧凑 JSON schema 共 63,682 UTF-8 字节�
 | Bazel integration | 实际 workspace 校验、target 列表、依赖/构建图查询及 vendor 配置片段生成；修复后的解析器识别 24 个真实仓库 | 三个真实 IP 路径缺失仍存在，其余构建操作未测 |
 | RTL 集成 | 适配 `db47a17` 后十个工具的十五个生命周期/反例用例通过（`34803830123`）；生成的参数化 wrapper 也通过注册 VCS 工具的编译展开（`34806987896`） | 其他生成 top 变体尚未编译或仿真；不是完整 SystemVerilog 语法支持或项目连接 signoff |
 | Library 准备 | 适配 kit `7e3eb42` 后，实际 helper 的同一组 7 个 `--no-run` 用例全部通过（ETX run `34805152537`）：数值范围空白保真、拒绝不支持的类型/数组、普通 ANSI/non-ANSI 生成、符号位宽警告、Tcl 生成、原文件保留及路径碰撞拒绝 | 属于 skill helper 准备阶段，不是 MCP 或 `.db` 编译验收。没有注册库 MCP，测试 PATH 中没有 lc_shell，编译器/license 尚未验证；未改变 LC 后端 |
-| CRG、memory-map、Excel、时钟树图 | 七个生成器实际调用均用复制的示例产生非空文件；Draw.io XML、Excalidraw JSON 可解析 | 生成 HDL 编译、项目语义与图形视觉检查 |
+| CRG、memory-map、Excel、时钟树图 | 七个生成器产生非空文件；Draw.io XML、Excalidraw JSON 可解析；CRG 共享 regfile 的 205 个接口一致并通过 VCS 编译展开，AHB 错误经 MCP 返回（`34810018568`） | 完整 CRG 仍需真实单元集成；生成行为、其它 HDL 变体及图形视觉检查尚未验证 |
 | OpenROAD | 隔离设计的 config/SDC 生成、空输出状态查询实际通过 | 本地综合缺少 orfs_dir/SILICON_CREW_ORFS_DIR；有限范围的 runner 检查未找到 ORFS 路径或 PATH 中的 openroad/yosys，容器方式未验证 |
 | Memory wrapper | 实际 catalog 生成；修复后 96×24 逻辑接口适配到足够大的 128×32 宏，VCS 编译/仿真报告显示定向地址与掩码测试通过 | 其他 memory/FIFO 类型、物理 lib/lef 可用性与完整 signoff 尚未验证 |
 | 可选 Make adapter | 适配 kit `6848cbd` 后十个实际用例通过：项目/chip/IP 脚手架、重复创建保护、浅层/递归/文本 filelist、非法后端拒绝、生成的参数化 wrapper 经注册 VCS 工具编译展开（`34806987896`） | 未验证仿真、回归、综合、CDC、GUI 或其他后端；仅用于 Make 项目，不替换当前 Bazel 流程 |
