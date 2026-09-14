@@ -67,6 +67,43 @@ kit by selecting the prior approved module version and reattaching its resources
 
 ## Compatibility gates for the initial snapshot
 
+### Export reviewed compatibility fixes
+
+Maintainers can materialize the pinned source plus kit fixes in a **new**, idle
+directory whose parent already exists:
+
+```sh
+claude-kit upstream check
+claude-kit upstream export-adapted --output /tmp/vibe-adapted-review
+```
+
+On Windows, use an unused path such as `C:\Temp\vibe-adapted-review` instead.
+This is a maintainer terminal command, not a required Claude prompt or extra MCP
+call. It does not install dependencies, start servers, change project settings,
+or automatically replace existing consumer files.
+
+The export keeps the complete `source/` layout, including generator scripts,
+catalogs, templates and shared runtime helpers. `adaptation.json` records the
+upstream revision, patch digest and resulting file hashes; it is **not** a pristine
+snapshot manifest and cannot be passed to `upstream apply`. Functional validation
+remains `not_run` until the affected runtime has been tested separately.
+
+Reviewed exact-context patches live in
+`src/claude_kit/resources/adaptations/vibe_soc/patches.json`, outside the immutable
+snapshot. They currently preserve the memory-wrapper capacity/port/interface fix
+and the Make-only build skill's engineer-selected DV checks. Each patch locks the
+upstream commit and before/after SHA-256 hashes. There is no fuzzy application:
+upstream changes require explicit review and rebasing, not a manifest rehash.
+The exporter refuses existing destinations and links. An I/O failure may leave a
+partial directory for inspection; only a completed export has `adaptation.json`.
+
+Regression coverage: `tests/test_adaptations.py`, `tests/test_memwrap_capacity.py`
+and the CLI export test. Before adapting a consumer, compare its current files:
+they can contain independent changes or an older upstream revision. Do not copy
+an entire exported tree over a working project or rerun upstream configuration
+synchronizers. Update only reviewed files through that project's normal Git/PR
+workflow, then verify the registered MCP runtime.
+
 Treat these as migrations, not automatic activation of the latest catalog:
 
 - Preserve existing external and project-adapter MCP entries; upstream config

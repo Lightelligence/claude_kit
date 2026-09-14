@@ -270,7 +270,7 @@ stdio servers 暴露 89 个工具，紧凑 JSON schema 共 63,682 UTF-8 字节�
 | 寄存器生成 | 13 个 yml2reg MCP 入口产生非空文件，适用时检查 XML/JSON/XLSX 可解析 | 生成 HDL 的编译与项目语义检查 |
 | bit 工具 | 真实 MCP 转换、切片、计算、比较分别得到 255/-1、190、17、matched=true | 上游 MCP 参数说明修正 |
 | SVA | list/scan/parse/explain 对隔离 property fixture 返回实际结果 | 更多时序语义案例 |
-| xdebug | 实际 action guide 和 schema 调用 | 完整 FSDB/design/session 操作矩阵 |
+| xdebug 波形查询 | 注册 MCP guide/schema、会话、roots、两次批量查询共 10 个采样值与新生成的独立转换结果一致；不存在信号明确报告，自有会话正常关闭，输入及项目未变 | 完整 FSDB/design/action 矩阵；原生 NPI coverage 是另一条仍失败的路径 |
 | coverage | 修复 Python 路径后，真实 MCP action 目录查询通过 | VDB 查询、报告、导出、exclusion 生命周期 |
 | LSP | 两个工作目录下 4 个导航工具共 8 次真实调用通过；实际目录仅含 4 个受支持工具 | 更多项目级导航案例；workspace/symbol 不再暴露 |
 | 日志位置 | resolve/context/stats/annotate 对隔离日志、映射和源码返回完整结果 | 大日志和异常输入 |

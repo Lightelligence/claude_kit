@@ -6,12 +6,16 @@ import unittest
 import math
 import tempfile
 from datetime import datetime
-
-SOURCE = Path(__file__).resolve().parents[1] / 'src/claude_kit/resources/upstream/vibe_soc/source/.agents/skills/gen-memwrap/scripts/gen_memwrap.py'
+from claude_kit.adaptations import export_adapted
 
 class CapacityTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        temporary = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(temporary.cleanup)
+        output = Path(temporary.name) / 'adapted'
+        export_adapted(output)
+        SOURCE = output / 'source/.agents/skills/gen-memwrap/scripts/gen_memwrap.py'
         tree=ast.parse(SOURCE.read_text(encoding='utf-8'))
         fn=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='match_macro')
         fn.returns=None

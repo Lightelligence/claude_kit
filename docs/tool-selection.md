@@ -333,7 +333,7 @@ Do not interpret bytes as model tokens.
 | Register generation | All 13 yml2reg MCP entrypoints generated nonempty outputs; XML/JSON/XLSX parsing where applicable | Generated HDL compilation and project-specific semantic checks |
 | Bit conversion/slice/eval/check | Real MCP values 255/-1, 190, 17, and matched=true | Upstream MCP documentation correction for eval/check |
 | SVA list/scan/parse/explain | Four real MCP responses against an owned property fixture | Broader temporal-semantic cases |
-| xdebug action discovery/schema | Real MCP catalog and schema calls | Complete FSDB/design/session action matrix |
+| xdebug waveform queries | Registered MCP guide/schema, session open, roots, two batched value queries (10 samples) matched fresh independent converter references; absent signal explicit, owned session closed, input/project unchanged | Complete FSDB/design/action matrix; native NPI coverage remains a separate failing path |
 | Coverage action discovery | Real MCP call passes after wiring the selected Python interpreter | VDB queries, reports, exports and exclusion lifecycle |
 | Language navigation | Eight real MCP file-navigation calls pass across two workspaces; actual catalog contains four supported tools | Broader project-level navigation cases; workspace/symbol is not advertised |
 | Source log locations | Real resolve/context/stats/annotate calls return complete results on an owned log/map/source fixture | Large or malformed log cases |

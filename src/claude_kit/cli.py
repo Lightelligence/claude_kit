@@ -106,6 +106,9 @@ def build_parser() -> argparse.ArgumentParser:
     upstream_apply = upstream_commands.add_parser("apply", help="Replace this kit checkout's pristine snapshot; does not roll out a release")
     upstream_apply.add_argument("--candidate", required=True, type=Path)
     upstream_apply.set_defaults(handler=handle_upstream)
+    export = upstream_commands.add_parser("export-adapted", help="Export revision-locked compatibility fixes to a NEW directory; no activation")
+    export.add_argument("--output", required=True, type=Path)
+    export.set_defaults(handler=handle_upstream)
 
     attach = subparsers.add_parser("attach", help="Link shared kit resources without overwriting project configuration")
     attach.add_argument("--project-root", help="Project root")
@@ -280,6 +283,9 @@ def handle_upstream(args: argparse.Namespace) -> dict[str, Any]:
     from .upstream import apply_snapshot, bundled_snapshot, diff_snapshots, inspect_snapshot, stage_snapshot
 
     current = bundled_snapshot()
+    if args.upstream_command == "export-adapted":
+        from .adaptations import export_adapted
+        return export_adapted(args.output)
     if args.upstream_command == "stage":
         return stage_snapshot(args.output, source=args.source, ref=args.ref)
     if args.upstream_command == "check":
