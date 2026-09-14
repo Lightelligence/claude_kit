@@ -268,10 +268,13 @@ profile 校验通过、bit 结果为 17，项目状态仍未变。这证明已�
 
 `crg-req-to-design` 将需求转换为设计资料；`crg-gen` 根据评审后的设计 Excel
 生成时钟/复位 RTL、顶层与寄存器组。完整顶层还需要项目真实的时钟/复位单元，
-不能用空模块替代后报告通过。CRG 内嵌的旧寄存器生成器不同于独立 `yml2reg`，
-目前只实现 APB。此次适配让未实现的 AHB/DAB 明确报错，而不是输出常量占位 RTL；
-同时统一 `register_field` 端口命名，并将子生成器失败传回 MCP。
-父脚本与内部 helper 必须配套适配；修复的实际环境复验尚待完成。
+不能用空模块替代后报告通过。CRG 内嵌的旧实现会静默遗漏中断组和写保护信息。
+此次适配改为复用相邻 `yml2reg` 的实现，只保留 CRG 的 `register_field` 命名适配，
+不再维护两套 RTL 引擎。两项 skill 必须来自同一 kit 导出；复用不会启动额外 MCP
+server。独立 `yml2reg` 保留原有命名和三种协议，CRG 在其它顶层总线约定验证前
+仍仅开放 APB，对 AHB/DAB 明确报错。父脚本同步 CSV 模块/总线端口名，保留 SDC
+实例路径，并将子生成器失败传回 MCP。
+父脚本与 helper 必须配套适配；共享实现的 ETX 复验尚待完成。
 
 ```text
 Use the reviewed CRG Excel <input> to generate into <owned-output-dir>.

@@ -117,12 +117,16 @@ that the generated RAL is malformed.
 `crg-req-to-design` turns requirements into design collateral;
 `crg-gen` turns the reviewed design Excel into clock/reset RTL, a top and its
 register bank. The top still needs the project's actual clock/reset primitives.
-Do not invent empty cells to make elaboration pass. CRG's embedded legacy register
-generator is distinct from standalone `yml2reg`: it implements APB only. The
-reviewed CRG adaptation rejects its unimplemented AHB/DAB paths instead of
-returning constant-output placeholder RTL. It also aligns `register_field` port
-names with the CRG top and propagates child-generator errors to MCP. Apply the
-paired parent/helper adaptations together; runtime acceptance is still pending.
+Do not invent empty cells to make elaboration pass. The old embedded CRG register
+implementation silently omitted interrupt banks and write-protection information.
+The reviewed adaptation now delegates to the sibling `yml2reg` implementation,
+with CRG-specific `register_field` naming, rather than maintaining two RTL engines.
+Install both skills from the same kit export; no additional MCP server is started
+by this reuse. Standalone `yml2reg` keeps its original naming and three protocols.
+CRG remains APB-only until its other top-level bus contracts are validated; AHB/DAB
+fail explicitly. The parent also aligns CSV module/bus ports while preserving SDC
+instance paths, and propagates child errors to MCP. Apply the parent/helper
+adaptations together; the shared-backend ETX acceptance is still pending.
 
 ```text
 Use the reviewed CRG Excel <input> to generate into <owned-output-dir>.

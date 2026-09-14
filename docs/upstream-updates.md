@@ -45,9 +45,11 @@ passed. Integrity checks and unit tests alone do not qualify an EDA release.
 
 CRG adaptations preserve its top/CSV's register-qualified port contract and use
 checked child processes with the active Python interpreter. Apply the parent
-generator and embedded register helper together. Unsupported embedded AHB/DAB
-generation now fails instead of emitting placeholder functionality; this does
-not restrict the independent, fully implemented `yml2reg` protocol generator.
+generator and register helper together. The helper delegates to the sibling
+`yml2reg/scripts` data API, retaining interrupt/write-protection generation and
+avoiding a second RTL implementation. Export/install both skills together.
+Unsupported CRG AHB/DAB generation fails instead of emitting placeholder
+functionality; this does not restrict standalone `yml2reg` protocols.
 
 The reviewed Make filelist adaptation preserves the MCP argument contract:
 explicit nonrecursive selection stays nonrecursive, and an omitted output returns

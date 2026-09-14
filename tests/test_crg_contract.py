@@ -9,6 +9,8 @@ import sys
 import tempfile
 import unittest
 from datetime import datetime
+from types import ModuleType
+from unittest.mock import patch
 
 from claude_kit.adaptations import export_adapted
 
@@ -22,11 +24,20 @@ class CrgContractTests(unittest.TestCase):
         export_adapted(target)
         cls.scripts = target / 'source/.agents/skills/crg-gen/scripts'
 
+    def setUp(self):
+        # Exercise the real data-dict generator/model without requiring PyYAML.
+        # No YAML parsing is mocked as successful: this empty import placeholder
+        # has no parser. Actual YAML loading remains an ETX integration check.
+        modules = patch.dict(sys.modules, {'yaml': ModuleType('yaml')})
+        modules.start()
+        self.addCleanup(modules.stop)
+
     def namespace(self, script):
         tree = ast.parse((self.scripts / script).read_text(encoding='utf-8'))
         # License/dependency-free function tests: no pandas/YAML/EDA imports.
         tree.body = [node for node in tree.body if isinstance(node, ast.FunctionDef)]
-        namespace = {'sys': sys, 'os': os, 'datetime': datetime, 'getpass': getpass}
+        namespace = {'sys': sys, 'os': os, 'datetime': datetime, 'getpass': getpass,
+                     '__file__': str(self.scripts / script)}
         exec(compile(tree, script, 'exec'), namespace)
         return namespace
 
@@ -71,6 +82,26 @@ class CrgContractTests(unittest.TestCase):
                     self.assertEqual(target.read_text(), 'existing accepted design\n')
             finally:
                 os.chdir(previous)
+
+    def test_shared_backend_keeps_interrupt_ports_and_write_protection(self):
+        data = self.fixture()
+        data['registers'][0]['fields'][0].update(access='rw', lock_lsb=16, lock_bits=1, lock_value=1)
+        data['interrupts'] = [{'name': 'fault', 'offset': 0x200, 'fields': [
+            {'name': 'fault', 'lsb': 0, 'bits': 1, 'access': 'rw', 'reset': 0}]}]
+        namespace = self.namespace('yml2reg/yml2reg.py')
+        with tempfile.TemporaryDirectory() as directory:
+            previous = Path.cwd()
+            try:
+                os.chdir(directory)
+                namespace['yml2regfile'](data, 'apb')
+                output = Path('DEMO_apb_regfile.v').read_text()
+            finally:
+                os.chdir(previous)
+        self.assertRegex(output, r'input\s+fault_fault,')
+        self.assertRegex(output, r'output\s+fault_out')
+        self.assertIn("apb_wdata[16:16] == 1'h1", output)
+        self.assertIn('assign fault_out =', output)
+        self.assertIn('interrupt bank', output)
 
     def test_generator_child_nonzero_is_not_success(self):
         namespace = self.namespace('crg_gen.py')
