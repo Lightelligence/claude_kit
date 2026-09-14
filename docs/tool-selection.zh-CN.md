@@ -257,10 +257,12 @@ profile 校验通过、bit 结果为 17，项目状态仍未变。这证明已�
 mock 单测、空成功响应、目录列举和缺 license 的 SKIP 都不等于业务端到端通过。
 写入/删除测试应使用可丢弃的 fixture，不在真实无关 Jira、文档或项目数据上做破坏性验收。
 
-### 当前 ETX 验证范围（2026-09-13）
+### ETX 验证范围（更新于 2026-09-14）
 
 基线发现 16 个 stdio servers、218 个工具（包含禁用的可选服务）。8 个启用的
 stdio servers 暴露 89 个工具，紧凑 JSON schema 共 63,682 UTF-8 字节；不含 HTTP 绘图服务。
+以上是历史基线。当前默认仅启用 `claude-kit`、`soc-build-bazel`、`soc-lsp`
+三个服务、23 个工具；其它服务通过场景配置按需选择。
 这些数字不是模型 token 数，也不代表全部业务功能通过。
 
 | 能力 | 已取得的证据 | 仍需验证 |
@@ -271,7 +273,7 @@ stdio servers 暴露 89 个工具，紧凑 JSON schema 共 63,682 UTF-8 字节�
 | bit 工具 | 真实 MCP 转换、切片、计算、比较分别得到 255/-1、190、17、matched=true | 上游 MCP 参数说明修正 |
 | SVA | list/scan/parse/explain 对隔离 property fixture 返回实际结果 | 更多时序语义案例 |
 | xdebug 波形查询 | 注册 MCP guide/schema、会话、roots、两次批量查询共 10 个采样值与新生成的独立转换结果一致；不存在信号明确报告，自有会话正常关闭，输入及项目未变 | 完整 FSDB/design/action 矩阵；原生 NPI coverage 是另一条仍失败的路径 |
-| coverage | 修复 Python 路径后，真实 MCP action 目录查询通过 | VDB 查询、报告、导出、exclusion 生命周期 |
+| coverage 报告 | action 目录查询通过；隔离的 parser 修复版本完成真实 MCP functional-only VDB 冷/热缓存打开、查询、关闭 | parser 修复尚未部署至共享安装；原生 NPI 打开数据库崩溃，exclusion/导出仍失败或未验证 |
 | LSP | 两个工作目录下 4 个导航工具共 8 次真实调用通过；实际目录仅含 4 个受支持工具 | 更多项目级导航案例；workspace/symbol 不再暴露 |
 | 日志位置 | resolve/context/stats/annotate 对隔离日志、映射和源码返回完整结果 | 大日志和异常输入 |
 | Entry 字段 | explain/validate/decode 实际通过两拍示例：0xab234，opcode=4、route=0x23、payload=0xab，来源记录正确 | 其他布局、bit 顺序及异常输入 |
