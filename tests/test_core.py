@@ -526,6 +526,24 @@ class CoreTests(unittest.TestCase):
             self.assertIn(".claude/skills/rtl-dv-kit/SKILL.md", created)
             self.assertNotIn(".claude/skills/rtl-design/SKILL.md", created)
 
+    def test_init_contract_uses_on_demand_mcp_guidance_in_all_skill_modes(self) -> None:
+        from claude_kit.core import init_project
+
+        for options in ({}, {"minimal": True}, {"no_skills": True}):
+            with self.subTest(options=options), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                init_project(root, kit_path="third_party/custom-kit", **options)
+                contract = (root / ".claude/CLAUDE.md").read_text(encoding="utf-8")
+                self.assertIn("get_project_profile", contract)
+                self.assertIn("plan_task", contract)
+                self.assertIn("known context", contract)
+                self.assertIn("only the requested checks", contract)
+                self.assertIn("ask the engineer", contract)
+                self.assertIn("not guaranteed profile fields", contract)
+                self.assertIn("third_party/custom-kit", contract)
+                self.assertNotIn('Run `plan --task', contract)
+                self.assertNotIn("before `context` or edits", contract)
+
     def test_init_no_skills_keeps_project_skill_layer_untouched(self) -> None:
         from claude_kit.core import init_project
 

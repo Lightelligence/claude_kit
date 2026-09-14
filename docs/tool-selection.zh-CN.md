@@ -182,6 +182,10 @@ Call xverif_bit_slice with value="32'hdeadbeef", msb=15, lsb=8,
 and output_format="json". Report the actual result.
 ```
 
+新的 `init` 合同与 skills 一样按需调用 MCP，已知上下文的编辑不要求重复规划和发现。
+默认保留已有定制 `.claude/CLAUDE.md`；更新时只比对相关指引，不要为了刷新措辞
+直接运行 `init --force` 覆盖项目合同。
+
 ## 按场景启动 Claude Code
 
 已验证的 xin_1 配置中，日常在终端直接运行即可：
@@ -243,6 +247,12 @@ profile 校验通过、bit 结果为 17，项目状态仍未变。这证明已�
 
 迁移必须同步 root 推导、imports、subprocess 调用、生成模板、测试和文档。
 不能只移动文件夹；也不能因为某个 skill 调用一般构建脚本，就把它变成 Claude 专属。
+
+当前项目已迁移 7 个 Claude helpers（agent profiles、Loop contracts/state 入口、
+MCP config/runtime/lock 同步和 prompt budget）。旧路径是兼容入口，不是新增 MCP
+工具或启动上下文；Loop init/query/update/migrate 共享 `loop_state_core.py`。
+两个同样大小的仓库卫生检查文件是 canonical source 与生成副本，不是重复的 Claude
+工具。删除前先查调用方、归属及生成规则。
 
 ## 如何阅读验证结果
 

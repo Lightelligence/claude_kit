@@ -199,6 +199,11 @@ inputs needed to inspect my existing VDB. Do not run coverage collection.
 The xdebug action count is not the MCP tool count. A returned catalog proves
 discovery, not successful execution of every action or availability of licenses.
 
+New `init` contracts use on-demand MCP guidance, consistent with the skills:
+known-context edits do not require a planning/discovery chain. Existing custom
+`.claude/CLAUDE.md` files are preserved by default. Compare and adapt their
+relevant instructions; do not run `init --force` simply to obtain the new wording.
+
 ## Reduce context without reducing correctness
 
 1. Keep only task-relevant servers enabled by default. Put optional generators,
@@ -302,6 +307,13 @@ Moving a script requires updating root discovery, imports, subprocess callers,
 generated launcher templates, tests and documentation. A directory move alone
 is not complete. Do not move general build tools just because a Claude skill
 also calls them.
+
+The audited consumer has migrated seven Claude helpers (agent profiles, Loop
+contracts/state entrypoints, MCP config/runtime/lock sync and prompt budgets).
+Old paths are compatibility launchers, not extra MCP tools or startup context.
+Loop init/query/update/migrate share `loop_state_core.py`. Its two same-sized
+repository-hygiene files are a canonical source and generated copy, not duplicate
+Claude tools. Check callers, ownership and generation rules before deleting them.
 
 ## What verification reports must say
 
