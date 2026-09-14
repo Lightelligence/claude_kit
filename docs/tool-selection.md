@@ -77,6 +77,39 @@ This describes source applicability, not filesystem or execution permissions.
 In a Bazel project, prefer its registered Bazel adapter. A generic Make-based
 server with a similarly named `soc_comp` is not an interchangeable backend.
 
+### RTL integration is not build integration
+
+`soc-integrate` reads module interfaces and generates RTL; `soc-integrate-bazel`
+manages build/dependency facts. Choose the operation you need:
+
+| RTL integration tool | Use |
+| --- | --- |
+| `soc_extract` / `soc_csv` | Inspect ports in text / export a review table |
+| `soc_instantiate` / `soc_wrap` | Generate an instance snippet / a pass-through module |
+| `soc_integrate` | Generate a top, review CSV and `.integrate.json` using selected module files and a reviewed port map |
+| `soc_extract_map` | Inspect existing top connections; optionally verify against module sources |
+| `soc_snapshot` / `soc_diff` | Save an interface baseline / compare against it |
+| `soc_update` / `soc_remove` | Refresh the owned generated top / remove a selected module and its connection records |
+
+These operations are not a mandatory sequence. Use explicit output paths:
+CSV/snapshot defaults can write files beside inputs or in the server's working
+directory. Generation is not compilation, CDC validation or protocol verification.
+The lightweight parser is not a complete SystemVerilog frontend. Unsupported
+types and arrays must fail explicitly; normalize them in an approved wrapper,
+not by dropping dimensions or renaming a type token into a port.
+
+```text
+Use soc_extract on <module-file> to inspect its complete interface.
+Do not generate or overwrite files. If a declaration is unsupported, report
+the limitation rather than returning a partial port list.
+```
+
+```text
+Use soc_integrate with module_files=<selected-files>, top_name=<top-name>,
+output_file=<owned-output-file>, and port_map=<reviewed-map.json>.
+Review the generated connections and config. Do not compile or simulate.
+```
+
 For entry decoding, use `xverif_entry_explain` to inspect an unfamiliar layout,
 `xverif_entry_validate` when checking only input/config validity, and
 `xverif_entry_decode` when you need field values. Do not automatically call all
@@ -354,6 +387,7 @@ are selected through task profiles. Do not interpret bytes as model tokens.
 | Entry fields | Real explain/validate/decode calls pass the documented two-beat example: 0xab234 with opcode=4, route=0x23, payload=0xab and matching source provenance | Additional layouts, bit orders and invalid-input cases |
 | Bazel RTL lint | Real soc_lint invokes VCS-only axi_narrow lint; compilation/linking completes and the check reports 21 warnings, zero errors/fatals | Clean positive fixture; existing design warning failures are not a tool PASS |
 | Bazel integration | Real workspace validation, target listing, dependency/build-graph queries and vendor-entry snippet generation; corrected parser identifies 24 actual repositories | Three real missing IP paths remain; other build operations unverified |
+| RTL integration | All ten registered tools exercised in an owned 15-case lifecycle/negative fixture: 11 cases pass | Four failures reproduced: unpacked arrays and integer ports silently misparsed, wrapper parameter undeclared, removed-module mappings reimported. Revision-locked kit fixes have regression tests; deployment/runtime revalidation is required before treating these cases as fixed |
 | CRG, memory-map, Excel and clock diagrams | Seven real generator calls produce nonempty outputs from copied examples; generated Draw.io XML and Excalidraw JSON parse successfully | Generated HDL compilation, project semantics and diagram visual review |
 | OpenROAD | Actual isolated config/SDC generation and empty-output status query pass | Local synthesis cannot start without orfs_dir/SILICON_CREW_ORFS_DIR; bounded runner discovery found no ORFS path or openroad/yosys on PATH. Container execution remains unverified |
 | Memory wrappers | Actual catalog-backed MCP generation; corrected 96x24 logical interface maps to a sufficient 128x32 macro; VCS compile/simulation report passes the bounded address/mask test | Other memory/FIFO variants, physical lib/lef availability, and full signoff remain unverified |

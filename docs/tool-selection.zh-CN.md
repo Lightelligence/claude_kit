@@ -235,6 +235,36 @@ python3 third_party/claude_kit/bin/claude-kit session --project-root . --tools d
 profile 校验通过、bit 结果为 17，项目状态仍未变。这证明已测 debug 场景的路由和调用，
 不是所有功能通过的结论，也不是实际 token 节省比例。
 
+## RTL 集成和构建集成的区别
+
+`soc-integrate` 解析接口、生成 RTL；`soc-integrate-bazel` 检查构建图及依赖。
+
+| RTL 工具 | 使用场景 |
+| --- | --- |
+| `soc_extract` / `soc_csv` | 文本查看端口 / 导出评审表 |
+| `soc_instantiate` / `soc_wrap` | 生成实例片段 / 透传 wrapper |
+| `soc_integrate` | 根据指定模块和审核后的 port map 生成 top、CSV、`.integrate.json` |
+| `soc_extract_map` | 提取已有 top 的连接，可核对模块源文件 |
+| `soc_snapshot` / `soc_diff` | 保存接口基线 / 比较端口变化 |
+| `soc_update` / `soc_remove` | 刷新本任务的生成 top / 删除选定模块和连接记录 |
+
+这些不是每次都要执行的固定流程。写操作给出明确输出路径，避免 CSV/snapshot
+默认写到输入旁边或 server 工作目录。生成成功不代表编译、CDC 或协议验证通过。
+轻量解析器不支持完整 SystemVerilog；不支持的类型、数组必须明确报错，不能丢失维度
+或把类型名当成端口名。按批准的接口提供 normalized wrapper 后再集成。
+
+```text
+Use soc_extract on <module-file> to inspect its complete interface.
+Do not generate or overwrite files. If a declaration is unsupported, report
+the limitation rather than returning a partial port list.
+```
+
+```text
+Use soc_integrate with module_files=<selected-files>, top_name=<top-name>,
+output_file=<owned-output-file>, and port_map=<reviewed-map.json>.
+Review the generated connections and config. Do not compile or simulate.
+```
+
 ## 脚本归属
 
 | 内容 | 归属 |
@@ -290,6 +320,7 @@ stdio servers 暴露 89 个工具，紧凑 JSON schema 共 63,682 UTF-8 字节�
 | Entry 字段 | explain/validate/decode 实际通过两拍示例：0xab234，opcode=4、route=0x23、payload=0xab，来源记录正确 | 其他布局、bit 顺序及异常输入 |
 | Bazel RTL lint | 实际 soc_lint 执行 axi_narrow 的 VCS-only lint；编译链接完成，检查报告 21 个 warning、零 error/fatal | 干净的正向 fixture；设计 warning 导致的失败不能写成检查通过 |
 | Bazel integration | 实际 workspace 校验、target 列表、依赖/构建图查询及 vendor 配置片段生成；修复后的解析器识别 24 个真实仓库 | 三个真实 IP 路径缺失仍存在，其余构建操作未测 |
+| RTL 集成 | 10 个注册工具均已实际调用；隔离生命周期/反例共 15 项，11 项通过 | 4 项失败：unpacked array 和 int 端口误读、wrapper 参数未声明、删除模块后重新导入残留映射。kit 已有版本锁定修复与回归测试；部署并重新实测前不能宣称已解决 |
 | CRG、memory-map、Excel、时钟树图 | 七个生成器实际调用均用复制的示例产生非空文件；Draw.io XML、Excalidraw JSON 可解析 | 生成 HDL 编译、项目语义与图形视觉检查 |
 | OpenROAD | 隔离设计的 config/SDC 生成、空输出状态查询实际通过 | 本地综合缺少 orfs_dir/SILICON_CREW_ORFS_DIR；有限范围的 runner 检查未找到 ORFS 路径或 PATH 中的 openroad/yosys，容器方式未验证 |
 | Memory wrapper | 实际 catalog 生成；修复后 96×24 逻辑接口适配到足够大的 128×32 宏，VCS 编译/仿真报告显示定向地址与掩码测试通过 | 其他 memory/FIFO 类型、物理 lib/lef 可用性与完整 signoff 尚未验证 |

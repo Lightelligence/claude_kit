@@ -357,6 +357,148 @@
           ]
         }
       ]
+    },
+    {
+      "path": ".agents/skills/soc-integrate/scripts/soc_integrate.py",
+      "hunks": [
+        {
+          "before": [
+            "    name_match = re.match(r'(\\w+)', remaining)"
+          ],
+          "after": [
+            "    name_match = re.fullmatch(r'([a-zA-Z_][a-zA-Z0-9_$]*)', remaining)"
+          ]
+        },
+        {
+          "before": [
+            "def generate_wrapper(module, wrapper_name=None):",
+            "    \"\"\"生成wrapper模块 - 内部实例化直接连接wrapper端口\"\"\"",
+            "    if not wrapper_name:",
+            "        wrapper_name = f\"{module.name}_wrap\"",
+            "    ",
+            "    lines = []",
+            "    max_port_len = max(len(name) for _, _, name in module.ports) if module.ports else 0",
+            "    max_dir_len = max(len(d) for d, _, _ in module.ports) if module.ports else 0",
+            "    max_width_len = max(len(w) if w else 0 for _, w, _ in module.ports) if module.ports else 0",
+            "    ",
+            "    lines.append(f\"module {wrapper_name} (\")",
+            "    ",
+            "    # 端口声明（对齐）",
+            "    port_decls = []",
+            "    for direction, width, name in module.ports:",
+            "        w = width if width else \"\"",
+            "        port_decls.append(f\"    {direction:<{max_dir_len}} {w:<{max_width_len}} {name}\")",
+            "    lines.append(\",\\n\".join(port_decls))",
+            "    lines.append(\");\")",
+            "    lines.append(\"\")",
+            "    ",
+            "    # 实例化 - 直接用wrapper端口名连接（不加_i/_o后缀）",
+            "    instance_name = f\"u_{module.name.lower()}_inst\"",
+            "    ",
+            "    if module.params:",
+            "        lines.append(f\"    {module.name} #(\")",
+            "        for i, (pname, pdefault, pwidth) in enumerate(module.params):",
+            "            comma = \",\" if i < len(module.params) - 1 else \"\"",
+            "            lines.append(f\"        .{pname:<{max_port_len}} ({pdefault}){comma}\")",
+            "        lines.append(f\"    ) {instance_name} (\")",
+            "    else:",
+            "        lines.append(f\"    {module.name} {instance_name} (\")",
+            "    ",
+            "    for i, (direction, width, name) in enumerate(module.ports):",
+            "        comma = \",\" if i < len(module.ports) - 1 else \"\"",
+            "        w = resolve_param_width(width, module.params) if width else \"\"",
+            "        if w:",
+            "            lines.append(f\"        .{name:<{max_port_len}} ({name}{w}){comma}\")",
+            "        else:",
+            "            lines.append(f\"        .{name:<{max_port_len}} ({name}){comma}\")",
+            "    ",
+            "    lines.append(\"    );\")",
+            "    lines.append(\"\")",
+            "    lines.append(\"endmodule\")",
+            "    ",
+            "    return \"\\n\".join(lines)",
+            ""
+          ],
+          "after": [
+            "def generate_wrapper(module, wrapper_name=None):",
+            "    \"\"\"生成wrapper模块 - 内部实例化直接连接wrapper端口\"\"\"",
+            "    if not wrapper_name:",
+            "        wrapper_name = f\"{module.name}_wrap\"",
+            "    ",
+            "    lines = []",
+            "    max_port_len = max(len(name) for _, _, name in module.ports) if module.ports else 0",
+            "    max_dir_len = max(len(d) for d, _, _ in module.ports) if module.ports else 0",
+            "    max_width_len = max(len(w) if w else 0 for _, w, _ in module.ports) if module.ports else 0",
+            "    ",
+            "    if module.params:",
+            "        lines.append(f\"module {wrapper_name} #(\")",
+            "        for i, (pname, pdefault, pwidth) in enumerate(module.params):",
+            "            comma = \",\" if i < len(module.params) - 1 else \"\"",
+            "            declared_width = f\" [{pwidth}]\" if pwidth else \"\"",
+            "            lines.append(f\"    parameter{declared_width} {pname} = {pdefault}{comma}\")",
+            "        lines.append(\") (\")",
+            "    else:",
+            "        lines.append(f\"module {wrapper_name} (\")",
+            "    ",
+            "    # 端口声明（对齐）",
+            "    port_decls = []",
+            "    for direction, width, name in module.ports:",
+            "        w = width if width else \"\"",
+            "        port_decls.append(f\"    {direction:<{max_dir_len}} {w:<{max_width_len}} {name}\")",
+            "    lines.append(\",\\n\".join(port_decls))",
+            "    lines.append(\");\")",
+            "    lines.append(\"\")",
+            "    ",
+            "    # 实例化 - 直接用wrapper端口名连接（不加_i/_o后缀）",
+            "    instance_name = f\"u_{module.name.lower()}_inst\"",
+            "    ",
+            "    if module.params:",
+            "        lines.append(f\"    {module.name} #(\")",
+            "        for i, (pname, pdefault, pwidth) in enumerate(module.params):",
+            "            comma = \",\" if i < len(module.params) - 1 else \"\"",
+            "            lines.append(f\"        .{pname:<{max_port_len}} ({pname}){comma}\")",
+            "        lines.append(f\"    ) {instance_name} (\")",
+            "    else:",
+            "        lines.append(f\"    {module.name} {instance_name} (\")",
+            "    ",
+            "    for i, (direction, width, name) in enumerate(module.ports):",
+            "        comma = \",\" if i < len(module.ports) - 1 else \"\"",
+            "        w = width",
+            "        if w:",
+            "            lines.append(f\"        .{name:<{max_port_len}} ({name}{w}){comma}\")",
+            "        else:",
+            "            lines.append(f\"        .{name:<{max_port_len}} ({name}){comma}\")",
+            "    ",
+            "    lines.append(\"    );\")",
+            "    lines.append(\"\")",
+            "    lines.append(\"endmodule\")",
+            "    ",
+            "    return \"\\n\".join(lines)",
+            ""
+          ]
+        },
+        {
+          "before": [
+            "        extracted_shared = extracted.get('shared_signals', {})"
+          ],
+          "after": [
+            "        extracted_shared = extracted.get('shared_signals', {})",
+            "",
+            "        # The old top can still contain instances intentionally removed from",
+            "        # config. Keep mapping sync within the current configured module set.",
+            "        active_modules = {item['module_name'] for item in config['modules']}",
+            "        extracted_map = {key: value for key, value in extracted_map.items()",
+            "                         if key.split('.', 1)[0] in active_modules}",
+            "        extracted_shared = {",
+            "            signal: [key for key in keys if key in extracted_map]",
+            "            for signal, keys in extracted_shared.items()",
+            "            if sum(key in extracted_map for key in keys) >= 2",
+            "        }"
+          ]
+        }
+      ],
+      "before_sha256": "bf357e1a63d507c8914a7267264611cebb6d81955c78384ed598a22ebf5cb32b",
+      "after_sha256": "fce19dcb74a8d944a5135a394a3d9144249c49e828a2e4cc224f4002929df36f"
     }
   ]
 }
