@@ -6,6 +6,8 @@ A reusable Claude Code kit for RTL and DV engineering.
 
 For everyday tool choice, RTL/DV prompts, and context-efficient workflows, read
 the [engineer's tool-selection guide](docs/tool-selection.md).
+For the current server inventory and tested versus blocked capabilities, see
+the [verification snapshot](docs/tool-verification.md).
 
 For a shared installation loaded with `module add claude_kit`, see
 [shared installation and project attachment](docs/shared-installation.md).

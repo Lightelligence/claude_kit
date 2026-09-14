@@ -2,6 +2,8 @@
 
 [English](tool-selection.md)
 
+当前 17 个 server 的完整清单与用户排除项，见[工具验证快照](tool-verification.zh-CN.md)。
+
 以项目 `.mcp.json` 和 Claude settings 为准：有 skill、源码或目录，不代表 server 已启用；能列出工具，也不代表业务运行通过。
 
 ## 我应该用哪个工具？
@@ -400,8 +402,12 @@ stdio servers 暴露 89 个工具，紧凑 JSON schema 共 63,682 UTF-8 字节�
 | OpenROAD | 隔离设计的 config/SDC 生成、空输出状态查询实际通过 | 本地综合缺少 orfs_dir/SILICON_CREW_ORFS_DIR；有限范围的 runner 检查未找到 ORFS 路径或 PATH 中的 openroad/yosys，容器方式未验证 |
 | Memory wrapper | 实际 catalog 生成；修复后 96×24 逻辑接口适配到足够大的 128×32 宏，VCS 编译/仿真报告显示定向地址与掩码测试通过 | 其他 memory/FIFO 类型、物理 lib/lef 可用性与完整 signoff 尚未验证 |
 | 可选 Make adapter | 适配 kit `6848cbd` 后十个实际用例通过：项目/chip/IP 脚手架、重复创建保护、浅层/递归/文本 filelist、非法后端拒绝、生成的参数化 wrapper 经注册 VCS 工具编译展开（`34806987896`） | 未验证仿真、回归、综合、CDC、GUI 或其他后端；仅用于 Make 项目，不替换当前 Bazel 流程 |
-| 其他禁用的通用生成器 | 有实现的服务完成握手和工具列表检查 | 各自功能 fixture；日常会话不启用；upstream 缺少实现的条目仍不可用 |
-| Atlassian/HTTP 绘图 | 仅 Atlassian 工具列表通过；绘图未测 | 非破坏性服务验证，不为测试创建真实工单 |
+| xwiki 维护 helpers | 共享 `cc839de` 实际 helpers 的 7 项隔离用例通过：缺少路径、dry-run、15 文件初始化、保留已有内容、无效类型、断链与恢复验证（`34811483486`） | 未 ingest 持久项目或部署 hook；不是 MCP server |
+| Atlassian | 本人 profile 实际查询通过；当前目录 98 tools（`34810934608`） | 仅验收此只读查询，未测试工单/页面写操作 |
+
+RAL、完整 CRG 按用户要求暂缓。Draw.io、gen-memwrap、xsimdebug、lib-db-gen、
+rtl-design 排除后续处理；上表保留的
+生成器结果属于历史证据，不代表已修复被排除的 gen-memwrap skill YAML 加载问题。
 
 项目 helper 迁移通过 13 项检查，包括生成文件一致性和原有指令预算；旧路径保留兼容入口。
 以上不是整个项目的 signoff 结论。

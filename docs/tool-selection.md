@@ -3,6 +3,8 @@
 This guide is for engineers working in a project attached to claude_kit.
 The project's `.mcp.json` and Claude settings determine which servers are
 available. A bundled skill or a Python source file does not enable a server.
+For the actual 17-server inventory and current exclusions, see the
+[verification snapshot](tool-verification.md).
 
 ## Coverage queries versus coverage generation
 
@@ -487,8 +489,13 @@ are selected through task profiles. Do not interpret bytes as model tokens.
 | Memory wrappers | Actual catalog-backed MCP generation; corrected 96x24 logical interface maps to a sufficient 128x32 macro; VCS compile/simulation report passes the bounded address/mask test | Other memory/FIFO variants, physical lib/lef availability, and full signoff remain unverified |
 | Exported upstream memory adapter | Pristine snapshot checks, locked export and 9 capacity tests pass; isolated ETX MCP initialization and status pass | Generation fails without a configured ORFS platforms root. This newer exported source is not the previously validated project generator; do not replace it automatically or use an empty directory to bypass the dependency check |
 | Optional Make adapter | All ten actual cases pass after kit `6848cbd` adaptation: new project/chip/IP scaffolds, duplicate preservation, shallow/recursive/text filelists, invalid-backend rejection, and registered VCS compilation/elaboration of a generated parameterized wrapper (`34806987896`) | No simulation, regression, synthesis, CDC, GUI or other backend acceptance; use only for Make projects, not the consumer's Bazel flow |
-| Other disabled generic generators | Initialize and tool discovery where implemented | Individual functional fixtures; not enabled in normal sessions; absent upstream implementations remain unavailable |
-| Atlassian and HTTP drawing | Atlassian discovery only; drawing untested | Authorized non-mutating service checks; never create issues merely to test |
+| xwiki maintenance helpers | Actual shared `cc839de` helpers pass seven owned-fixture cases: missing path, dry-run, 15-file initialization, preservation, invalid type, broken link and restored validation (`34811483486`) | No persistent project ingest or hook deployment; not an MCP server |
+| Atlassian | Actual own-user profile lookup passes; current 98-tool discovery (`34810934608`) | Only the read-only lookup is accepted; no external issue/page writes tested |
+
+RAL and full CRG integration are deferred by the user. Draw.io, gen-memwrap,
+xsimdebug, lib-db-gen and rtl-design are excluded from further work;
+prior generator evidence above is historical,
+not proof that the excluded gen-memwrap skill's YAML loading issue was fixed.
 
 Project-only helper migration passed 13 checks, including generated-file
 synchronization and existing instruction budgets. The old script paths remain

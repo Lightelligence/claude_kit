@@ -280,7 +280,7 @@
     {
       "path": ".agents/skills/soc-build/SKILL.md",
       "before_sha256": "999f6b0ed0a81e5001dd1f42452164e803ef348c5032394105a24b3398e4f7d6",
-      "after_sha256": "3651f71599b0437dec386e4e31069cfa0d43f3016604df48c93382c1d1699b9d",
+      "after_sha256": "d513e944ddb5fdb3630ff2312bb76782e5325bf896de8bfd11fcf57cce1b6bf0",
       "hunks": [
         {
           "before": [
@@ -354,6 +354,14 @@
             "- Synthesis agents call `soc_syn`; use `syn_tool=dc` for Design Compiler or `syn_tool=yosys` for structural checks. Yosys output is not STA evidence.",
             "- Formal agents call `soc_formal` with the exact `run_id` and `source_fingerprint` emitted by `soc_syn`. Plain DC snapshots run ordinary RTL-to-netlist equivalence; snapshots containing both canonical and saved UPF run the UPF-aware mode.",
             "- Commercial simulator/license work must remain in the registered MCP process."
+          ]
+        },
+        {
+          "before": [
+            "- When lint reports any real rule violation at error or warning severity, first query the local SoC AI knowledge base (`soc-ai-kb`) using the rule/tag name and diagnostic text. If the knowledge base has no relevant guidance, reason from the tool report, RTL, and local coding rules."
+          ],
+          "after": [
+            "- If the project provides a registered or documented `soc-ai-kb` lookup, use it when relevant to a lint diagnostic. Otherwise reason from the tool report, RTL and local coding rules; do not invent a missing knowledge-base tool or block triage on it."
           ]
         }
       ]
@@ -946,6 +954,56 @@
           ]
         }
       ]
+    },
+    {
+      "path": ".agents/skills/soc-openroad/SKILL.md",
+      "before_sha256": "e62986c61972969538dedc7a20f7543f643883cb8fc677c90e11258b9ee5e330",
+      "hunks": [
+        {
+          "before": [
+            "## Layout contract"
+          ],
+          "after": [
+            "## Backend prerequisite",
+            "",
+            "This adapter expects the Make-style `de/run/rtl.f` handoff described below.",
+            "For a Bazel or differently laid-out project, require an explicitly validated",
+            "handoff adapter and real ORFS setup before execution. Do not reorganize the",
+            "checkout, invoke the Make build server as a fallback, or treat missing tools",
+            "as a reason to create placeholder platform directories.",
+            "",
+            "## Layout contract"
+          ]
+        }
+      ],
+      "after_sha256": "3684faf2477df34592278751361d28360463e44a2c058c42863ffb11b5325af3"
+    },
+    {
+      "path": ".agents/agents/soc-doc-engineer.md",
+      "before_sha256": "d540d9413ccf83ca0382e1362dbd89653bc71e79182a217ebe92535530c8bbd1",
+      "hunks": [
+        {
+          "before": [
+            "pass/fail criteria. Use `excel-yml-gen` for an approved workbook rather than",
+            "manual transcription.",
+            "",
+            "Run `check_doc_completeness.py`. Keep the stage open in `dev`; close it only in"
+          ],
+          "after": [
+            "pass/fail criteria. For an approved register workbook, ask the parent session",
+            "to invoke its registered `excel-yml-gen` tool and provide the resulting artifacts;",
+            "this agent does not inherit that optional MCP tool in its declared tool list.",
+            "Do not transcribe unverified register values or block unrelated documents.",
+            "",
+            "Run `python3 .agents/scripts/check_doc_completeness.py <workspace>` from the",
+            "project root; add `--module <task_name>` only for `docs/<task_name>/`. Report",
+            "a missing checker explicitly rather than inventing its result. The checker",
+            "only verifies file presence, nonempty content and initial headings, not design",
+            "correctness. Keep the stage open in `dev`; close it only in"
+          ]
+        }
+      ],
+      "after_sha256": "da6c738feaa994ffacf80f4041e4b980756ce2ffa08399fc3a86fde4c91dd5b9"
     }
   ]
 }

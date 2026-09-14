@@ -6,8 +6,8 @@ description: Perform read-only RTL/DV review and evidence review before handoff 
 
 # RTL/DV Review
 
-1. Run `claude-kit plan --workflow review --task "..."` and confirm the
-   requested scope before reading implementation details.
+1. Use the requested review scope and known context. Call `plan_task` only
+   if routing is unclear; do not repeat planning for a clearly scoped diff.
 2. Default to read-only. Review the diff and intended behavior, then inspect
    reset, handshake, queue, width, error and recovery paths.
 3. Check that tests, assertions, coverage and evidence follow the behavior
