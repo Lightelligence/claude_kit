@@ -156,9 +156,10 @@ tools for configured checks and report missing prerequisites as unverified.
     if not isinstance(config, dict) or not isinstance(config.get("mcpServers", {}), dict):
         raise KitError("Project MCP configuration must contain an mcpServers object")
     servers = config.setdefault("mcpServers", {})
-    expected_server = {"type": "stdio", "command": "claude-kit", "args": ["mcp", "serve", "--project-root", ".", "--profile", profile_relative]}
+    expected_server = {"type": "stdio", "command": "claude-kit", "args": ["mcp", "serve", "--profile", profile_relative]}
+    legacy_server = {"type": "stdio", "command": "claude-kit", "args": ["mcp", "serve", "--project-root", ".", "--profile", profile_relative]}
     existing_server = servers.get("claude-kit")
-    if existing_server is not None and existing_server != expected_server:
+    if existing_server is not None and existing_server not in (expected_server, legacy_server):
         raise KitError("Existing claude-kit MCP definition differs; review and migrate that entry explicitly")
     if existing_server is None:
         servers["claude-kit"] = expected_server

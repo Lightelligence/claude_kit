@@ -143,6 +143,18 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual(path.read_bytes(), original)
         self.assertEqual(list(self.root.iterdir()), [path])
 
+    def test_new_mcp_uses_runtime_root_without_rewriting_legacy_entry(self):
+        attach_project(self.root)
+        path = self.root / ".mcp.json"
+        config = json.loads(path.read_text())
+        server = config["mcpServers"]["claude-kit"]
+        self.assertEqual(server["args"], ["mcp", "serve", "--profile", ".claude/project.toml"])
+        server["args"][2:2] = ["--project-root", "."]
+        path.write_text(json.dumps(config))
+        original = path.read_bytes()
+        self.assertEqual(attach_project(self.root)["changed"], [])
+        self.assertEqual(path.read_bytes(), original)
+
     def test_existing_skill_directory_is_not_replaced(self):
         path = self.root / ".claude/skills" / skill_catalog()[0]["id"]
         path.mkdir(parents=True)

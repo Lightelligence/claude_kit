@@ -89,6 +89,44 @@ def find_project_root(start: Path | None = None) -> Path:
     return candidate
 
 
+def resolve_project_root(value: str | Path | None = None) -> Path:
+    """Resolve an explicit root, then PROJ_DIR, then local discovery.
+
+    An invalid configured root never falls back to another checkout. Do not
+    mutate the caller's environment: independent projects may share a process.
+    """
+    explicit = value is not None
+    configured = str(value) if explicit else os.environ.get("PROJ_DIR")
+    if configured is None:
+        return find_project_root()
+    label = "--project-root" if explicit else "PROJ_DIR"
+    if not configured.strip():
+        raise KitError(f"{label} must not be empty")
+
+    def expand_project(match: re.Match[str]) -> str:
+        project = os.environ.get("PROJ_DIR")
+        if not project or not project.strip():
+            raise KitError("PROJ_DIR is required by --project-root but is not set")
+        if not Path(project).is_absolute():
+            raise KitError("PROJ_DIR must be an absolute directory")
+        return project
+
+    # MCP arguments are not shell commands; support the project variable
+    # directly without eval, shell expansion, or arbitrary environment reads.
+    if explicit:
+        configured = re.sub(r"\$\{PROJ_DIR\}|\$PROJ_DIR(?![A-Za-z0-9_])", expand_project, configured)
+    candidate = Path(configured)
+    if not explicit and not candidate.is_absolute():
+        raise KitError("PROJ_DIR must be an absolute directory")
+    try:
+        root = candidate.resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise KitError(f"{label} does not resolve to an existing directory") from exc
+    if not root.is_dir():
+        raise KitError(f"{label} must be a directory")
+    return root
+
+
 def discover_profile(root: Path, explicit: str | Path | None = None) -> Path | None:
     if explicit:
         return _project_path(root, explicit, "profile")
