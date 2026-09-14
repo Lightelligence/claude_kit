@@ -1,18 +1,27 @@
 ---
 name: rtl-dv-kit
-description: Use the repo-local claude-kit profile, roles, protocol/VIP packs and evidence workflow for RTL/DV work.
+description: Locate the project's Claude kit configuration and execution contract for RTL/DV work.
 ---
 
 # RTL/DV Claude Kit
 
-Before changing project files:
+Use the configured project profile (normally `.ai/project.toml`) as the source
+of project facts and permissions. Respect writable, read_only and forbidden
+paths; declared `hw/**` is normal RTL/DV work scope, not inherently protected.
 
-1. Locate and validate .ai/project.toml with claude-kit doctor.
-2. Run `claude-kit plan --task "..."` and treat missing facts or command warnings as gates.
-3. Load only the selected skills with `context --skill <id>` when their guidance is needed.
-4. Run a read-only inspect or context command before edits.
-5. Select the smallest relevant role and protocol/VIP pack.
-6. Treat `hw/**` as the normal RTL implementation scope when it is declared in the project profile, and respect all writable, read_only and forbidden paths.
-7. Use project commands declared in build.commands; do not invent simulator commands.
-8. Report changed files, commands, results, skipped checks and unresolved risks.
-9. Never claim verification without execution evidence.
+Prefer the registered kit MCP in Claude Code; the repo-local CLI is also a
+maintenance entrypoint. If configuration is missing, changed or unvalidated,
+use `get_project_profile` (CLI: `doctor`) before relying on it. Resolve relevant
+validation errors; do not repeat discovery when current facts are already known.
+
+Use `plan_task` when workflow or check selection is unclear. Read only the
+selected skill/role/protocol guidance needed for this task. A straightforward
+edit with known context does not require a doctor/plan/inspect sequence.
+
+Execute only the requested checks through registered project tools or declared
+`build.commands`, subject to the project's execution contract. Do not invent
+simulator commands or auto-run simulation, regression, coverage, synthesis or
+CDC after an edit. Resolve required inputs and permissions before execution.
+
+Report changed files, executed commands, results, skipped checks and unresolved
+risks. A plan or successful registration is not verification evidence.

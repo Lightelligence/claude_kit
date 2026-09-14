@@ -42,11 +42,15 @@ list（如 `-show brief line+cond`），不能写成 `-show summary+tests` 组�
 
 ## Exclusion 关键生命周期
 
+以下流程仅用于用户明确要求的 exclusion 操作。普通只读 summary/gap 查询不自动
+添加、修改、导出 exclusion；没有待保存 exclusion 状态或 reason 的自有 session 可
+正常关闭，不为清理会话而加载 NPI。获准的 exclusion 工作先确认持久化输出位置。
+
 > **不要在持久化前关闭 session。** `exclude.add` 的 reason 仅保存在当前 session 内存中；
 > `session.close`、进程退出或 session 丢失都会永久丢失尚未导出的 reason。必须先成功执行
 > `exclude.csv.export`，再执行 `export.exclude`，最后才能关闭 session。
 
-Coverage 分析和 exclusion 的标准顺序：
+获准的 exclusion 工作标准顺序：
 
 1. 打开 VDB session。
 2. 按用户需要选择一种初始状态：用 `exclude.load` 导入 EL、用 `exclude.csv.apply` 导入四类
@@ -95,7 +99,8 @@ code coverage export（首次读取同一 VDB/selection/EL 时生成并缓存固
 {"api_version":"xcov.v1","action":"exclude.add","target":{"session_id":"cov0"},"args":{"exports":[{"path":"/abs/path/branch.json","items":[{"gap_id":"B0001","reason":"规格禁止该模式组合"},{"gap_id":"B0002","reason":"该分支仅用于失效保护"}]}]}}
 ```
 
-关闭 session 前先导出 reason-bearing CSV，再导出原生 EL：
+有待保存 exclusion 状态或 reason 时，关闭 session 前先向获准位置导出 reason-bearing
+CSV，再导出原生 EL；保存失败时不要关闭并丢失状态：
 
 ```json
 {"api_version":"xcov.v1","action":"exclude.csv.export","target":{"session_id":"cov0"},"args":{"directory":"coverage_exclusions"}}

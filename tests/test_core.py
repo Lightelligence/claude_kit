@@ -122,6 +122,44 @@ class CoreTests(unittest.TestCase):
             ["soc_lint", "soc_comp", "soc_sim", "soc_regress"],
         )
 
+    def test_workflow_checks_respect_source_scope(self) -> None:
+        commands = {
+            "rtl_check": {"category": "lint", "applies_to": ["rtl"]},
+            "dv_check": {"category": "lint", "applies_to": "dv"},
+            "legacy_lint": {"category": "lint"},
+            "compile": {"category": "compile", "applies_to": ["rtl", "dv"]},
+            "simulation": {"category": "simulation", "applies_to": "all"},
+        }
+        profile = {"build": {"commands": commands}}
+        dv = {item["name"]: item for item in command_menu(profile, scope="dv")}
+        self.assertFalse(dv["rtl_check"]["recommended"])
+        self.assertFalse(dv["legacy_lint"]["recommended"])
+        self.assertTrue(dv["dv_check"]["recommended"])
+        self.assertTrue(dv["compile"]["recommended"])
+        self.assertTrue(dv["simulation"]["requires_confirmation"])
+        self.assertFalse(dv["simulation"]["recommended"])
+        rtl = {item["name"]: item for item in command_menu(profile, scope="rtl")}
+        self.assertTrue(rtl["rtl_check"]["recommended"])
+        self.assertFalse(rtl["dv_check"]["recommended"])
+        unscoped = {item["name"]: item for item in command_menu(profile)}
+        self.assertTrue(unscoped["legacy_lint"]["recommended"])
+        profile_path, real_profile = load_profile(FIXTURE)
+        real_profile["build"] = profile["build"]
+        plan = resolve_plan(FIXTURE, profile_path, real_profile, "dv-change", None, None, "Update DV environment")
+        planned = {item["name"]: item for item in plan["check_plan"]}
+        self.assertFalse(planned["rtl_check"]["recommended"])
+        self.assertFalse(planned["legacy_lint"]["recommended"])
+
+    def test_invalid_check_scope_is_reported(self) -> None:
+        for scope in ([], ["dvv"], 123, [None], "", {"rtl": True}):
+            with self.subTest(scope=scope):
+                _, profile = load_profile(FIXTURE)
+                profile["build"] = {"commands": {"syntax": {
+                    "argv": ["echo", "unused"], "applies_to": scope,
+                }}}
+                issues = validate_profile(FIXTURE, profile)
+                self.assertTrue(any(item["level"] == "error" and "applies_to" in item["message"] for item in issues))
+
     def test_mcp_backed_check_is_profiled_but_not_shell_executed(self) -> None:
         profile = {
             "project": {"id": "mcp_fixture"},
@@ -487,6 +525,24 @@ class CoreTests(unittest.TestCase):
             created = init_project(root, minimal=True)
             self.assertIn(".claude/skills/rtl-dv-kit/SKILL.md", created)
             self.assertNotIn(".claude/skills/rtl-design/SKILL.md", created)
+
+    def test_init_contract_uses_on_demand_mcp_guidance_in_all_skill_modes(self) -> None:
+        from claude_kit.core import init_project
+
+        for options in ({}, {"minimal": True}, {"no_skills": True}):
+            with self.subTest(options=options), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                init_project(root, kit_path="third_party/custom-kit", **options)
+                contract = (root / ".claude/CLAUDE.md").read_text(encoding="utf-8")
+                self.assertIn("get_project_profile", contract)
+                self.assertIn("plan_task", contract)
+                self.assertIn("known context", contract)
+                self.assertIn("only the requested checks", contract)
+                self.assertIn("ask the engineer", contract)
+                self.assertIn("not guaranteed profile fields", contract)
+                self.assertIn("third_party/custom-kit", contract)
+                self.assertNotIn('Run `plan --task', contract)
+                self.assertNotIn("before `context` or edits", contract)
 
     def test_init_no_skills_keeps_project_skill_layer_untouched(self) -> None:
         from claude_kit.core import init_project

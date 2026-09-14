@@ -13,13 +13,36 @@ xbit 是确定性 bit/value/expression calculator。遇到 SV literal、slice、
 
 ## 入口
 
-命令行：
+在 Claude Code 中优先使用注册的 MCP 工具。以下是输入给 Claude 的提示词，
+不是终端命令：
 
-```bash
-xbit conv "8'shff" --json
-tools/xbit slice "32'hdead_beef" 15 8 --json
-xbit eval "valid && ready" --var valid=1'b1 --var ready=1'b0 --json
+```text
+Call xverif_bit_convert with value="8'shff" and output_format="json".
+Report unsigned and signed_value from the actual result.
+
+Call xverif_bit_slice with value="32'hdeadbeef", msb=15, lsb=8,
+and output_format="json". Report the actual extracted value.
 ```
+
+这两个例子的预期结果分别是 unsigned=255/signed_value=-1 和 unsigned=190。
+表达式计算使用 `xverif_bit_eval`；不要假设它支持所有 C/Python literal 语法。
+当前 ETX 验证发现工具说明中的 `0x10 + 0x1` 示例返回 PARSE_ERROR。
+以下 MCP 参数已经实测通过：
+
+```text
+Call xverif_bit_eval with expr="8'h10 + 8'h01" and output_format="json".
+Report the actual result; the expected unsigned value is 17.
+
+Call xverif_bit_check with expr="actual == expected",
+vars={"actual":"8'h11","expected":"8'h11"}, and output_format="json".
+Report matched from the actual response.
+```
+
+`xverif_bit_check.values` 是变量绑定 JSON 文件路径，不是预期数值；也不能与 `vars` 同时传入。
+比较表达式应明确写出相等或其它条件；工具返回 `matched` 表示表达式真假。
+`ok=true, matched=false` 表示计算成功但条件不成立，不应因此重试或改用其它工具。
+例如将上例 `expected` 改为 `8'h12`，预期是 `ok=true, matched=false`。
+遇到错误应报告失败，不能把错误响应当成结果或改用心算冒充工具输出。
 
 ## 读取规则
 

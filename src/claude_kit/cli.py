@@ -78,6 +78,18 @@ def build_parser() -> argparse.ArgumentParser:
     version = subparsers.add_parser("version", help="Show kit version")
     version.set_defaults(handler=lambda args: {"version": __version__})
 
+    tool_profiles = subparsers.add_parser(
+        "tool-profiles", help="List project MCP tool profiles without exposing server credentials"
+    )
+    tool_profiles.add_argument("--project-root", help="Project root")
+    tool_profiles.set_defaults(handler=handle_tool_profiles)
+
+    session = subparsers.add_parser("session", help="Launch native Claude with a selected project MCP profile")
+    session.add_argument("--project-root", help="Project root")
+    session.add_argument("--tools", required=True, help="Name from tool-profiles")
+    session.add_argument("claude_args", nargs=argparse.REMAINDER, help="Native Claude arguments after --")
+    session.set_defaults(handler=handle_session)
+
     upstream = subparsers.add_parser("upstream", help="Stage and review pinned vibe_soc updates (maintainer only)")
     upstream_commands = upstream.add_subparsers(dest="upstream_command", required=True)
     stage = upstream_commands.add_parser("stage", help="Fetch an isolated candidate without activating it")
@@ -94,6 +106,9 @@ def build_parser() -> argparse.ArgumentParser:
     upstream_apply = upstream_commands.add_parser("apply", help="Replace this kit checkout's pristine snapshot; does not roll out a release")
     upstream_apply.add_argument("--candidate", required=True, type=Path)
     upstream_apply.set_defaults(handler=handle_upstream)
+    export = upstream_commands.add_parser("export-adapted", help="Export revision-locked compatibility fixes to a NEW directory; no activation")
+    export.add_argument("--output", required=True, type=Path)
+    export.set_defaults(handler=handle_upstream)
 
     attach = subparsers.add_parser("attach", help="Link shared kit resources without overwriting project configuration")
     attach.add_argument("--project-root", help="Project root")
@@ -232,6 +247,12 @@ def build_parser() -> argparse.ArgumentParser:
     mcp_subparsers = mcp.add_subparsers(dest="mcp_command", required=True)
     serve = mcp_subparsers.add_parser("serve", help="Serve MCP over stdio")
     _add_project_options(serve)
+    serve.add_argument(
+        "--tool-profile",
+        choices=("compact", "full"),
+        default="full",
+        help="Advertised MCP tool profile (default: full)",
+    )
     serve.add_argument("--allow-exec", action="store_true", help="Expose run_check and run_checks to the bridge")
     serve.set_defaults(handler=handle_mcp)
 
@@ -262,6 +283,9 @@ def handle_upstream(args: argparse.Namespace) -> dict[str, Any]:
     from .upstream import apply_snapshot, bundled_snapshot, diff_snapshots, inspect_snapshot, stage_snapshot
 
     current = bundled_snapshot()
+    if args.upstream_command == "export-adapted":
+        from .adaptations import export_adapted
+        return export_adapted(args.output)
     if args.upstream_command == "stage":
         return stage_snapshot(args.output, source=args.source, ref=args.ref)
     if args.upstream_command == "check":
@@ -517,7 +541,7 @@ def handle_mcp(args: argparse.Namespace) -> int:
     from .mcp_server import serve
 
     root = _root(args.project_root)
-    serve(root, args.profile, args.allow_exec)
+    serve(root, args.profile, args.allow_exec, args.tool_profile)
     return 0
 
 
@@ -551,6 +575,21 @@ def handle_evidence_template(args: argparse.Namespace) -> int:
     else:
         print(content, end="")
     return 0
+
+
+def handle_tool_profiles(args: argparse.Namespace) -> dict[str, Any]:
+    from .tool_profiles import profile_catalog
+
+    return {"profiles": profile_catalog(_root(args.project_root))}
+
+
+def handle_session(args: argparse.Namespace) -> int:
+    from .session import launch_session
+
+    arguments = args.claude_args
+    if arguments[:1] == ["--"]:
+        arguments = arguments[1:]
+    return launch_session(_root(args.project_root), args.tools, arguments)
 
 
 def main(argv: list[str] | None = None) -> int:

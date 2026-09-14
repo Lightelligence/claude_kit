@@ -16,6 +16,15 @@ ENTRY = ROOT / "bin" / "claude-kit"
 
 
 class CliTests(unittest.TestCase):
+    def test_export_adapted_is_explicit_and_does_not_activate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "adapted"
+            result = self.run_cli("upstream", "export-adapted", "--output", str(output))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout)["status"], "exported_not_activated")
+            self.assertTrue((output / "adaptation.json").is_file())
+            self.assertFalse((output / ".mcp.json").exists())
+
     def run_cli(self, *args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             [sys.executable, str(ENTRY), *args],

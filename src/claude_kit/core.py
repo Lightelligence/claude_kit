@@ -254,6 +254,13 @@ def validate_profile(root: Path, profile: dict[str, Any]) -> list[dict[str, str]
             add("error", f"build.commands.{name} must be an object")
             continue
         argv = command.get("argv")
+        if "applies_to" in command:
+            scopes = command["applies_to"]
+            scopes = [scopes] if isinstance(scopes, str) else scopes
+            if not isinstance(scopes, list) or not scopes or not all(
+                isinstance(item, str) and item in {"rtl", "dv", "all"} for item in scopes
+            ):
+                add("error", f"build.commands.{name}.applies_to must contain rtl, dv or all")
         mcp_tool = command.get("mcp_tool")
         if mcp_tool is not None:
             if not isinstance(mcp_tool, str) or not mcp_tool.strip():
@@ -682,6 +689,7 @@ def _preferred_command_name(preferred: str, commands: dict[str, Any]) -> str | N
 def command_menu(
     profile: dict[str, Any],
     preferred_commands: list[str] | None = None,
+    scope: str | None = None,
 ) -> list[dict[str, Any]]:
     """Return a selectable, project-neutral check menu."""
 
@@ -701,6 +709,20 @@ def command_menu(
         command = commands.get(name)
         definition = command if isinstance(command, dict) else None
         policy = command_selection_policy(name, definition)
+        applies_to = (definition or {}).get("applies_to")
+        if isinstance(applies_to, str):
+            applies_to = [applies_to]
+        declared_scope = isinstance(applies_to, list) and bool(applies_to)
+        outside_scope = bool(scope and declared_scope and scope not in applies_to and "all" not in applies_to)
+        unknown_dv_lint = scope == "dv" and policy["category"] == "lint" and not declared_scope
+        if outside_scope or unknown_dv_lint:
+            policy["recommended"] = False
+            if policy["selection"] == "suggested":
+                policy["selection"] = "optional"
+            policy["recommendation_reason"] = (
+                "Check scope does not match this workflow" if outside_scope else
+                "Confirm this lint checks DV sources before selecting it"
+            )
         entry = {
             "name": name,
             "status": "available" if definition is not None else "missing",
@@ -831,7 +853,7 @@ def resolve_plan(
         "skills": skill_ids,
         "skill_sources": skill_sources,
         "required_facts": required_facts,
-        "check_plan": command_menu(profile, preferred_commands),
+        "check_plan": command_menu(profile, preferred_commands, selected.get("scope")),
         "check_selection": {
             "mode": "engineer_selects",
             "multi_select": True,
@@ -1628,13 +1650,15 @@ def integration_claude(kit_path: str) -> str:
 
 This project uses the reusable RTL/DV Claude kit.
 
-- Read the project profile at .ai/project.toml before making changes.
-- Use the repo-local CLI through the pinned kit path: {kit_path}.
-- Run `plan --task "..."` to select the smallest RTL/DV workflow, roles, skills and checks before `context` or edits.
-- Pass only the selected `--skill` entries to `context` when their guidance is needed; do not materialize every skill into the prompt.
-- Keep changes inside the profile permissions.
-- Prefer read-only inspect/context/log commands before editing.
-- Use `claude-kit list providers` to discover optional provider contracts; when `providers.xverif` is declared and its MCP server is registered, use the registered xverif tools for deterministic waveform/design evidence.
+- The project profile at .ai/project.toml owns project facts and permissions.
+- Prefer the registered kit MCP in Claude Code. The CLI at {kit_path} is a maintenance entrypoint; a missing or failing required MCP is not permission to invent another execution path.
+- Reuse known context. Call `get_project_profile` when configuration or permissions are missing, changed or unvalidated; resolve relevant errors before relying on them.
+- Use `plan_task` when workflow or check selection is unclear. Known-context edits do not require a repeated doctor/plan/inspect chain.
+- Read only missing project facts and task-relevant role, skill and protocol guidance. Create a context artifact when needed for a handoff, not for every edit.
+- Keep changes inside profile permissions. Execute only the requested checks through registered tools or declared `build.commands`, subject to the project's execution contract and required inputs.
+- Target, test and run selections are task-specific facts, not guaranteed profile fields. If multiple candidates remain and the request has not selected one, ask the engineer; do not invent an alias or silently choose a default or latest run.
+- Do not automatically run simulation, regression, coverage, synthesis or CDC after an edit. Reuse engineer selections already made for this task; a plan does not authorize its proposed checks.
+- Use optional providers only when needed and configured. When `providers.xverif` is declared and its MCP server is registered, use its relevant tools for deterministic evidence.
 - Record commands, results, skipped checks and unresolved risks.
 - Do not claim verification without evidence.
 - Do not modify vendor/generated files unless the profile explicitly allows it.

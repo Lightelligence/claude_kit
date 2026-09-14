@@ -4,6 +4,10 @@
 
 面向 RTL / DV 工程的可复用 Claude Code kit。
 
+日常工具选择、RTL/DV prompt 与节省上下文的方法，参见
+[工程师工具选择指南](docs/tool-selection.zh-CN.md)。
+当前 server 清单、已验证能力与阻塞项，参见[工具验证快照](docs/tool-verification.zh-CN.md)。
+
 claude_kit 把通用 RTL/DV roles、protocol/VIP packs、项目 profile、repo-local CLI、artifact/evidence 约定，以及可选的薄 MCP bridge 放在一个可固定版本的仓库中。项目只需要通过一个 submodule 和一份很薄的 profile/adapter，就可以快速接入 Claude Code 的 RTL/DV 工作流。
 
 ## 当前状态

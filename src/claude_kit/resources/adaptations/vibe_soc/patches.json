@@ -1,0 +1,1009 @@
+{
+  "schema_version": 1,
+  "upstream_commit": "0b0ae36846cd3a5e7be39ea90eb57bf5dbb3b026",
+  "files": [
+    {
+      "path": ".agents/skills/gen-memwrap/scripts/gen_memwrap.py",
+      "before_sha256": "c5f5b924234a0de15260d9f0a82b0582a8c8d8a54a334cc7c89254481c09a4dc",
+      "after_sha256": "8a409862342e54b1564c6551cf518861ebb359b0c2e9a640236d1c321af3b9bd",
+      "hunks": [
+        {
+          "before": [
+            "    if exact_name:",
+            "        for m in macros:",
+            "            if m.name == exact_name:",
+            "                return m",
+            "        raise ValueError(f\"ExactMacro not in catalog: {exact_name}\")",
+            "",
+            "    candidates = list(macros)",
+            "    if want_ports:",
+            "        filtered = [m for m in candidates if m.ports == want_ports]",
+            "        if filtered:",
+            "            candidates = filtered",
+            "",
+            "    exact = [m for m in candidates if m.depth == depth and m.width == width]",
+            "    if exact:"
+          ],
+          "after": [
+            "    if exact_name:",
+            "        for m in macros:",
+            "            if m.name == exact_name:",
+            "                if want_ports and m.ports != want_ports:",
+            "                    raise ValueError(f\"ExactMacro {exact_name} has incompatible ports\")",
+            "                if m.depth < depth or m.width < width:",
+            "                    raise ValueError(f\"ExactMacro {exact_name} is smaller than requested {depth}x{width}\")",
+            "                if strict and (m.depth != depth or m.width != width):",
+            "                    raise ValueError(f\"ExactMacro {exact_name} does not match requested dimensions\")",
+            "                return m",
+            "        raise ValueError(f\"ExactMacro not in catalog: {exact_name}\")",
+            "",
+            "    candidates = list(macros)",
+            "    if want_ports:",
+            "        candidates = [m for m in candidates if m.ports == want_ports]",
+            "",
+            "    exact = [m for m in candidates if m.depth == depth and m.width == width]",
+            "    if exact:"
+          ]
+        },
+        {
+          "before": [
+            "    same_w = [m for m in candidates if m.width == width and m.depth >= depth]",
+            "    if same_w:",
+            "        return sorted(same_w, key=lambda m: m.depth)[0]",
+            "    # else closest area",
+            "    return min(candidates, key=lambda m: abs(m.depth * m.width - depth * width))",
+            "",
+            "",
+            "def generated_to_macro(g: GeneratedMacro) -> Macro:"
+          ],
+          "after": [
+            "    same_w = [m for m in candidates if m.width == width and m.depth >= depth]",
+            "    if same_w:",
+            "        return sorted(same_w, key=lambda m: m.depth)[0]",
+            "    # A larger area alone cannot provide the requested address/data dimensions.",
+            "    sufficient = [m for m in candidates if m.depth >= depth and m.width >= width]",
+            "    if not sufficient:",
+            "        raise ValueError(f\"No compatible catalog macro covers requested {depth}x{width}\")",
+            "    return min(sufficient, key=lambda m: (m.depth * m.width, m.depth, m.width, m.name))",
+            "",
+            "",
+            "def generated_to_macro(g: GeneratedMacro) -> Macro:"
+          ]
+        },
+        {
+          "before": [
+            "# ---------------------------------------------------------------------------",
+            "",
+            "",
+            "def emit_spram_wrap_openram(",
+            "    path: Path,",
+            "    wrap: str,"
+          ],
+          "after": [
+            "# ---------------------------------------------------------------------------",
+            "",
+            "",
+            "def emit_capacity_wrap(path, wrap, macro, depth, width, bit_write,",
+            "                       platform, dual=False, async_clk=False):",
+            "    \"\"\"Keep logical ports stable while padding a larger physical memory.\"\"\"",
+            "    if macro.depth < depth or macro.width < width:",
+            "        raise ValueError(\"Physical memory cannot cover the logical dimensions\")",
+            "    if platform == \"sky130\" and macro.width % max(1, macro.write_size):",
+            "        raise ValueError(\"Physical OpenRAM width must be divisible by its write-mask granule\")",
+            "    physical = wrap + \"__physical\"",
+            "    if dual:",
+            "        emit_tpram_wrap_openram(path, physical, macro, macro.depth, macro.width,",
+            "                               bit_write, async_clk)",
+            "    elif platform == \"sky130\":",
+            "        emit_spram_wrap_openram(path, physical, macro, macro.depth, macro.width, bit_write)",
+            "    else:",
+            "        emit_spram_wrap_fakeram(path, physical, macro.name, macro.depth, macro.width, bit_write)",
+            "    implementation = path.read_text(encoding=\"utf-8\")",
+            "    aw, paw = addr_width(depth), addr_width(macro.depth)",
+            "    granule = max(1, macro.write_size) if platform == \"sky130\" else 1",
+            "    masks = (width + granule - 1) // granule",
+            "    pmasks = (macro.width + granule - 1) // granule",
+            "    def pad(signal, logical, physical):",
+            "        return signal if logical == physical else \"{\" + str(physical-logical) + \"'b0, \" + signal + \"}\"",
+            "    ports, links, wires = [], [], []",
+            "    def input_port(name, bits=None):",
+            "        ports.append(\"  input \" + (f\"[{bits-1}:0] \" if bits else \"\") + name)",
+            "    def output_port(name):",
+            "        ports.append(f\"  output [{width-1}:0] {name}\")",
+            "        wires.extend([f\"  wire [{macro.width-1}:0] physical_{name};\",",
+            "                      f\"  assign {name} = physical_{name}[{width-1}:0];\"])",
+            "        links.append(f\".{name}(physical_{name})\")",
+            "    clocks = ['clka','clkb'] if dual and async_clk else ['clk']",
+            "    for name in clocks:",
+            "        input_port(name)",
+            "        links.append(f\".{name}({name})\")",
+            "    for name in (['ena','wea','enb'] if dual else ['me','we']):",
+            "        input_port(name)",
+            "        address = 'addrb' if name == 'enb' else ('addra' if dual else 'addr')",
+            "        expr = f\"{name} && ({{1'b0, {address}}} < {aw+1}'d{depth})\" if name in {'ena','enb','me'} else name",
+            "        links.append(f\".{name}({expr})\")",
+            "    for name in (['addra','addrb'] if dual else ['addr']):",
+            "        input_port(name, aw)",
+            "        links.append(f\".{name}({pad(name,aw,paw)})\")",
+            "    data = 'dina' if dual else 'din'",
+            "    input_port(data, width)",
+            "    links.append(f\".{data}({pad(data,width,macro.width)})\")",
+            "    if bit_write:",
+            "        input_port('wem', masks)",
+            "        links.append(f\".wem({pad('wem',masks,pmasks)})\")",
+            "    for name in (['douta','doutb'] if dual else ['dout']):",
+            "        output_port(name)",
+            "    lines = [f\"module {wrap} (\", ',\\n'.join(ports), ');', *wires,",
+            "             f\"  {physical} u_physical (\", '    ' + ',\\n    '.join(links),",
+            "             '  );', 'endmodule', '', implementation]",
+            "    write_text(path, lines)",
+            "",
+            "",
+            "def emit_spram_wrap_openram(",
+            "    path: Path,",
+            "    wrap: str,"
+          ]
+        },
+        {
+          "before": [
+            "        if macro.assets.get(\"v\") is None and req.platform == \"nangate45\":",
+            "            # emit FakeRAM behavioral model with macro name",
+            "            beh_path = beh_dir / f\"{macro.name}.v\"",
+            "            nmask = req.width if bit_write else req.width",
+            "            emit_beh_spram(beh_path, macro.name, macro.depth, macro.width, nmask)",
+            "            # also place under rtl for filelist convenience",
+            "            copy_asset(beh_path, rtl_dir, \"v\")",
+            "            assets_copied[\"v\"] = str(rtl_dir / f\"{macro.name}.v\")",
+            "            notes.append(\"generated FakeRAM behavioral .v\")",
+            "",
+            "        # depth/width must match macro for wiring",
+            "        depth, width = macro.depth, macro.width",
+            "        if depth != req.depth or width != req.width:",
+            "            notes.append(",
+            "                f\"macro resized match: requested {req.depth}x{req.width} → {depth}x{width}\"",
+            "            )",
+            "    else:",
+            "        depth, width = req.depth, req.width"
+          ],
+          "after": [
+            "        if macro.assets.get(\"v\") is None and req.platform == \"nangate45\":",
+            "            # emit FakeRAM behavioral model with macro name",
+            "            beh_path = beh_dir / f\"{macro.name}.v\"",
+            "            nmask = macro.width",
+            "            emit_beh_spram(beh_path, macro.name, macro.depth, macro.width, nmask)",
+            "            # also place under rtl for filelist convenience",
+            "            copy_asset(beh_path, rtl_dir, \"v\")",
+            "            assets_copied[\"v\"] = str(rtl_dir / f\"{macro.name}.v\")",
+            "            notes.append(\"generated FakeRAM behavioral .v\")",
+            "",
+            "        depth, width = req.depth, req.width",
+            "        if macro.depth != depth or macro.width != width:",
+            "            notes.append(",
+            "                f\"logical {depth}x{width} adapted to physical {macro.depth}x{macro.width}\"",
+            "            )",
+            "    else:",
+            "        depth, width = req.depth, req.width"
+          ]
+        },
+        {
+          "before": [
+            "        base = req.name or wrap_base_name(\"spram\", depth, width, req.platform, bit_write)",
+            "        wrap = base if base.endswith(\"_wrap\") else base + \"_wrap\"",
+            "        path = rtl_dir / f\"{wrap}.v\"",
+            "        if req.platform == \"sky130\":",
+            "            emit_spram_wrap_openram(path, wrap, macro, depth, width, bit_write)",
+            "        else:",
+            "            emit_spram_wrap_fakeram(path, wrap, macro.name, depth, width, bit_write)",
+            "        return GenResult(req, wrap, path, macro.name, assets_copied, \"; \".join(notes))",
+            "",
+            "    # --- TPRAM ---"
+          ],
+          "after": [
+            "        base = req.name or wrap_base_name(\"spram\", depth, width, req.platform, bit_write)",
+            "        wrap = base if base.endswith(\"_wrap\") else base + \"_wrap\"",
+            "        path = rtl_dir / f\"{wrap}.v\"",
+            "        emit_capacity_wrap(path, wrap, macro, depth, width, bit_write, req.platform)",
+            "        return GenResult(req, wrap, path, macro.name, assets_copied, \"; \".join(notes))",
+            "",
+            "    # --- TPRAM ---"
+          ]
+        },
+        {
+          "before": [
+            "        wrap = base if base.endswith(\"_wrap\") else base + \"_wrap\"",
+            "        path = rtl_dir / f\"{wrap}.v\"",
+            "        if macro is not None and req.platform == \"sky130\":",
+            "            emit_tpram_wrap_openram(",
+            "                path, wrap, macro, depth, width, bit_write, req.async_clk",
+            "            )",
+            "            return GenResult(req, wrap, path, macro.name, assets_copied, \"; \".join(notes))",
+            "        # behavioral dual-port",
+            "        beh_mod = f\"tpram_{depth}d{width}w_beh\""
+          ],
+          "after": [
+            "        wrap = base if base.endswith(\"_wrap\") else base + \"_wrap\"",
+            "        path = rtl_dir / f\"{wrap}.v\"",
+            "        if macro is not None and req.platform == \"sky130\":",
+            "            emit_capacity_wrap(path, wrap, macro, depth, width, bit_write,",
+            "                               req.platform, dual=True, async_clk=req.async_clk)",
+            "            return GenResult(req, wrap, path, macro.name, assets_copied, \"; \".join(notes))",
+            "        # behavioral dual-port",
+            "        beh_mod = f\"tpram_{depth}d{width}w_beh\""
+          ]
+        },
+        {
+          "before": [
+            "        ram_wrap = ram_base + \"_wrap\"",
+            "        ram_path = rtl_dir / f\"{ram_wrap}.v\"",
+            "        if not ram_path.is_file():",
+            "            if req.platform == \"sky130\":",
+            "                emit_spram_wrap_openram(ram_path, ram_wrap, macro, depth, width, bit_write)",
+            "            else:",
+            "                emit_spram_wrap_fakeram(ram_path, ram_wrap, macro.name, depth, width, bit_write)",
+            "        base = req.name or wrap_base_name(\"sfifo\", depth, width, req.platform, bit_write)",
+            "        wrap = base if base.endswith(\"_wrap\") else base + \"_wrap\"",
+            "        path = rtl_dir / f\"{wrap}.v\""
+          ],
+          "after": [
+            "        ram_wrap = ram_base + \"_wrap\"",
+            "        ram_path = rtl_dir / f\"{ram_wrap}.v\"",
+            "        if not ram_path.is_file():",
+            "            emit_capacity_wrap(ram_path, ram_wrap, macro, depth, width, bit_write, req.platform)",
+            "        base = req.name or wrap_base_name(\"sfifo\", depth, width, req.platform, bit_write)",
+            "        wrap = base if base.endswith(\"_wrap\") else base + \"_wrap\"",
+            "        path = rtl_dir / f\"{wrap}.v\""
+          ]
+        },
+        {
+          "before": [
+            "        t_path = rtl_dir / f\"{t_wrap}.v\"",
+            "        if not t_path.is_file():",
+            "            if macro is not None and req.platform == \"sky130\":",
+            "                emit_tpram_wrap_openram(t_path, t_wrap, macro, depth, width, bit_write, True)",
+            "            else:",
+            "                beh_mod = f\"tpram_{depth}d{width}w_beh\"",
+            "                beh_path = rtl_dir / f\"{beh_mod}.v\""
+          ],
+          "after": [
+            "        t_path = rtl_dir / f\"{t_wrap}.v\"",
+            "        if not t_path.is_file():",
+            "            if macro is not None and req.platform == \"sky130\":",
+            "                emit_capacity_wrap(t_path, t_wrap, macro, depth, width, bit_write,",
+            "                                   req.platform, dual=True, async_clk=True)",
+            "            else:",
+            "                beh_mod = f\"tpram_{depth}d{width}w_beh\"",
+            "                beh_path = rtl_dir / f\"{beh_mod}.v\""
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".agents/skills/soc-build/SKILL.md",
+      "before_sha256": "999f6b0ed0a81e5001dd1f42452164e803ef348c5032394105a24b3398e4f7d6",
+      "after_sha256": "d513e944ddb5fdb3630ff2312bb76782e5325bf896de8bfd11fcf57cce1b6bf0",
+      "hunks": [
+        {
+          "before": [
+            "---",
+            "name: soc-build",
+            "description: Create and operate canonical SoC project/module scaffolds through registered MCP tools for filelists, lint, compile, simulation, regression, coverage, and synthesis. Use for SoC project setup and any EDA Make-target execution.",
+            "---",
+            "",
+            "# SoC Build",
+            "",
+            "Use the registered `soc-build` MCP server. Do not import its FastMCP object directly and do not replace EDA tool calls with shell commands.",
+            "",
+            "## Runtime setup",
+            "",
+            "Project `.codex/config.toml` registers the MCP servers for this direct repo install. If the launcher reports missing Python modules, run:"
+          ],
+          "after": [
+            "---",
+            "name: soc-build",
+            "description: Scaffold and operate Make-based SoC projects through registered MCP tools. Not for Bazel projects or automatic simulation after DV edits.",
+            "---",
+            "",
+            "# SoC Build",
+            "",
+            "Use the registered `soc-build` MCP server. Do not import its FastMCP object directly and do not replace EDA tool calls with shell commands.",
+            "",
+            "Use this skill only for a project using this Make backend. Existing Bazel projects",
+            "use their project adapter; similarly named tools are not interchangeable.",
+            "",
+            "## Runtime setup",
+            "",
+            "Project `.codex/config.toml` registers the MCP servers for this direct repo install. If the launcher reports missing Python modules, run:"
+          ]
+        },
+        {
+          "before": [
+            "",
+            "## Canonical project layout",
+            "",
+            "Every chip module and IP uses the same structure:",
+            "",
+            "```text",
+            "<module>/"
+          ],
+          "after": [
+            "",
+            "## Canonical project layout",
+            "",
+            "New modules scaffolded by this Make backend use the following structure;",
+            "do not reorganize an existing project's layout to match it:",
+            "",
+            "```text",
+            "<module>/"
+          ]
+        },
+        {
+          "before": [
+            "- RTL agents call `soc_lint`; MCP allows Verilator (default), SpyGlass, or optional VC Static; no direct EDA fallback.",
+            "- CDC/RDC side-lane (`soc-cdc-engineer`) calls `soc_cdc` (SpyGlass default, `vc_static` extra) and/or `soc_rdc` (`vc_static` only).",
+            "- DFT side-lane (`soc-dft-engineer`) generates collateral via `dft-gen`, then calls `soc_dft` (`vc_static` only).",
+            "- Verification agents call `soc_sim` or `soc_regress`; no direct Make/simulator fallback.",
+            "- Synthesis agents call `soc_syn`; use `syn_tool=dc` for Design Compiler or `syn_tool=yosys` for structural checks. Yosys output is not STA evidence.",
+            "- Formal agents call `soc_formal` with the exact `run_id` and `source_fingerprint` emitted by `soc_syn`. Plain DC snapshots run ordinary RTL-to-netlist equivalence; snapshots containing both canonical and saved UPF run the UPF-aware mode.",
+            "- Commercial simulator/license work must remain in the registered MCP process."
+          ],
+          "after": [
+            "- RTL agents call `soc_lint`; MCP allows Verilator (default), SpyGlass, or optional VC Static; no direct EDA fallback.",
+            "- CDC/RDC side-lane (`soc-cdc-engineer`) calls `soc_cdc` (SpyGlass default, `vc_static` extra) and/or `soc_rdc` (`vc_static` only).",
+            "- DFT side-lane (`soc-dft-engineer`) generates collateral via `dft-gen`, then calls `soc_dft` (`vc_static` only).",
+            "- After DV edits, propose applicable inspection and compile-only checks. Run simulation, regression, coverage, synthesis, or CDC only when selected by the engineer; reuse selections already made for this task. Report each selected check's result. An approved `soc_sim` includes compilation, so do not repeat it unnecessarily. No direct Make/simulator fallback.",
+            "- Synthesis agents call `soc_syn`; use `syn_tool=dc` for Design Compiler or `syn_tool=yosys` for structural checks. Yosys output is not STA evidence.",
+            "- Formal agents call `soc_formal` with the exact `run_id` and `source_fingerprint` emitted by `soc_syn`. Plain DC snapshots run ordinary RTL-to-netlist equivalence; snapshots containing both canonical and saved UPF run the UPF-aware mode.",
+            "- Commercial simulator/license work must remain in the registered MCP process."
+          ]
+        },
+        {
+          "before": [
+            "- When lint reports any real rule violation at error or warning severity, first query the local SoC AI knowledge base (`soc-ai-kb`) using the rule/tag name and diagnostic text. If the knowledge base has no relevant guidance, reason from the tool report, RTL, and local coding rules."
+          ],
+          "after": [
+            "- If the project provides a registered or documented `soc-ai-kb` lookup, use it when relevant to a lint diagnostic. Otherwise reason from the tool report, RTL and local coding rules; do not invent a missing knowledge-base tool or block triage on it."
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".agents/skills/soc-integrate/scripts/soc_integrate.py",
+      "hunks": [
+        {
+          "before": [
+            "    name_match = re.match(r'(\\w+)', remaining)"
+          ],
+          "after": [
+            "    name_match = re.fullmatch(r'([a-zA-Z_][a-zA-Z0-9_$]*)', remaining)"
+          ]
+        },
+        {
+          "before": [
+            "def generate_wrapper(module, wrapper_name=None):",
+            "    \"\"\"生成wrapper模块 - 内部实例化直接连接wrapper端口\"\"\"",
+            "    if not wrapper_name:",
+            "        wrapper_name = f\"{module.name}_wrap\"",
+            "    ",
+            "    lines = []",
+            "    max_port_len = max(len(name) for _, _, name in module.ports) if module.ports else 0",
+            "    max_dir_len = max(len(d) for d, _, _ in module.ports) if module.ports else 0",
+            "    max_width_len = max(len(w) if w else 0 for _, w, _ in module.ports) if module.ports else 0",
+            "    ",
+            "    lines.append(f\"module {wrapper_name} (\")",
+            "    ",
+            "    # 端口声明（对齐）",
+            "    port_decls = []",
+            "    for direction, width, name in module.ports:",
+            "        w = width if width else \"\"",
+            "        port_decls.append(f\"    {direction:<{max_dir_len}} {w:<{max_width_len}} {name}\")",
+            "    lines.append(\",\\n\".join(port_decls))",
+            "    lines.append(\");\")",
+            "    lines.append(\"\")",
+            "    ",
+            "    # 实例化 - 直接用wrapper端口名连接（不加_i/_o后缀）",
+            "    instance_name = f\"u_{module.name.lower()}_inst\"",
+            "    ",
+            "    if module.params:",
+            "        lines.append(f\"    {module.name} #(\")",
+            "        for i, (pname, pdefault, pwidth) in enumerate(module.params):",
+            "            comma = \",\" if i < len(module.params) - 1 else \"\"",
+            "            lines.append(f\"        .{pname:<{max_port_len}} ({pdefault}){comma}\")",
+            "        lines.append(f\"    ) {instance_name} (\")",
+            "    else:",
+            "        lines.append(f\"    {module.name} {instance_name} (\")",
+            "    ",
+            "    for i, (direction, width, name) in enumerate(module.ports):",
+            "        comma = \",\" if i < len(module.ports) - 1 else \"\"",
+            "        w = resolve_param_width(width, module.params) if width else \"\"",
+            "        if w:",
+            "            lines.append(f\"        .{name:<{max_port_len}} ({name}{w}){comma}\")",
+            "        else:",
+            "            lines.append(f\"        .{name:<{max_port_len}} ({name}){comma}\")",
+            "    ",
+            "    lines.append(\"    );\")",
+            "    lines.append(\"\")",
+            "    lines.append(\"endmodule\")",
+            "    ",
+            "    return \"\\n\".join(lines)",
+            ""
+          ],
+          "after": [
+            "def generate_wrapper(module, wrapper_name=None):",
+            "    \"\"\"生成wrapper模块 - 内部实例化直接连接wrapper端口\"\"\"",
+            "    if not wrapper_name:",
+            "        wrapper_name = f\"{module.name}_wrap\"",
+            "    ",
+            "    lines = []",
+            "    max_port_len = max(len(name) for _, _, name in module.ports) if module.ports else 0",
+            "    max_dir_len = max(len(d) for d, _, _ in module.ports) if module.ports else 0",
+            "    max_width_len = max(len(w) if w else 0 for _, w, _ in module.ports) if module.ports else 0",
+            "    ",
+            "    if module.params:",
+            "        lines.append(f\"module {wrapper_name} #(\")",
+            "        for i, (pname, pdefault, pwidth) in enumerate(module.params):",
+            "            comma = \",\" if i < len(module.params) - 1 else \"\"",
+            "            declared_width = f\" [{pwidth}]\" if pwidth else \"\"",
+            "            lines.append(f\"    parameter{declared_width} {pname} = {pdefault}{comma}\")",
+            "        lines.append(\") (\")",
+            "    else:",
+            "        lines.append(f\"module {wrapper_name} (\")",
+            "    ",
+            "    # 端口声明（对齐）",
+            "    port_decls = []",
+            "    for direction, width, name in module.ports:",
+            "        w = width if width else \"\"",
+            "        port_decls.append(f\"    {direction:<{max_dir_len}} {w:<{max_width_len}} {name}\")",
+            "    lines.append(\",\\n\".join(port_decls))",
+            "    lines.append(\");\")",
+            "    lines.append(\"\")",
+            "    ",
+            "    # 实例化 - 直接用wrapper端口名连接（不加_i/_o后缀）",
+            "    instance_name = f\"u_{module.name.lower()}_inst\"",
+            "    ",
+            "    if module.params:",
+            "        lines.append(f\"    {module.name} #(\")",
+            "        for i, (pname, pdefault, pwidth) in enumerate(module.params):",
+            "            comma = \",\" if i < len(module.params) - 1 else \"\"",
+            "            lines.append(f\"        .{pname:<{max_port_len}} ({pname}){comma}\")",
+            "        lines.append(f\"    ) {instance_name} (\")",
+            "    else:",
+            "        lines.append(f\"    {module.name} {instance_name} (\")",
+            "    ",
+            "    for i, (direction, width, name) in enumerate(module.ports):",
+            "        comma = \",\" if i < len(module.ports) - 1 else \"\"",
+            "        w = width",
+            "        if w:",
+            "            lines.append(f\"        .{name:<{max_port_len}} ({name}{w}){comma}\")",
+            "        else:",
+            "            lines.append(f\"        .{name:<{max_port_len}} ({name}){comma}\")",
+            "    ",
+            "    lines.append(\"    );\")",
+            "    lines.append(\"\")",
+            "    lines.append(\"endmodule\")",
+            "    ",
+            "    return \"\\n\".join(lines)",
+            ""
+          ]
+        },
+        {
+          "before": [
+            "        extracted_shared = extracted.get('shared_signals', {})"
+          ],
+          "after": [
+            "        extracted_shared = extracted.get('shared_signals', {})",
+            "",
+            "        # The old top can still contain instances intentionally removed from",
+            "        # config. Keep mapping sync within the current configured module set.",
+            "        active_modules = {item['module_name'] for item in config['modules']}",
+            "        extracted_map = {key: value for key, value in extracted_map.items()",
+            "                         if key.split('.', 1)[0] in active_modules}",
+            "        extracted_shared = {",
+            "            signal: [key for key in keys if key in extracted_map]",
+            "            for signal, keys in extracted_shared.items()",
+            "            if sum(key in extracted_map for key in keys) >= 2",
+            "        }"
+          ]
+        }
+      ],
+      "before_sha256": "bf357e1a63d507c8914a7267264611cebb6d81955c78384ed598a22ebf5cb32b",
+      "after_sha256": "fce19dcb74a8d944a5135a394a3d9144249c49e828a2e4cc224f4002929df36f"
+    },
+    {
+      "path": ".agents/skills/lib-db-gen/scripts/lib_db_gen.py",
+      "hunks": [
+        {
+          "before": [
+            "def parse_decl_item(item: str, current_direction: str | None, current_range: tuple[int | None, int | None, str]) -> tuple[list[Port], str | None, tuple[int | None, int | None, str]]:",
+            "    item = item.strip().rstrip(\")\")",
+            "    item = re.sub(r\"=.*$\", \"\", item).strip()",
+            "    if not item:",
+            "        return [], current_direction, current_range",
+            "    tokens = item.replace(\";\", \" \").split()",
+            "    direction = current_direction",
+            "    explicit_direction = False",
+            "    if tokens and tokens[0] in {\"input\", \"output\", \"inout\"}:",
+            "        direction = tokens.pop(0)",
+            "        explicit_direction = True",
+            "    if direction is None:",
+            "        return [], direction, current_range",
+            "    tokens = [tok for tok in tokens if tok not in {\"wire\", \"reg\", \"logic\", \"tri\", \"signed\", \"unsigned\", \"var\"}]",
+            "    msb, lsb, range_text, tokens = parse_range(tokens)",
+            "    if range_text:",
+            "        current_range = (msb, lsb, range_text)",
+            "    elif explicit_direction:",
+            "        current_range = (None, None, \"\")",
+            "    elif tokens and current_direction == direction:",
+            "        msb, lsb, range_text = current_range",
+            "    names: list[str] = []",
+            "    for token in tokens:",
+            "        clean = token.strip().strip(\",\")",
+            "        m = re.match(r\"([A-Za-z_][A-Za-z0-9_$]*)\", clean)",
+            "        if m:",
+            "            names.append(m.group(1))",
+            "    return [Port(name, direction, msb, lsb, range_text) for name in names], direction, current_range",
+            ""
+          ],
+          "after": [
+            "def parse_decl_item(",
+            "    item: str, current_direction: str | None,",
+            "    current_range: tuple[int | None, int | None, str],",
+            ") -> tuple[list[Port], str | None, tuple[int | None, int | None, str]]:",
+            "    \"\"\"Parse one complete scalar/one-dimensional declaration, never a prefix.\"\"\"",
+            "    item = re.sub(r\"=.*$\", \"\", item.strip().rstrip(\";\")).strip()",
+            "    if not item:",
+            "        return [], current_direction, current_range",
+            "    direction_match = re.match(r\"(input|output|inout)\\b\", item)",
+            "    direction = current_direction",
+            "    if direction_match:",
+            "        direction = direction_match.group(1)",
+            "        current_range = (None, None, \"\")",
+            "        item = item[direction_match.end():].strip()",
+            "    if direction is None:",
+            "        return [], direction, current_range  # non-ANSI header, resolved from body",
+            "    while True:",
+            "        keyword = re.match(r\"(wire|reg|logic|tri|signed|unsigned|var)\\b\", item)",
+            "        if not keyword:",
+            "            break",
+            "        item = item[keyword.end():].strip()",
+            "    packed = re.match(r\"\\[[^\\[\\]]+\\]\", item)",
+            "    if packed:",
+            "        msb, lsb, range_text, _ = parse_range([packed.group(0)])",
+            "        current_range = (msb, lsb, range_text)",
+            "        item = item[packed.end():].strip()",
+            "    if not re.fullmatch(r\"[A-Za-z_][A-Za-z0-9_$]*\", item):",
+            "        raise ValueError(\"unsupported port declaration; use a normalized wrapper: \" + item)",
+            "    msb, lsb, range_text = current_range",
+            "    return [Port(item, direction, msb, lsb, range_text)], direction, current_range",
+            ""
+          ]
+        },
+        {
+          "before": [
+            "        port_order = [p.strip().strip(\".\") for p in split_top_level_commas(port_text)]",
+            "        decls: dict[str, Port] = {}",
+            "        for match in re.finditer(r\"\\b(input|output|inout)\\b\\s+([^;]+);\", body, flags=re.S):",
+            "            direction = match.group(1)",
+            "            decl_body = match.group(2).replace(\"\\n\", \" \")",
+            "            msb = lsb = None",
+            "            range_text = \"\"",
+            "            range_match = re.search(r\"\\[[^\\]]+\\]\", decl_body)",
+            "            if range_match:",
+            "                range_text = range_match.group(0)",
+            "                nums = re.match(r\"\\[\\s*(-?\\d+)\\s*:\\s*(-?\\d+)\\s*\\]\", range_text)",
+            "                if nums:",
+            "                    msb, lsb = int(nums.group(1)), int(nums.group(2))",
+            "            decl_body = re.sub(r\"\\[[^\\]]+\\]\", \" \", decl_body)",
+            "            decl_body = re.sub(r\"\\b(wire|reg|logic|tri|signed|unsigned|var)\\b\", \" \", decl_body)",
+            "            for name in split_top_level_commas(decl_body):",
+            "                m = re.match(r\"\\s*([A-Za-z_][A-Za-z0-9_$]*)\", name)",
+            "                if m:",
+            "                    decls[m.group(1)] = Port(m.group(1), direction, msb, lsb, range_text)",
+            "        ports = [decls[name] for name in port_order if name in decls]"
+          ],
+          "after": [
+            "        port_order = [p.strip() for p in split_top_level_commas(port_text)]",
+            "        decls: dict[str, Port] = {}",
+            "        for match in re.finditer(r\"\\b(input|output|inout)\\b\\s+([^;]+);\", body, flags=re.S):",
+            "            declaration = match.group(1) + \" \" + match.group(2)",
+            "            direction = None",
+            "            inherited_range = (None, None, \"\")",
+            "            for item in split_top_level_commas(declaration):",
+            "                parsed, direction, inherited_range = parse_decl_item(item, direction, inherited_range)",
+            "                for port in parsed:",
+            "                    decls[port.name] = port",
+            "        missing = [name for name in port_order if name not in decls]",
+            "        if missing:",
+            "            raise ValueError(\"undeclared or unsupported non-ANSI ports: \" + \", \".join(missing))",
+            "        ports = [decls[name] for name in port_order]"
+          ]
+        }
+      ],
+      "before_sha256": "37b398d556f5b19069c62808bed0d4e2c799eb99ba1b8af8109b5edd3ed3a66d",
+      "after_sha256": "9672fb1dd32bc75b0af90488d2fe99257b5932a325a983bc89afeda08172de61"
+    },
+    {
+      "path": ".agents/skills/soc-build/mcp_server.py",
+      "before_sha256": "efdd9bb911e34cf83a4653698ba1dbe42a9bafdf504aab69a10eab6e9eadb8d4",
+      "after_sha256": "fc7e71403a16ff4d05f5a4d5f93f96a70882b364be2d80029f844b551748fe04",
+      "hunks": [
+        {
+          "before": [
+            "    args = [path]",
+            "    if output:",
+            "        args += [\"-o\", output]",
+            "    if recursive:",
+            "        args += [\"-r\"]",
+            "    return _python(\"soc_gen_flist.py\", *args)"
+          ],
+          "after": [
+            "    args = [path, \"-o\", output or \"-\", \"-r\" if recursive else \"-n\"]",
+            "    return _python(\"soc_gen_flist.py\", *args)"
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".agents/skills/soc-build/scripts/soc_gen_flist.py",
+      "before_sha256": "eac910dccb8244e8b64470d30a4dfb21facd7e74ee7c30fc47f224b3fb0766ad",
+      "after_sha256": "0ca78cc3b88a9b137ecc3b63f34d7a909bdb26d9bd8706337480455875c5adcb",
+      "hunks": [
+        {
+          "before": [
+            "    out_path = Path(output)",
+            "    out_path.parent.mkdir(parents=True, exist_ok=True)",
+            "",
+            "    with open(out_path, \"w\", encoding=\"utf-8\") as f:",
+            "        f.write(f\"# Auto-generated filelist: {out_path.name}\\n\")",
+            "        f.write(f\"# Source path: {path}\\n\")",
+            "        f.write(f\"# Total files: {len(unique_files)}\\n\")",
+            "        for file in unique_files:",
+            "            f.write(file + \"\\n\")",
+            "",
+            "    print(f\"[OK] Filelist generated: {out_path} ({len(unique_files)} files)\")"
+          ],
+          "after": [
+            "    label = \"stdout\" if output == \"-\" else Path(output).name",
+            "    content = (f\"# Auto-generated filelist: {label}\\n\"",
+            "               f\"# Source path: {path}\\n\"",
+            "               f\"# Total files: {len(unique_files)}\\n\"",
+            "               + \"\".join(file + \"\\n\" for file in unique_files))",
+            "    if output == \"-\":",
+            "        sys.stdout.write(content)",
+            "    else:",
+            "        out_path = Path(output)",
+            "        out_path.parent.mkdir(parents=True, exist_ok=True)",
+            "        out_path.write_text(content, encoding=\"utf-8\")",
+            "        print(f\"[OK] Filelist generated: {out_path} ({len(unique_files)} files)\")"
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".agents/skills/crg-gen/scripts/yml2reg/yml2reg.py",
+      "before_sha256": "f285da8eb14581ec004a8b8a4656d3607b771c592059232113bc74ca4b0bdbea",
+      "after_sha256": "7b3a378f268ff805a0df5a32a7067ba7887b2616e4efd2363227d7209274ebdb",
+      "hunks": [
+        {
+          "before": [
+            "def yml2regfile(data, protocol):",
+            "    fp = open(data[\"name\"].upper()+\"_\"+protocol+\"_regfile.v\", \"w\")",
+            "    print_line = []",
+            "",
+            "    add_header(print_line, data[\"name\"].upper()+\"_\"+protocol+\"_regfile.v\")",
+            "",
+            "    print_line.append(\"module \"+data[\"name\"].upper()+\"_\"+protocol+\"_regfile(\")",
+            "    if protocol == \"apb\":",
+            "        print_line.append('    input           apb_clk,')",
+            "        print_line.append('    input           apb_rst_n,')",
+            "        print_line.append('    input           apb_sel,')",
+            "        print_line.append('    input           apb_enable,')",
+            "        print_line.append('    input           apb_write,')",
+            "        print_line.append('    input   [31:0]  apb_addr, ')",
+            "        print_line.append('    input   [31:0]  apb_wdata,')",
+            "        print_line.append('    output          apb_ready,')",
+            "        print_line.append('    output          apb_slverr,')",
+            "        print_line.append('    output reg [31:0]  apb_rdata,')",
+            "    elif protocol == \"dab\":",
+            "        print_line.append('    input           dab_clk,')",
+            "        print_line.append('    input           dab_rst_n,')",
+            "        print_line.append('    input           dab_write,')",
+            "        print_line.append('    input           dab_read,')",
+            "        print_line.append('    input  [31:0]   dab_addr,')",
+            "        print_line.append('    input  [31:0]   dab_wdata,')",
+            "        print_line.append('    output reg [31:0]   dab_rdata,')",
+            "        print_line.append('    output          dab_ready,')",
+            "    elif protocol == \"ahb\":",
+            "        print_line.append(\"    input           ahb_clk,\")",
+            "        print_line.append(\"    input           ahb_rst_n,\")",
+            "        print_line.append(\"    input           ahb_readyin,\")",
+            "        print_line.append(\"    input           ahb_sel,\")",
+            "        print_line.append(\"    input  [1:0]    ahb_trans,\")",
+            "        print_line.append(\"    input           ahb_write,\")",
+            "        print_line.append(\"    input  [2:0]    ahb_burst,\")",
+            "        print_line.append(\"    input  [2:0]    ahb_size,\")",
+            "        print_line.append(\"    input  [31:0]   ahb_addr,\")",
+            "        print_line.append(\"    input  [31:0]   ahb_wdata,\")",
+            "        print_line.append(\"    output          ahb_readyout,\")",
+            "        print_line.append(\"    output [1:0]    ahb_resp,\")",
+            "        print_line.append(\"    output reg [31:0]   ahb_rdata,\")",
+            "",
+            "    for reg_info in data[\"registers\"]:",
+            "        for fields_info in reg_info[\"fields\"]:",
+            "            if fields_info[\"access\"] in (\"rw\", \"wo\", \"w1t\", \"wc\"):",
+            "                if fields_info[\"bits\"] == 1:",
+            "                    print_line.append(\"\\toutput reg\\t\\t\\t\"+fields_info[\"name\"]+\",\")",
+            "                else:",
+            "                    print_line.append(\"\\toutput reg\\t[\"+str(fields_info[\"bits\"]-1)+\":0]\\t\\t\"+fields_info[\"name\"]+\",\")",
+            "            elif fields_info[\"access\"] == \"ro\":",
+            "                if fields_info[\"bits\"] == 1:",
+            "                    print_line.append(\"\\tinput \\t\\t\\t\\t\"+fields_info[\"name\"]+\",\")",
+            "                else:",
+            "                    print_line.append(\"\\tinput \\t[\"+str(fields_info[\"bits\"]-1)+\":0]\\t\\t\"+fields_info[\"name\"]+\",\")",
+            "    print_line[-1] = print_line[-1].strip(',')",
+            "    print_line.append(\");\")",
+            "    print_line.append(\"\")",
+            "",
+            "    if protocol == \"apb\":",
+            "        for reg_info in data[\"registers\"]:",
+            "            for fields_info in reg_info[\"fields\"]:",
+            "                if fields_info[\"access\"] in (\"rw\", \"wo\", \"w1t\", \"wc\"):",
+            "                    print_line.append(\"wire\\t\"+fields_info[\"name\"]+\"_wr;\")",
+            "            has_rd = any(f[\"access\"] in (\"rw\", \"ro\") for f in reg_info[\"fields\"])",
+            "            if has_rd:",
+            "                print_line.append(\"wire\\t\"+reg_info[\"name\"]+\"_rd;\")",
+            "                print_line.append(\"wire\\t[31:0]\\t\"+reg_info[\"name\"]+\"_rdata;\")",
+            "",
+            "        print_line.append(\"wire\\twr_en;\")",
+            "        print_line.append(\"wire\\trd_en;\")",
+            "        print_line.append(\"reg \\t[31:0]\\tapb_rdata_pre;\")",
+            "        print_line.append(\"\")",
+            "        print_line.append(\"assign\\tapb_ready = 1'b1;\")",
+            "        print_line.append(\"assign\\tapb_slverr = 1'b0;\")",
+            "        print_line.append(\"\")",
+            "        print_line.append(\"assign\\twr_en = apb_write & !apb_enable & apb_sel;\")",
+            "        print_line.append(\"assign\\trd_en = !apb_write & !apb_enable & apb_sel;\")",
+            "        print_line.append(\"\")",
+            "",
+            "        for reg_info in data[\"registers\"]:",
+            "            offset_hex = hex(reg_info[\"offset\"]).replace(\"0x\", \"\")",
+            "            for fields_info in reg_info[\"fields\"]:",
+            "                if fields_info[\"access\"] in (\"rw\", \"wo\", \"w1t\", \"wc\"):",
+            "                    print_line.append(\"assign\\t\"+fields_info[\"name\"]+\"_wr = (apb_addr[31:0] == 32'h\"+offset_hex+\") & wr_en;\")",
+            "            has_rd = any(f[\"access\"] in (\"rw\", \"ro\") for f in reg_info[\"fields\"])",
+            "            if has_rd:",
+            "                print_line.append(\"assign\\t\"+reg_info[\"name\"]+\"_rd = (apb_addr[31:0] == 32'h\"+offset_hex+\") & rd_en;\")",
+            "        print_line.append(\"\")",
+            "",
+            "        for reg_info in data[\"registers\"]:",
+            "            for fields_info in reg_info[\"fields\"]:",
+            "                if fields_info[\"access\"] in (\"rw\", \"wo\", \"w1t\", \"wc\"):",
+            "                    print_line.append(\"always @(posedge apb_clk or negedge apb_rst_n)begin\")",
+            "                    print_line.append(\"\\tif(!apb_rst_n)\")",
+            "                    print_line.append(\"\\t\\t\"+fields_info[\"name\"]+\" <= \"+str(fields_info[\"bits\"])+\"\\'h\"+str(fields_info[\"reset\"])+\";\")",
+            "                    print_line.append(\"\\telse if (\"+fields_info[\"name\"]+\"_wr == 1'b1)\")",
+            "                    print_line.append(\"\\t\\t\"+fields_info[\"name\"]+\" <= apb_wdata[\"+str(fields_info[\"lsb\"]+fields_info[\"bits\"]-1)+\":\"+str(fields_info[\"lsb\"])+\"];\")",
+            "                    if fields_info[\"access\"] in (\"w1t\", \"wc\"):",
+            "                        print_line.append(\"\\telse\")",
+            "                        print_line.append(\"\\t\\t\"+fields_info[\"name\"]+\" <= \"+str(fields_info[\"bits\"])+\"\\'h0;\")",
+            "                    print_line.append(\"end\")",
+            "                    print_line.append(\"\")",
+            "",
+            "        for reg_info in data[\"registers\"]:",
+            "            has_rd = any(f[\"access\"] in (\"rw\", \"ro\") for f in reg_info[\"fields\"])",
+            "            if not has_rd:",
+            "                continue",
+            "            fields_bits_list = []",
+            "            for fields_info in reg_info[\"fields\"]:",
+            "                fields_bits_list.append(str(fields_info[\"lsb\"]+fields_info[\"bits\"]-1)+\":\"+str(fields_info[\"lsb\"]))",
+            "            parsed_ranges = parse_bit_ranges(fields_bits_list)",
+            "            full_range = generate_full_range(31)",
+            "            missing_bits = find_missing_bits(parsed_ranges, full_range)",
+            "",
+            "            for fields_info in reg_info[\"fields\"]:",
+            "                if fields_info[\"access\"] in (\"ro\", \"rw\"):",
+            "                    print_line.append(\"assign\\t\"+reg_info[\"name\"]+\"_rdata[\"+str(fields_info[\"lsb\"]+fields_info[\"bits\"]-1)+\":\"+str(fields_info[\"lsb\"])+\"] = \"+fields_info[\"name\"]+\";\")",
+            "            for start, end in merge_consecutive_bits(missing_bits):",
+            "                if start == end:",
+            "                    print_line.append(\"assign\\t\"+reg_info[\"name\"]+\"_rdata[\"+str(start)+\"] = 1'b0;\")",
+            "                else:",
+            "                    print_line.append(\"assign\\t\"+reg_info[\"name\"]+\"_rdata[\"+str(end)+\":\"+str(start)+\"] = \"+str(end-start+1)+\"'b0;\")",
+            "        print_line.append(\"\")",
+            "",
+            "        print_line.append(\"assign apb_rdata_pre[31:0] = \")",
+            "        for reg_info in data[\"registers\"]:",
+            "            has_rd = any(f[\"access\"] in (\"rw\", \"ro\") for f in reg_info[\"fields\"])",
+            "            if has_rd:",
+            "                print_line.append(\"\\t\"+reg_info[\"name\"]+\"_rd ? \"+reg_info[\"name\"]+\"_rdata[31:0] :\")",
+            "        print_line.append(\"\\t32'hdeadbeef;\")",
+            "        print_line.append(\"\")",
+            "",
+            "        print_line.append(\"always @(posedge apb_clk or negedge apb_rst_n)begin\")",
+            "        print_line.append(\"\\tif(!apb_rst_n)\")",
+            "        print_line.append(\"\\t\\tapb_rdata[31:0] <= 32'h0;\")",
+            "        print_line.append(\"\\telse\")",
+            "        print_line.append(\"\\t\\tapb_rdata[31:0] <= apb_rdata_pre[31:0];\")",
+            "        print_line.append(\"end\")",
+            "",
+            "    elif protocol == \"dab\":",
+            "        print_line.append(\"// TODO: protocol logic not yet implemented\")",
+            "        print_line.append(\"assign dab_rdata = 32'h0;\")",
+            "        print_line.append(\"assign dab_ready = 1'b1;\")",
+            "    elif protocol == \"ahb\":",
+            "        print_line.append(\"// TODO: AHB protocol logic not yet implemented\")",
+            "        print_line.append(\"assign ahb_rdata = 32'h0;\")",
+            "        print_line.append(\"assign ahb_readyout = 1'b1;\")",
+            "        print_line.append(\"assign ahb_resp = 2'b00;\")",
+            "",
+            "    print_line.append(\"\")",
+            "    print_line.append(\"endmodule\")",
+            "",
+            "    for line in print_line:",
+            "        fp.write(line)",
+            "        fp.write('\\n')",
+            "",
+            "    fp.close()"
+          ],
+          "after": [
+            "def yml2regfile(data, protocol):",
+            "    \"\"\"Reuse the maintained register generator; keep the CRG-specific interface.\"\"\"",
+            "    import copy",
+            "    import runpy",
+            "    from pathlib import Path",
+            "    if protocol != \"apb\":",
+            "        raise ValueError(\"CRG register generation currently implements APB only; no placeholder bus RTL\")",
+            "    data = copy.deepcopy(data)",
+            "    for register in data[\"registers\"]:",
+            "        for field in register[\"fields\"]:",
+            "            field[\"name\"] = register[\"name\"] + \"_\" + field[\"name\"]",
+            "    scripts = Path(__file__).resolve().parents[3] / \"yml2reg\" / \"scripts\"",
+            "    backend = scripts / \"yml2reg.py\"",
+            "    if not backend.is_file():",
+            "        raise FileNotFoundError(\"CRG requires the sibling yml2reg skill; install both from the same kit export\")",
+            "    loaded = sys.modules.get(\"yml_model\")",
+            "    if loaded is not None and Path(loaded.__file__).resolve() != (scripts / \"yml_model.py\").resolve():",
+            "        raise RuntimeError(\"A different yml_model is already loaded; refusing mixed generator versions\")",
+            "    previous = list(sys.path)",
+            "    try:",
+            "        sys.path.insert(0, str(scripts))",
+            "        return runpy.run_path(str(backend))[\"yml2regfile\"](data, protocol)",
+            "    finally:",
+            "        sys.path[:] = previous"
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".agents/skills/crg-gen/scripts/crg_gen.py",
+      "before_sha256": "ab494a6822b524f8c0e189655317061d38c971180eb946f09acb9615d6a54e40",
+      "after_sha256": "faa7b5e18bc2898cf4d399ab9106dac16f43136e7cb8fd9eeaf126b550afca2a",
+      "hunks": [
+        {
+          "before": [
+            "def main():"
+          ],
+          "after": [
+            "def _run_generator(script, *arguments, cwd=None):",
+            "    \"\"\"Use the active interpreter and propagate child failures to the MCP caller.\"\"\"",
+            "    import subprocess",
+            "    subprocess.run([sys.executable, script, *arguments], cwd=cwd, check=True)",
+            "",
+            "",
+            "def _crg_register_csv_contract(lines, design_name, protocol):",
+            "    \"\"\"Match the embedded APB regfile without changing SDC instance paths.\"\"\"",
+            "    if protocol != \"apb\":",
+            "        return lines",
+            "    legacy = design_name.upper() + \"_apb_reg\"",
+            "    module = legacy + \"file\"",
+            "    ports = {\"clk\": \"apb_clk\", \"rst_n\": \"apb_rst_n\",",
+            "             \"psel\": \"apb_sel\", \"penable\": \"apb_enable\",",
+            "             \"pwrite\": \"apb_write\", \"paddr\": \"apb_addr\",",
+            "             \"pwdata\": \"apb_wdata\", \"prdata\": \"apb_rdata\",",
+            "             \"pready\": \"apb_ready\", \"pslverr\": \"apb_slverr\"}",
+            "    result = []",
+            "    for line in lines:",
+            "        if line.startswith(\"inst \" + legacy + \" \"):",
+            "            line = \"inst \" + module + line[len(\"inst \" + legacy):]",
+            "        elif line.startswith(\"connect,\"):",
+            "            parts = line.split(\",\")",
+            "            owner, separator, port = parts[1].partition(\".\")",
+            "            if separator and owner in {legacy, module}:",
+            "                parts[1] = module + \".\" + ports.get(port.strip(), port.strip())",
+            "                line = \",\".join(parts)",
+            "        result.append(line)",
+            "    return result",
+            "",
+            "",
+            "def main():"
+          ]
+        },
+        {
+          "before": [
+            "        gen_rtl = \"python3 \"+soc_build_py+\" gen \"+gen_filepath+top_corpus[top_info_index[\"design_name\"]][1]+\"_top.csv\"",
+            "        print(gen_rtl)",
+            "        os.system(gen_rtl)"
+          ],
+          "after": [
+            "        _run_generator(soc_build_py, \"gen\",",
+            "                       os.path.join(gen_filepath, top_corpus[top_info_index[\"design_name\"]][1] + \"_top.csv\"))"
+          ]
+        },
+        {
+          "before": [
+            "    gen_regfile = \"cd \"+gen_filepath+\" && python3 \"+yml2reg_py+\" \"+yml_file+\" \"+protocol",
+            "    print(gen_regfile)",
+            "    os.system(gen_regfile)"
+          ],
+          "after": [
+            "    _run_generator(yml2reg_py, yml_file, protocol, cwd=gen_filepath)"
+          ]
+        },
+        {
+          "before": [
+            "    #for repeat_idx in range(len(print_line)-1, -1, -1) :",
+            "    #    if print_line.count(print_line[repeat_idx]) > 1 and \"connect\" in print_line[repeat_idx] :",
+            "    #        print_line.pop(repeat_idx)",
+            "    for line in print_line:"
+          ],
+          "after": [
+            "    #for repeat_idx in range(len(print_line)-1, -1, -1) :",
+            "    #    if print_line.count(print_line[repeat_idx]) > 1 and \"connect\" in print_line[repeat_idx] :",
+            "    #        print_line.pop(repeat_idx)",
+            "    print_line = _crg_register_csv_contract(",
+            "        print_line, top_corpus[top_info_index[\"design_name\"]][1], protocol)",
+            "    for line in print_line:"
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".agents/skills/soc-openroad/SKILL.md",
+      "before_sha256": "e62986c61972969538dedc7a20f7543f643883cb8fc677c90e11258b9ee5e330",
+      "hunks": [
+        {
+          "before": [
+            "## Layout contract"
+          ],
+          "after": [
+            "## Backend prerequisite",
+            "",
+            "This adapter expects the Make-style `de/run/rtl.f` handoff described below.",
+            "For a Bazel or differently laid-out project, require an explicitly validated",
+            "handoff adapter and real ORFS setup before execution. Do not reorganize the",
+            "checkout, invoke the Make build server as a fallback, or treat missing tools",
+            "as a reason to create placeholder platform directories.",
+            "",
+            "## Layout contract"
+          ]
+        }
+      ],
+      "after_sha256": "3684faf2477df34592278751361d28360463e44a2c058c42863ffb11b5325af3"
+    },
+    {
+      "path": ".agents/agents/soc-doc-engineer.md",
+      "before_sha256": "d540d9413ccf83ca0382e1362dbd89653bc71e79182a217ebe92535530c8bbd1",
+      "hunks": [
+        {
+          "before": [
+            "pass/fail criteria. Use `excel-yml-gen` for an approved workbook rather than",
+            "manual transcription.",
+            "",
+            "Run `check_doc_completeness.py`. Keep the stage open in `dev`; close it only in"
+          ],
+          "after": [
+            "pass/fail criteria. For an approved register workbook, ask the parent session",
+            "to invoke its registered `excel-yml-gen` tool and provide the resulting artifacts;",
+            "this agent does not inherit that optional MCP tool in its declared tool list.",
+            "Do not transcribe unverified register values or block unrelated documents.",
+            "",
+            "Run `python3 .agents/scripts/check_doc_completeness.py <workspace>` from the",
+            "project root; add `--module <task_name>` only for `docs/<task_name>/`. Report",
+            "a missing checker explicitly rather than inventing its result. The checker",
+            "only verifies file presence, nonempty content and initial headings, not design",
+            "correctness. Keep the stage open in `dev`; close it only in"
+          ]
+        }
+      ],
+      "after_sha256": "da6c738feaa994ffacf80f4041e4b980756ce2ffa08399fc3a86fde4c91dd5b9"
+    }
+  ]
+}
