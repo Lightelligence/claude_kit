@@ -74,6 +74,11 @@ Read only missing project context. Do not compile or simulate.
 如果 Claude 找不到该 skill，再查询 kit 的 `skills` 目录并读取所选指引。目录里
 存在一个条目，不代表对应的原生 Claude slash command 或 subagent 已经安装。
 
+`rtl-dv-kit` 是薄项目入口；`rtl-dv-context` 用于补齐缺失或过期事实、选择不明确的
+工作流。两个名称保留兼容，但不要求每次编辑都依次执行；最小安装可能只包含项目
+入口。配置变化需要重新验证，权限错误必须在相关操作前解决，不能用复用上下文
+绕过这些检查。
+
 ## RTL 工程师：常用 prompt
 
 以下输入 Claude Code 对话框，不是 shell 命令。替换尖括号中的任务事实。

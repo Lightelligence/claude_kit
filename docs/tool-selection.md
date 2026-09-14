@@ -134,6 +134,12 @@ If Claude cannot find that skill, ask it to inspect the kit's `skills` catalog
 and resolve the selected guidance. A catalog entry alone does not mean a native
 Claude slash command or subagent has been installed.
 
+`rtl-dv-kit` is the thin project entrypoint; `rtl-dv-context` is for missing or
+stale facts and unclear workflow selection. Keep both names compatible, but do
+not run both as a fixed pre-edit checklist. Minimal installations may contain
+only the entrypoint. Revalidate changed configuration and resolve permission
+errors before affected actions; reusing context does not waive those checks.
+
 ## Effective RTL prompts
 
 Replace angle-bracket placeholders with your actual task facts.
