@@ -320,7 +320,7 @@ stdio servers 暴露 89 个工具，紧凑 JSON schema 共 63,682 UTF-8 字节�
 | Entry 字段 | explain/validate/decode 实际通过两拍示例：0xab234，opcode=4、route=0x23、payload=0xab，来源记录正确 | 其他布局、bit 顺序及异常输入 |
 | Bazel RTL lint | 实际 soc_lint 执行 axi_narrow 的 VCS-only lint；编译链接完成，检查报告 21 个 warning、零 error/fatal | 干净的正向 fixture；设计 warning 导致的失败不能写成检查通过 |
 | Bazel integration | 实际 workspace 校验、target 列表、依赖/构建图查询及 vendor 配置片段生成；修复后的解析器识别 24 个真实仓库 | 三个真实 IP 路径缺失仍存在，其余构建操作未测 |
-| RTL 集成 | 10 个注册工具均已实际调用；隔离生命周期/反例共 15 项，11 项通过 | 4 项失败：unpacked array 和 int 端口误读、wrapper 参数未声明、删除模块后重新导入残留映射。kit 已有版本锁定修复与回归测试；部署并重新实测前不能宣称已解决 |
+| RTL 集成 | 适配 `db47a17` 的版本锁定修复后，10 个注册工具的同一组 15 个生命周期/反例用例全部通过（ETX run `34803830123`）；不支持的声明明确报错，wrapper 参数已声明，删除模块后映射不再恢复 | 生成 HDL 尚未编译或仿真；不是完整 SystemVerilog 语法支持或项目连接 signoff |
 | CRG、memory-map、Excel、时钟树图 | 七个生成器实际调用均用复制的示例产生非空文件；Draw.io XML、Excalidraw JSON 可解析 | 生成 HDL 编译、项目语义与图形视觉检查 |
 | OpenROAD | 隔离设计的 config/SDC 生成、空输出状态查询实际通过 | 本地综合缺少 orfs_dir/SILICON_CREW_ORFS_DIR；有限范围的 runner 检查未找到 ORFS 路径或 PATH 中的 openroad/yosys，容器方式未验证 |
 | Memory wrapper | 实际 catalog 生成；修复后 96×24 逻辑接口适配到足够大的 128×32 宏，VCS 编译/仿真报告显示定向地址与掩码测试通过 | 其他 memory/FIFO 类型、物理 lib/lef 可用性与完整 signoff 尚未验证 |
