@@ -93,14 +93,15 @@ Reviewed exact-context patches live in
 snapshot. They preserve the memory-wrapper capacity/port/interface fix,
 the Make-only build skill's engineer-selected DV checks, and RTL integration
 fixes for complete port parsing, parameterized wrappers and removed-module
-mapping cleanup. Each patch locks the
+mapping cleanup. Library-stub adaptations preserve numeric bus ranges and reject
+unsupported types/dimensions instead of emitting incorrect pins. Each patch locks the
 upstream commit and before/after SHA-256 hashes. There is no fuzzy application:
 upstream changes require explicit review and rebasing, not a manifest rehash.
 The exporter refuses existing destinations and links. An I/O failure may leave a
 partial directory for inspection; only a completed export has `adaptation.json`.
 
 Regression coverage: `tests/test_adaptations.py`, `tests/test_memwrap_capacity.py`,
-`tests/test_integrate_contract.py`
+`tests/test_integrate_contract.py`, `tests/test_lib_stub_ports.py`
 and the CLI export test. Before adapting a consumer, compare its current files:
 they can contain independent changes or an older upstream revision. Do not copy
 an entire exported tree over a working project or rerun upstream configuration

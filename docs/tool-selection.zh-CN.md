@@ -265,6 +265,27 @@ output_file=<owned-output-file>, and port_map=<reviewed-map.json>.
 Review the generated connections and config. Do not compile or simulate.
 ```
 
+## Library stub 与真实时序库
+
+当前核对的项目里，`lib-db-gen` 是 **skill 自带 helper，不是注册的 MCP server**。
+已部署 helper 使用 LC，而 kit 中较新的 server 还公开 DC 参数；不能直接覆盖或悄悄
+切换编译后端。项目的 MCP-only EDA 规则仍然有效，skill 不授予直接运行 `lc_shell` 的权限。
+
+现有 `--no-run` 只生成 Liberty/Tcl，不调用编译器，不会产生或验证 `.db`。
+输出和工作目录需明确属于本任务。`convert` 输入真实 Liberty，`stub` 只用于早期
+black-box 接入；零面积 stub 不是标准单元 target library，也不是 timing/power 证据。
+符号位宽当前仍有退化为标量的明确警告；需要接口保真时，先提供位宽已解析的 wrapper。
+
+```text
+Use the lib-db-gen skill for preparation only. From <resolved-wrapper.v>, emit
+stub Liberty and conversion Tcl under <owned-output-dir> using --no-run.
+Check port names, directions and bus widths. Report warnings explicitly.
+Do not run LC/DC or claim that a compiled DB or timing library was produced.
+```
+
+实际编译还需要兼容的注册执行入口及选定的编译器/license 环境；换一个 skill
+不会解决缺少 MCP 注册或 PATH 中没有 `lc_shell` 的问题。
+
 ## 脚本归属
 
 | 内容 | 归属 |
@@ -321,6 +342,7 @@ stdio servers 暴露 89 个工具，紧凑 JSON schema 共 63,682 UTF-8 字节�
 | Bazel RTL lint | 实际 soc_lint 执行 axi_narrow 的 VCS-only lint；编译链接完成，检查报告 21 个 warning、零 error/fatal | 干净的正向 fixture；设计 warning 导致的失败不能写成检查通过 |
 | Bazel integration | 实际 workspace 校验、target 列表、依赖/构建图查询及 vendor 配置片段生成；修复后的解析器识别 24 个真实仓库 | 三个真实 IP 路径缺失仍存在，其余构建操作未测 |
 | RTL 集成 | 适配 `db47a17` 的版本锁定修复后，10 个注册工具的同一组 15 个生命周期/反例用例全部通过（ETX run `34803830123`）；不支持的声明明确报错，wrapper 参数已声明，删除模块后映射不再恢复 | 生成 HDL 尚未编译或仿真；不是完整 SystemVerilog 语法支持或项目连接 signoff |
+| Library 准备 | 实际 skill helper 的 `--no-run` 验证普通 ANSI/non-ANSI 生成、符号位宽警告、Tcl 生成、原文件保留和路径碰撞拒绝 | 带空格的范围、unpacked array 和 int 端口暴露解析错误；kit 修复已有回归测试，待项目重测。没有注册库 MCP，测试 PATH 中没有 lc_shell，尚未完成 `.db` 编译验收 |
 | CRG、memory-map、Excel、时钟树图 | 七个生成器实际调用均用复制的示例产生非空文件；Draw.io XML、Excalidraw JSON 可解析 | 生成 HDL 编译、项目语义与图形视觉检查 |
 | OpenROAD | 隔离设计的 config/SDC 生成、空输出状态查询实际通过 | 本地综合缺少 orfs_dir/SILICON_CREW_ORFS_DIR；有限范围的 runner 检查未找到 ORFS 路径或 PATH 中的 openroad/yosys，容器方式未验证 |
 | Memory wrapper | 实际 catalog 生成；修复后 96×24 逻辑接口适配到足够大的 128×32 宏，VCS 编译/仿真报告显示定向地址与掩码测试通过 | 其他 memory/FIFO 类型、物理 lib/lef 可用性与完整 signoff 尚未验证 |

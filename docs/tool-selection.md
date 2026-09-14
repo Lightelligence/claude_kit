@@ -124,6 +124,33 @@ source fragments. Do not open a waveform session or infer protocol semantics.
 
 ## What each layer does
 
+### Library stubs versus real timing libraries
+
+`lib-db-gen` is a **skill-owned helper, not a registered MCP server**, in the
+audited consumer. Its deployed helper uses LC, while the newer bundled server
+also advertises DC options; do not copy that server over the older helper or
+silently change compiler backends. The project's MCP-only EDA contract still
+applies: a library skill does not authorize direct `lc_shell` execution.
+
+The documented `--no-run` preparation emits Liberty/Tcl without executing a
+compiler. It does not create or validate a `.db`. Keep all output/work paths
+explicit and task-owned. Use `convert` for a real Liberty input, and `stub` only
+for early black-box bring-up. A zero-area stub is not a standard-cell target
+library or timing/power evidence. Symbolic widths still produce an explicit
+scalar warning in this helper; provide a width-resolved wrapper when interface
+fidelity matters, rather than treating that approximation as a verified bus.
+
+```text
+Use the lib-db-gen skill for preparation only. From <resolved-wrapper.v>, emit
+stub Liberty and conversion Tcl under <owned-output-dir> using --no-run.
+Check port names, directions and bus widths. Report warnings explicitly.
+Do not run LC/DC or claim that a compiled DB or timing library was produced.
+```
+
+Live conversion requires a compatible registered execution entry and the
+selected compiler/license environment. Neither the missing registration nor a
+missing `lc_shell` on PATH is fixed by choosing a different skill.
+
 ### Compact kit catalogs
 
 The kit bridge accepts `mcp serve --tool-profile compact`. This advertises
@@ -388,6 +415,7 @@ are selected through task profiles. Do not interpret bytes as model tokens.
 | Bazel RTL lint | Real soc_lint invokes VCS-only axi_narrow lint; compilation/linking completes and the check reports 21 warnings, zero errors/fatals | Clean positive fixture; existing design warning failures are not a tool PASS |
 | Bazel integration | Real workspace validation, target listing, dependency/build-graph queries and vendor-entry snippet generation; corrected parser identifies 24 actual repositories | Three real missing IP paths remain; other build operations unverified |
 | RTL integration | After the revision-locked `db47a17` fixes were adapted, all ten registered tools passed the same owned 15-case lifecycle/negative fixture (ETX run `34803830123`); unsupported declarations fail explicitly, wrapper parameters are declared and removed-module mappings stay removed | Generated HDL has not been compiled or simulated; this is not complete SystemVerilog syntax support or project-level connectivity signoff |
+| Library preparation | Actual skill helper `--no-run` fixtures verify ordinary ANSI/non-ANSI generation, explicit symbolic-width warning, Tcl generation, existing-file preservation and path-collision rejection | Spaced numeric ranges, unpacked arrays and integer ports exposed parser defects; kit adaptation regression tests cover the fix, pending consumer revalidation. No registered library MCP or `lc_shell` on the tested PATH; compiled DB acceptance is incomplete |
 | CRG, memory-map, Excel and clock diagrams | Seven real generator calls produce nonempty outputs from copied examples; generated Draw.io XML and Excalidraw JSON parse successfully | Generated HDL compilation, project semantics and diagram visual review |
 | OpenROAD | Actual isolated config/SDC generation and empty-output status query pass | Local synthesis cannot start without orfs_dir/SILICON_CREW_ORFS_DIR; bounded runner discovery found no ORFS path or openroad/yosys on PATH. Container execution remains unverified |
 | Memory wrappers | Actual catalog-backed MCP generation; corrected 96x24 logical interface maps to a sufficient 128x32 macro; VCS compile/simulation report passes the bounded address/mask test | Other memory/FIFO variants, physical lib/lef availability, and full signoff remain unverified |
