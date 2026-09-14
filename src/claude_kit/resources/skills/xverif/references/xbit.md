@@ -40,6 +40,8 @@ Report matched from the actual response.
 
 `xverif_bit_check.values` 是变量绑定 JSON 文件路径，不是预期数值；也不能与 `vars` 同时传入。
 比较表达式应明确写出相等或其它条件；工具返回 `matched` 表示表达式真假。
+`ok=true, matched=false` 表示计算成功但条件不成立，不应因此重试或改用其它工具。
+例如将上例 `expected` 改为 `8'h12`，预期是 `ok=true, matched=false`。
 遇到错误应报告失败，不能把错误响应当成结果或改用心算冒充工具输出。
 
 ## 读取规则

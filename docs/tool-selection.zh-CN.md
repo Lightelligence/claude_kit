@@ -271,7 +271,7 @@ stdio servers 暴露 89 个工具，紧凑 JSON schema 共 63,682 UTF-8 字节�
 | kit 精简目录 | 本地兼容测试；实际 ETX 注册 9 个工具、2,523 schema 字节，原生 Claude 调用成功 | 更多任务质量检查 |
 | 场景入口 | 7 个配置解析通过；原生 debug 连接 2 个服务，RTL/DV 各连接 3 个服务、暴露 23 个工具，根目录和只读调用正确 | 实际开发质量与未限制调用时的行为；RTL 回答将 lint 概括成“不做 elaboration”不准确 |
 | 寄存器生成 | 13 个 yml2reg MCP 入口产生非空文件，适用时检查 XML/JSON/XLSX 可解析 | 生成 HDL 的编译与项目语义检查 |
-| bit 工具 | 真实 MCP 转换、切片、计算、比较分别得到 255/-1、190、17、matched=true | 上游 MCP 参数说明修正 |
+| bit 工具 | 真实 MCP 转换、切片、计算得到 255/-1、190、17；真假条件、JSON 文件绑定与互斥参数检查通过 | 共享 MCP 仍有错误的 hex 表达式示例及 values 说明；[源修复](https://github.com/Lightelligence/xverif/pull/3) 待审，请使用 xbit skill 中已验证的例子 |
 | SVA | list/scan/parse/explain 对隔离 property fixture 返回实际结果 | 更多时序语义案例 |
 | xdebug 波形查询 | 注册 MCP guide/schema、会话、roots、两次批量查询共 10 个采样值与新生成的独立转换结果一致；不存在信号明确报告，自有会话正常关闭，输入及项目未变 | 完整 FSDB/design/action 矩阵；原生 NPI coverage 是另一条仍失败的路径 |
 | coverage 报告 | action 目录查询通过；隔离的 parser 修复版本完成真实 MCP functional-only VDB 冷/热缓存打开、查询、关闭 | parser 修复尚未部署至共享安装；原生 NPI 打开数据库崩溃，exclusion/导出仍失败或未验证 |
