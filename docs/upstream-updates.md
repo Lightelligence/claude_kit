@@ -43,6 +43,12 @@ passed. Integrity checks and unit tests alone do not qualify an EDA release.
 
 ## Source and adaptation boundary
 
+The reviewed Make filelist adaptation preserves the MCP argument contract:
+explicit nonrecursive selection stays nonrecursive, and an omitted output returns
+text without overwriting a working-directory filelist. The CLI's default output
+remains unchanged. Apply both the wrapper and helper hunks together; a wrapper
+that requests stdout from an older helper would instead create a file named `-`.
+
 `src/claude_kit/resources/upstream/vibe_soc/source` is a byte-preserving snapshot.
 Its adjacent `manifest.json` records provenance, commit, selected paths, Git
 executable modes, SHA-256 digests and capability inventory. The selection contains

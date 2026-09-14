@@ -29,6 +29,28 @@
 
 Bazel 项目使用项目的 Bazel adapter。通用 Make server 中同名的 `soc_comp` 不是可以随意替换的后端。
 
+### 可选的 Make 项目工具
+
+`soc_init` 仅用于新建独立项目；`soc_add_chip` 增加芯片模块，`soc_add_ip`
+增加 digital 或 third-party IP。它们生成的是脚手架，不是已经验证的设计。
+不要用这些工具将现有 Bazel checkout 改成 Make 布局。
+
+`soc_flist(path, output, recursive)` 生成 HDL 文件路径列表，不负责依赖排序或
+语法检查。使用 kit 的 filelist 修复适配后，`recursive=false` 只扫描当前目录，
+`true` 包含子目录；省略 MCP output 只返回文本，不写 `filelist.f`，明确指定
+output 才写文件。维护 CLI 保留默认写文件行为。旧版本不遵守 false/省略输出
+的约定，更新前应明确指定输出路径，不要依赖这些旧行为。
+
+```text
+Use the optional Make soc-build server to create <new-project> under <owned-dir>.
+Add a digital IP named <ip>. Generate its RTL filelist with an explicit output
+path. Compile the selected module with VCS and the specified top <top>.
+Do not simulate, collect coverage, run regression, synthesize, or run CDC.
+```
+
+ETX `34806397148` 已通过注册 Make/VCS 工具编译和展开生成的参数化 wrapper。
+这不是仿真或所有后端的验收；filelist 修复的实际 MCP 复验尚待完成。
+
 不熟悉布局时用 `xverif_entry_explain`；只检查配置/输入是否合法时用
 `xverif_entry_validate`；需要字段值时用 `xverif_entry_decode`。
 不要每次解码都顺序调用三个工具。解码结果包含 raw 字段和来源，不会推断握手或枚举含义。

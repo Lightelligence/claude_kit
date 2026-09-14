@@ -612,6 +612,63 @@
       ],
       "before_sha256": "37b398d556f5b19069c62808bed0d4e2c799eb99ba1b8af8109b5edd3ed3a66d",
       "after_sha256": "9672fb1dd32bc75b0af90488d2fe99257b5932a325a983bc89afeda08172de61"
+    },
+    {
+      "path": ".agents/skills/soc-build/mcp_server.py",
+      "before_sha256": "efdd9bb911e34cf83a4653698ba1dbe42a9bafdf504aab69a10eab6e9eadb8d4",
+      "after_sha256": "fc7e71403a16ff4d05f5a4d5f93f96a70882b364be2d80029f844b551748fe04",
+      "hunks": [
+        {
+          "before": [
+            "    args = [path]",
+            "    if output:",
+            "        args += [\"-o\", output]",
+            "    if recursive:",
+            "        args += [\"-r\"]",
+            "    return _python(\"soc_gen_flist.py\", *args)"
+          ],
+          "after": [
+            "    args = [path, \"-o\", output or \"-\", \"-r\" if recursive else \"-n\"]",
+            "    return _python(\"soc_gen_flist.py\", *args)"
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".agents/skills/soc-build/scripts/soc_gen_flist.py",
+      "before_sha256": "eac910dccb8244e8b64470d30a4dfb21facd7e74ee7c30fc47f224b3fb0766ad",
+      "after_sha256": "0ca78cc3b88a9b137ecc3b63f34d7a909bdb26d9bd8706337480455875c5adcb",
+      "hunks": [
+        {
+          "before": [
+            "    out_path = Path(output)",
+            "    out_path.parent.mkdir(parents=True, exist_ok=True)",
+            "",
+            "    with open(out_path, \"w\", encoding=\"utf-8\") as f:",
+            "        f.write(f\"# Auto-generated filelist: {out_path.name}\\n\")",
+            "        f.write(f\"# Source path: {path}\\n\")",
+            "        f.write(f\"# Total files: {len(unique_files)}\\n\")",
+            "        for file in unique_files:",
+            "            f.write(file + \"\\n\")",
+            "",
+            "    print(f\"[OK] Filelist generated: {out_path} ({len(unique_files)} files)\")"
+          ],
+          "after": [
+            "    label = \"stdout\" if output == \"-\" else Path(output).name",
+            "    content = (f\"# Auto-generated filelist: {label}\\n\"",
+            "               f\"# Source path: {path}\\n\"",
+            "               f\"# Total files: {len(unique_files)}\\n\"",
+            "               + \"\".join(file + \"\\n\" for file in unique_files))",
+            "    if output == \"-\":",
+            "        sys.stdout.write(content)",
+            "    else:",
+            "        out_path = Path(output)",
+            "        out_path.parent.mkdir(parents=True, exist_ok=True)",
+            "        out_path.write_text(content, encoding=\"utf-8\")",
+            "        print(f\"[OK] Filelist generated: {out_path} ({len(unique_files)} files)\")"
+          ]
+        }
+      ]
     }
   ]
 }

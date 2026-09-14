@@ -77,6 +77,31 @@ This describes source applicability, not filesystem or execution permissions.
 In a Bazel project, prefer its registered Bazel adapter. A generic Make-based
 server with a similarly named `soc_comp` is not an interchangeable backend.
 
+### Optional Make project tools
+
+Use `soc_init` only in a new standalone project directory. `soc_add_chip` adds a
+chip module; `soc_add_ip` adds a digital or third-party IP. These scaffold files,
+not completed or verified designs. Do not apply this layout to a Bazel checkout.
+
+`soc_flist(path, output, recursive)` selects HDL source paths, not a dependency
+ordering or a syntax check. With the kit's reviewed filelist adaptation,
+`recursive=false` scans only the selected directory and `true` includes children.
+An omitted MCP output returns the list as text without writing `filelist.f`;
+an explicit output writes the requested file. The maintenance CLI keeps its
+existing default file output. Older unadapted servers violate the false/omitted
+argument contracts: use explicit output paths and update before relying on them.
+
+```text
+Use the optional Make soc-build server to create <new-project> under <owned-dir>.
+Add a digital IP named <ip>. Generate its RTL filelist with an explicit output
+path. Compile the selected module with VCS and the specified top <top>.
+Do not simulate, collect coverage, run regression, synthesize, or run CDC.
+```
+
+Registered Make/VCS compilation of a generated parameterized RTL wrapper passed
+on ETX (`34806397148`). This is compile/elaboration evidence, not simulation or
+acceptance of every backend. Filelist correction runtime acceptance is pending.
+
 ### RTL integration is not build integration
 
 `soc-integrate` reads module interfaces and generates RTL; `soc-integrate-bazel`
