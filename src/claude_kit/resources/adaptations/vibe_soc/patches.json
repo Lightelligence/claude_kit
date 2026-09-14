@@ -669,6 +669,72 @@
           ]
         }
       ]
+    },
+    {
+      "path": ".agents/skills/crg-gen/scripts/yml2reg/yml2reg.py",
+      "before_sha256": "f285da8eb14581ec004a8b8a4656d3607b771c592059232113bc74ca4b0bdbea",
+      "after_sha256": "e39d44751e805e991849b4b7c0c7bfa178dd6b4916f03bbb2bf36c81302903b2",
+      "hunks": [
+        {
+          "before": [
+            "def yml2regfile(data, protocol):"
+          ],
+          "after": [
+            "def yml2regfile(data, protocol):",
+            "    import copy",
+            "    if protocol != \"apb\":",
+            "        raise ValueError(\"CRG register generation currently implements APB only; no placeholder bus RTL\")",
+            "    # The CRG top/CSV names every field as register_field, including RO aliases.",
+            "    # Keep the approved YAML/model unchanged while matching that interface.",
+            "    data = copy.deepcopy(data)",
+            "    for register in data[\"registers\"]:",
+            "        for field in register[\"fields\"]:",
+            "            field[\"name\"] = register[\"name\"] + \"_\" + field[\"name\"]"
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".agents/skills/crg-gen/scripts/crg_gen.py",
+      "before_sha256": "ab494a6822b524f8c0e189655317061d38c971180eb946f09acb9615d6a54e40",
+      "after_sha256": "5763fa6060807ec18c633862a1298505d372c51bceab5867b227aa832d02733d",
+      "hunks": [
+        {
+          "before": [
+            "def main():"
+          ],
+          "after": [
+            "def _run_generator(script, *arguments, cwd=None):",
+            "    \"\"\"Use the active interpreter and propagate child failures to the MCP caller.\"\"\"",
+            "    import subprocess",
+            "    subprocess.run([sys.executable, script, *arguments], cwd=cwd, check=True)",
+            "",
+            "",
+            "def main():"
+          ]
+        },
+        {
+          "before": [
+            "        gen_rtl = \"python3 \"+soc_build_py+\" gen \"+gen_filepath+top_corpus[top_info_index[\"design_name\"]][1]+\"_top.csv\"",
+            "        print(gen_rtl)",
+            "        os.system(gen_rtl)"
+          ],
+          "after": [
+            "        _run_generator(soc_build_py, \"gen\",",
+            "                       os.path.join(gen_filepath, top_corpus[top_info_index[\"design_name\"]][1] + \"_top.csv\"))"
+          ]
+        },
+        {
+          "before": [
+            "    gen_regfile = \"cd \"+gen_filepath+\" && python3 \"+yml2reg_py+\" \"+yml_file+\" \"+protocol",
+            "    print(gen_regfile)",
+            "    os.system(gen_regfile)"
+          ],
+          "after": [
+            "    _run_generator(yml2reg_py, yml_file, protocol, cwd=gen_filepath)"
+          ]
+        }
+      ]
     }
   ]
 }

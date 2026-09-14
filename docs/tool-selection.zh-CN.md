@@ -259,6 +259,27 @@ python3 third_party/claude_kit/bin/claude-kit session --project-root . --tools d
 profile 校验通过、bit 结果为 17，项目状态仍未变。这证明已测 debug 场景的路由和调用，
 不是所有功能通过的结论，也不是实际 token 节省比例。
 
+## 寄存器生成与 CRG 生成
+
+`yml2reg` 从 YAML 生成独立的 APB/AHB/DAB 寄存器 RTL。随附 `demo_docs.yml`
+的三种协议输出均已通过注册 VCS 工具的编译展开（`34807660541`），但没有进行
+总线事务仿真。UVM `.svh` 需要 UVM package/library 和编译 harness；缺少
+`uvm_pkg` 是编译环境前提不足，不能直接认定生成的 RAL 有语法错误。
+
+`crg-req-to-design` 将需求转换为设计资料；`crg-gen` 根据评审后的设计 Excel
+生成时钟/复位 RTL、顶层与寄存器组。完整顶层还需要项目真实的时钟/复位单元，
+不能用空模块替代后报告通过。CRG 内嵌的旧寄存器生成器不同于独立 `yml2reg`，
+目前只实现 APB。此次适配让未实现的 AHB/DAB 明确报错，而不是输出常量占位 RTL；
+同时统一 `register_field` 端口命名，并将子生成器失败传回 MCP。
+父脚本与内部 helper 必须配套适配；修复的实际环境复验尚待完成。
+
+```text
+Use the reviewed CRG Excel <input> to generate into <owned-output-dir>.
+Check register/top port consistency and identify the required clock/reset cells.
+Compile through the registered project adapter only if those real dependencies
+are available. Report missing cells explicitly; do not substitute stubs or simulate.
+```
+
 ## RTL 集成和构建集成的区别
 
 `soc-integrate` 解析接口、生成 RTL；`soc-integrate-bazel` 检查构建图及依赖。

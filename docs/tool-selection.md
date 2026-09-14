@@ -105,6 +105,32 @@ cases pass (`34806987896`), including shallow/recursive selection and text-only
 output, plus 38 mocked-EDA unit tests and ten project-contract checks. The real
 compile was repeated successfully; no simulation was run.
 
+### Register generation versus CRG generation
+
+`yml2reg` generates standalone APB/AHB/DAB register RTL from YAML. All three
+protocol outputs from the shipped `demo_docs.yml` pass registered VCS compilation
+and elaboration (`34807660541`); this is not bus-transaction simulation evidence.
+UVM `.svh` outputs need a UVM package/library and a compile harness, not just an
+RTL filelist. A missing `uvm_pkg` is a compile-environment prerequisite, not proof
+that the generated RAL is malformed.
+
+`crg-req-to-design` turns requirements into design collateral;
+`crg-gen` turns the reviewed design Excel into clock/reset RTL, a top and its
+register bank. The top still needs the project's actual clock/reset primitives.
+Do not invent empty cells to make elaboration pass. CRG's embedded legacy register
+generator is distinct from standalone `yml2reg`: it implements APB only. The
+reviewed CRG adaptation rejects its unimplemented AHB/DAB paths instead of
+returning constant-output placeholder RTL. It also aligns `register_field` port
+names with the CRG top and propagates child-generator errors to MCP. Apply the
+paired parent/helper adaptations together; runtime acceptance is still pending.
+
+```text
+Use the reviewed CRG Excel <input> to generate into <owned-output-dir>.
+Check register/top port consistency and identify the required clock/reset cells.
+Compile through the registered project adapter only if those real dependencies
+are available. Report missing cells explicitly; do not substitute stubs or simulate.
+```
+
 ### RTL integration is not build integration
 
 `soc-integrate` reads module interfaces and generates RTL; `soc-integrate-bazel`
