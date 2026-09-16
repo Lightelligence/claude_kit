@@ -1,5 +1,8 @@
 # Choosing Claude Code tools for RTL and DV
 
+For scoped static review, optional EDA validation and copy-and-paste prompts,
+see [rtl-dv-review usage](rtl-dv-review.md).
+
 This guide is for engineers working in a project attached to claude_kit.
 The project's `.mcp.json` and Claude settings determine which servers are
 available. A bundled skill or a Python source file does not enable a server.
