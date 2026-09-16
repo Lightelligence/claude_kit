@@ -184,6 +184,18 @@ tools for configured checks and report missing prerequisites as unverified.
         if kind != "merge" and relative != ".claude/project.toml":
             managed[relative] = expected
     retired = sorted(set(state["managed"]) - set(managed))
+    # Retire only the superseded context link, never a project-owned directory
+    # or changed link. Keep the target intact and use the transaction rollback.
+    legacy = ".claude/skills/rtl-dv-context"
+    if legacy in retired:
+        path = _checked_target(root, legacy)
+        current = _fingerprint(path)
+        if path.is_symlink() and current == state["managed"][legacy]:
+            changes[legacy] = ("unlink", "")
+            before[legacy] = current
+            retired.remove(legacy)
+        elif current is None:
+            retired.remove(legacy)
     # Retain ownership evidence for retired resources until an explicit migration.
     managed.update({name: state["managed"][name] for name in retired})
     state_content = _json({"schema_version": 1, "managed": managed})
@@ -202,6 +214,11 @@ tools for configured checks and report missing prerequisites as unverified.
             path = _checked_target(root, relative)
             if _fingerprint(path) != before[relative]:
                 raise OSError(f"Project changed during attachment: {relative}")
+            if kind == "unlink":
+                previous = ("link", os.readlink(path))
+                path.unlink()
+                backups.append((path, previous))
+                continue
             missing = []
             parent = path.parent
             while not parent.exists():

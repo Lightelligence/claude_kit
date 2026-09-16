@@ -7,6 +7,8 @@
 日常工具选择、RTL/DV prompt 与节省上下文的方法，参见
 [工程师工具选择指南](docs/tool-selection.zh-CN.md)。
 只读代码评审参见 [rtl-dv-review 使用说明与示例](docs/rtl-dv-review.zh-CN.md)。
+DV 实现、上下文、调试、回归与证据整理参见
+[工作流 skills 使用指南](docs/rtl-dv-workflows.zh-CN.md)，包含合并后的兼容入口说明。
 当前 server 清单、已验证能力与阻塞项，参见[工具验证快照](docs/tool-verification.zh-CN.md)。
 
 claude_kit 把通用 RTL/DV roles、protocol/VIP packs、项目 profile、repo-local CLI、artifact/evidence 约定，以及可选的薄 MCP bridge 放在一个可固定版本的仓库中。项目只需要通过一个 submodule 和一份很薄的 profile/adapter，就可以快速接入 Claude Code 的 RTL/DV 工作流。
@@ -19,7 +21,7 @@ claude_kit 把通用 RTL/DV roles、protocol/VIP packs、项目 profile、repo-l
 - 项目根目录发现和路径权限检查；
 - context resolver 和可审计 manifest；
 - 11 个通用 RTL/DV roles，包括 waveform-debugger、regression-triager 和显式委托的执行 commander；
-- 13 个可按需同步或触发的通用 skills；
+- 可按需同步或触发的通用 skills；
 - 6 个可按任务路由的 RTL/DV workflows；
 - common、AXI4、AXI4-Lite、AXI4-Stream、APB、AHB、Wishbone、Ethernet、PCIe、UCIe、SPI、UART、JTAG、I2C、CHI 和 generic VIP packs；
 - repo-local CLI；
@@ -183,7 +185,6 @@ python third_party/claude_kit/bin/claude-kit init \
 .ai/project.toml
 .claude/CLAUDE.md
 .claude/skills/rtl-dv-kit/SKILL.md
-.claude/skills/rtl-dv-context/SKILL.md
 .claude/skills/rtl-design/SKILL.md
 .claude/skills/dv-engineering/SKILL.md
 .claude/skills/protocol-vip/SKILL.md
@@ -590,7 +591,7 @@ skills 是可由 Claude Code 按任务触发或由项目按需同步到 `.claude
 
 | Skill | 触发和职责 |
 | --- | --- |
-| rtl-dv-context | 读取 profile、做只读 inspect 并选择最小 context |
+| rtl-dv-kit | 补齐缺失的项目事实、选择最小上下文并路由到相关指引 |
 | rtl-design | 规划和实施有边界的 RTL 修改 |
 | dv-engineering | 规划 test、sequence、scoreboard、assertion 和 coverage |
 | protocol-vip | 应用对应 protocol/VIP pack 并验证连接 smoke |

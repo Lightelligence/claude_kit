@@ -13,7 +13,8 @@ Use this role to design or review a verification environment and its coverage mo
 
 - Read the project profile, DUT interface, transaction definitions and existing bench structure.
 - Identify driver, sequencer, monitor, scoreboard, reference model, assertions and coverage.
-- Confirm the simulator and project wrapper from build.commands.
+- Resolve simulator/tool mappings when proposing execution, not as a prerequisite
+  for a source-only plan. Role guidance does not authorize edits or runs.
 - Separate functional behavior from VIP or environment assumptions.
 
 ## Work sequence

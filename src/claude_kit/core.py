@@ -943,8 +943,14 @@ def resolve_context(
         sections.append("## Skills\n\nNo skill guidance selected; use the plan output to choose a skill when needed.")
     else:
         sections.append("## Skills")
+        loaded_skills: set[str] = set()
         for identifier in skill_ids:
-            entry = _find_by_id(skill_catalog(), identifier, "skill")
+            # Old CLI/MCP IDs remain readable without publishing a second skill.
+            canonical = "rtl-dv-kit" if identifier == "rtl-dv-context" else identifier
+            if canonical in loaded_skills:
+                continue
+            loaded_skills.add(canonical)
+            entry = _find_by_id(skill_catalog(), canonical, "skill")
             path = resources / entry["path"]
             sources.append(_source_entry(path, resources))
             sections.append(f"\n### {identifier}\n\n{path.read_text(encoding='utf-8').strip()}\n")
@@ -1816,7 +1822,8 @@ def check_adapter(root: Path, profile: dict[str, Any]) -> dict[str, Any]:
 
 
 def integration_skill() -> str:
-    return (resource_root() / "templates" / "SKILL.md").read_text(encoding="utf-8")
+    # One canonical entry serves minimal init, full sync, and shared attachment.
+    return (resource_root() / "skills" / "rtl-dv-kit" / "SKILL.md").read_text(encoding="utf-8")
 
 
 def _is_generated_skill_cache(path: Path) -> bool:

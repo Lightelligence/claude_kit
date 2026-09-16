@@ -7,6 +7,8 @@ A reusable Claude Code kit for RTL and DV engineering.
 For everyday tool choice, RTL/DV prompts, and context-efficient workflows, read
 the [engineer's tool-selection guide](docs/tool-selection.md).
 For read-only code review, see [rtl-dv-review usage and examples](docs/rtl-dv-review.md).
+For DV implementation, context, debugging, regression and evidence, see the
+[workflow skills guide](docs/rtl-dv-workflows.md), including compatibility aliases.
 For the current server inventory and tested versus blocked capabilities, see
 the [verification snapshot](docs/tool-verification.md).
 
@@ -27,7 +29,7 @@ The repository currently provides a runnable Python MVP with:
 - project-root discovery and path-boundary checks;
 - context resolution and auditable manifests;
 - eleven reusable RTL/DV roles, including waveform debugging, regression triage and explicitly delegated execution;
-- thirteen reusable skills that can be synchronized into a project on demand;
+- reusable skills that can be synchronized into a project on demand;
 - six task-routing RTL/DV workflows;
 - common, AXI4, AXI4-Lite, AXI4-Stream, APB, AHB, Wishbone, Ethernet, PCIe, UCIe, SPI, UART, JTAG, I2C, CHI, and generic VIP packs;
 - a repository-local CLI;
@@ -209,7 +211,6 @@ The normal initialization creates:
 .ai/project.toml
 .claude/CLAUDE.md
 .claude/skills/rtl-dv-kit/SKILL.md
-.claude/skills/rtl-dv-context/SKILL.md
 .claude/skills/rtl-design/SKILL.md
 .claude/skills/dv-engineering/SKILL.md
 .claude/skills/protocol-vip/SKILL.md
@@ -622,7 +623,7 @@ Skills are Claude Code procedures that can be synchronized into .claude/skills o
 
 | Skill | Trigger and responsibility |
 | --- | --- |
-| rtl-dv-context | Read the profile, inspect the project, and choose the smallest useful context |
+| rtl-dv-kit | Resolve missing project facts, select bounded context and route to relevant guidance |
 | rtl-design | Plan and implement bounded RTL changes |
 | dv-engineering | Plan tests, sequences, scoreboards, assertions, and coverage |
 | protocol-vip | Apply a protocol/VIP pack and verify connectivity |

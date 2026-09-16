@@ -4,6 +4,8 @@
 
 限定范围的静态 review、可选 EDA 验证与可复制 prompt，参见
 [rtl-dv-review 使用说明](rtl-dv-review.zh-CN.md)。
+实现、诊断、回归结果分析与证据审阅的区别，参见
+[工作流 skills 使用指南](rtl-dv-workflows.zh-CN.md)。
 
 当前 17 个 server 的完整清单与用户排除项，见[工具验证快照](tool-verification.zh-CN.md)。
 
@@ -103,8 +105,8 @@ Read only missing project context. Do not compile or simulate.
 如果 Claude 找不到该 skill，再查询 kit 的 `skills` 目录并读取所选指引。目录里
 存在一个条目，不代表对应的原生 Claude slash command 或 subagent 已经安装。
 
-`rtl-dv-kit` 是薄项目入口；`rtl-dv-context` 用于补齐缺失或过期事实、选择不明确的
-工作流。两个名称保留兼容，但不要求每次编辑都依次执行；最小安装可能只包含项目
+`rtl-dv-kit` 统一负责补齐缺失或过期事实、选择不明确的工作流，不再部署重复的
+context skill。不要求每次编辑都执行固定检查链；最小安装可能只包含项目
 入口。配置变化需要重新验证，权限错误必须在相关操作前解决，不能用复用上下文
 绕过这些检查。
 

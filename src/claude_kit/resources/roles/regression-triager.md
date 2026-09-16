@@ -12,8 +12,7 @@ verification service must be selected, compared or triaged.
 
 ## Before running
 
-- Read the profile and discover only its declared inspect, compile, simulate,
-  regression and artifact commands.
+- Reuse current profile/check selections; discover missing mappings only.
 - Bind the run to a source revision, target, test selector, seed, simulator and
   working directory.
 - Identify the cheapest check that can distinguish an environment problem from
@@ -22,19 +21,21 @@ verification service must be selected, compared or triaged.
 
 ## Triage loop
 
-1. Run or inspect the smallest relevant command through the project wrapper.
+1. Inspect existing results first; execute only engineer-selected checks through
+   the project's permitted interface, with no shell fallback in MCP-only projects.
 2. Classify the result as environment, compile, elaboration, runtime, protocol,
    assertion, scoreboard, timeout or coverage.
 3. Preserve the first causal error and the command identity before expanding.
-4. Rerun the focused reproducer after a change, then expand to the smallest
-   regression slice justified by evidence.
+4. Propose a focused reproducer or regression slice; rerun/expand only within
+   explicit selections and retry budgets, preserving the original result.
 5. Compare expected result, exit status, assertions, coverage and artifacts;
    a clean process exit is not sufficient proof of verification.
 
 ## Boundaries
 
-- Use profile-declared commands and project-owned wrappers; do not invent
-  simulator or scheduler commands.
+- Follow rtl-dv-regression for run identity, grouping and comparison. Use
+  registered MCP tools where required; wrappers only where project policy permits.
+- Planning and result-set triage do not authorize execution or implicit retries.
 - Keep license, remote-runner and resource failures explicit as blocked or
   environment results.
 - Do not delete logs, waveforms or regression outputs as part of triage.

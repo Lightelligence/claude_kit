@@ -1,44 +1,56 @@
 ---
 name: rtl-dv-regression
 version: 1
-description: Select and triage focused-to-regression RTL/DV checks through declared project wrappers, with explicit execution approval and reproducible evidence.
+description: Plan bounded RTL/DV check sets, compare or triage existing regression results, and execute only engineer-selected runs through the project interface.
 ---
 
 # RTL/DV Regression
 
-Use the `regression-triager` role for analysis and selection when a task involves
-compile, elaboration, simulation, a regression, a Bazel target, a verification
-service or a result set that must be compared. Use `commander` only for a run
-that the user explicitly approved or delegated.
+## Select the mode
 
-1. Reuse current routing and check choices; use `plan_task` only when unclear.
-   Inspect the current check catalog (`list_catalog(category="checks")` in
-   compact MCP mode) if needed. Present unresolved choices to the engineer;
-   a recommended quick check is not automatic permission.
-2. Bind each run to source revision, target, test selector, seed, simulator,
-   working directory and artifact locations.
-3. Start with the cheapest check that can distinguish environment, compile,
-   elaboration, runtime, protocol, assertion, scoreboard, timeout and coverage
-   failures among the engineer's selected checks. A newly created or modified
-   DV test does not authorize simulation or regression.
-4. Preserve the first causal error and the exact command; do not treat a clean
-   exit or a generated report as proof without checking expected results.
-5. After explicit approval or `commander` delegation, invoke the registered
-   project MCP tool if project policy requires MCP. Do not use a shell fallback
-   when it is unavailable. A declared wrapper is usable only where project
-   policy permits it. Rerun or expand only within the engineer's selection;
-   ask before adding a regression slice.
-6. Keep license, remote-runner, resource and missing-artifact problems explicit
-   as blocked or environment results.
+Planning and existing-result triage are read-only. Neither a new DV test nor a
+request to explain failures authorizes a run. Use regression-triager guidance for
+selection/analysis; commander is only an explicitly delegated execution role and
+must be available before delegation. Otherwise apply guidance in the current session.
 
-When a profile declares an external regression root, call the read-only
-`discover_regression_artifacts` tool after a project MCP check returns. Bind
-the returned directory and log to the exact target, test and run id. If more
-than one run matches, ask the engineer to select one; do not choose by
-modification time. Read logs only through `read_regression_artifact` and keep
-lock files visible as an in-progress signal.
+Reuse current facts and check choices. Use `plan_task` only for unclear routing,
+and `list_catalog(category="checks")` in compact kit MCP mode only when the current
+check mapping is needed. Number applicable options with purpose, tool/backend,
+target/test/configuration, artifact destination and known cost or unknown estimate.
+Separate compile, simulation and regression choices; don't append coverage,
+synthesis or CDC automatically. Reuse existing selections without repeated approval.
 
-Use project-permitted interfaces and profile allowlists. Keep logs,
-waveforms, reports and coverage artifacts; do not perform cleanup as part of
-triage. For multiple selected checks, preserve order and return an individual
-report and aggregate result counts.
+## Execute only the selected set
+
+Before each run bind source revision/dirty state, working directory, required
+target/test/seed, simulator and output/run identity. Clarify missing inputs instead
+of guessing. Keep the engineer's order and dependencies. Report blocked/not-run
+items individually; continue independent selected checks when safe.
+
+Use registered project MCP tools in MCP-only projects, with no shell fallback.
+Use declared wrappers only if project policy permits. A submitted remote job is
+not completed; preserve its job ID and inspect its actual status/results before
+claiming success. Do not submit duplicates because a client call timed out.
+
+Bound retries and expansion to explicit selections/budgets. New seeds, reruns and
+wider slices need authorization unless already covered by that scope. Preserve
+original failures; a later pass does not erase flakiness or prove a fix.
+Do not delete logs, waveforms, coverage databases or lock files as triage.
+
+## Triage and compare
+
+Read [Result-set triage](references/result-triage.md) for existing regressions or
+multiple results. Start with bounded summaries/first meaningful errors, then inspect
+one representative per provisional failure group. Locate artifacts by exact run,
+not modification time: configured external roots use `discover_regression_artifacts`
+and `read_regression_artifact`; checkout-local logs use `read_artifact`.
+Keep lock files visible as an in-progress clue, not definitive completion status.
+
+## Report
+
+Return one result per selected check or observed run, aggregate counts with their
+denominator, run identity, first causal evidence, failure class, artifact paths
+and unresolved gaps. Separate tool exit status from verification outcome and
+unknown/in-progress results from failures. For comparisons state what is comparable,
+what changed and what cannot be concluded. Propose the smallest next check;
+do not execute the proposal automatically.

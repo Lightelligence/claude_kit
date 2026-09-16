@@ -185,7 +185,7 @@ class McpTests(unittest.TestCase):
             process.stdin.flush()
             context_response = read_frame(process.stdout)
             context_text = json.loads(context_response["result"]["content"][0]["text"])["context"]
-            self.assertIn("RTL/DV Context", context_text)
+            self.assertIn("# RTL/DV Claude Kit", context_text)
         finally:
             process.terminate()
             process.wait(timeout=5)

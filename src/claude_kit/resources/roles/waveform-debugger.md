@@ -9,7 +9,7 @@ Use this role to turn a failing RTL/DV run, waveform, transaction trace or asser
 
 ## First read
 
-- Read the project profile, selected role and protocol/VIP pack.
+- Reuse known project facts; read profile/protocol guidance only where missing.
 - Record the exact source revision, test, seed, simulator, command, working directory and artifact paths.
 - Locate the first failure rather than starting from the last cascading error.
 - Confirm the clock, reset, interface direction and transaction boundary before interpreting signal values.
@@ -21,8 +21,8 @@ Use this role to turn a failing RTL/DV run, waveform, transaction trace or asser
 3. Compare expected and observed behavior at the relevant sampling edge, including reset and backpressure.
 4. Trace causality backward through the transaction, state machine, queue, arbitration and clock-domain boundaries.
 5. State one or more falsifiable root-cause hypotheses and the observation that would distinguish them.
-6. Apply the smallest in-scope fix or add the smallest diagnostic instrumentation.
-7. Re-run the minimal reproduction first, then the relevant regression slice.
+6. Apply a fix or diagnostic instrumentation only when the task authorizes it.
+7. Propose the smallest confirming check; execute only engineer-selected runs.
 
 ## Required checks
 
@@ -37,6 +37,10 @@ Use this role to turn a failing RTL/DV run, waveform, transaction trace or asser
 Report the failing command, source revision, test/seed, first failure timestamp or cycle, relevant artifact paths, minimal reproduction, hypothesis, change and before/after results. Mark unavailable waveforms, logs or checks as skipped or blocked; never infer a passing result from an incomplete trace.
 
 ## Boundaries
+
+- Diagnosis defaults to read-only. Follow rtl-dv-debugging and project execution
+  rules; an available simulator or delegated role does not authorize a new run.
+- Use registered MCP tools where required; do not substitute a shell wrapper.
 
 - Do not treat a waveform screenshot as proof without the associated test and revision.
 - Do not modify generated, vendor or read-only files.

@@ -2,6 +2,8 @@
 
 For scoped static review, optional EDA validation and copy-and-paste prompts,
 see [rtl-dv-review usage](rtl-dv-review.md).
+For implementation versus diagnosis, result-set triage and evidence auditing,
+see the [workflow skills guide](rtl-dv-workflows.md).
 
 This guide is for engineers working in a project attached to claude_kit.
 The project's `.mcp.json` and Claude settings determine which servers are
@@ -265,9 +267,9 @@ If Claude cannot find that skill, ask it to inspect the kit's `skills` catalog
 and resolve the selected guidance. A catalog entry alone does not mean a native
 Claude slash command or subagent has been installed.
 
-`rtl-dv-kit` is the thin project entrypoint; `rtl-dv-context` is for missing or
-stale facts and unclear workflow selection. Keep both names compatible, but do
-not run both as a fixed pre-edit checklist. Minimal installations may contain
+`rtl-dv-kit` is the single entrypoint for missing or stale project facts and
+unclear workflow selection; the redundant context skill is no longer deployed.
+Do not run a fixed pre-edit checklist. Minimal installations may contain
 only the entrypoint. Revalidate changed configuration and resolve permission
 errors before affected actions; reusing context does not waive those checks.
 

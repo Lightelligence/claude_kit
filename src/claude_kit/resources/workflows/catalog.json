@@ -7,7 +7,7 @@
       "scope": "rtl",
       "summary": "Plan a bounded RTL architecture, implementation and focused verification change.",
       "roles": ["rtl-architect", "rtl-designer", "reviewer", "evidence-reviewer"],
-      "skills": ["rtl-dv-context", "rtl-design", "rtl-dv-evidence"],
+      "skills": ["rtl-dv-kit", "rtl-design", "rtl-dv-evidence"],
       "preferred_commands": ["inspect", "lint", "compile", "simulate"],
       "required_facts": ["target", "simulator", "source_revision"],
       "pack_hints": ["common"],
@@ -16,7 +16,7 @@
         "Freeze the requested behavior, invariant and acceptance condition.",
         "Resolve the smallest relevant RTL, interface, test and protocol context.",
         "Implement one coherent change inside the writable scope.",
-        "Run the cheapest relevant check, then expand only when evidence supports it.",
+        "Propose the cheapest relevant check; execute or expand only within the engineer's selected scope.",
         "Record reset, boundary, error, backpressure and unrun-simulation risks."
       ],
       "completion": [
@@ -31,7 +31,7 @@
       "scope": "dv",
       "summary": "Plan a focused DV testbench, assertion, scoreboard or coverage change.",
       "roles": ["dv-architect", "dv-engineer", "reviewer", "evidence-reviewer"],
-      "skills": ["rtl-dv-context", "dv-engineering", "rtl-dv-regression", "rtl-dv-evidence"],
+      "skills": ["rtl-dv-kit", "dv-engineering", "rtl-dv-regression", "rtl-dv-evidence"],
       "preferred_commands": ["inspect", "lint", "compile", "simulate", "regression"],
       "required_facts": ["target", "test_selector", "simulator", "source_revision"],
       "pack_hints": ["common"],
@@ -40,7 +40,7 @@
         "Translate requirements into positive, boundary, negative, reset and recovery scenarios.",
         "Map each scenario to stimulus, observation, checking and coverage evidence.",
         "Preserve clear driver, monitor, scoreboard, reference-model and assertion responsibilities.",
-        "Perform applicable static checks, then present the categorized project check menu; RTL-only lint is not DV syntax validation.",
+        "Inspect sources statically, then present engineer-selected checks; RTL-only lint is not DV syntax validation.",
         "Let the engineer multi-select checks; run selected MCP tools or approved wrappers in order and report each result before requesting wider execution.",
         "Separate DUT failures, sampling gaps, environment failures and coverage gaps."
       ],
@@ -57,7 +57,7 @@
       "scope": "rtl-dv",
       "summary": "Triage a compile, elaboration, simulation, assertion, scoreboard, timeout or waveform failure.",
       "roles": ["debugger", "waveform-debugger", "regression-triager", "reviewer", "evidence-reviewer"],
-      "skills": ["rtl-dv-context", "rtl-dv-debugging", "rtl-dv-regression", "rtl-dv-evidence"],
+      "skills": ["rtl-dv-kit", "rtl-dv-debugging", "rtl-dv-regression", "rtl-dv-evidence"],
       "preferred_commands": ["inspect", "lint", "compile", "simulate", "collect_artifacts"],
       "required_facts": ["target", "test_selector", "simulator", "source_revision"],
       "pack_hints": ["common"],
@@ -67,11 +67,11 @@
         "Classify the failure and isolate the first causal error.",
         "Reduce to the smallest reproducible test, transaction, cycle or state transition.",
         "State a falsifiable root-cause hypothesis and the observation that distinguishes it.",
-        "Rerun the minimal reproduction before expanding validation."
+        "Diagnose read-only unless a fix is requested; rerun or expand only within explicit engineer selections."
       ],
       "completion": [
         "The first causal failure and its evidence are identified.",
-        "The minimal reproduction has a before/after result or an explicit external blocker.",
+        "The minimal reproduction has observed results, a not-run status, or an explicit blocker; diagnosis does not require a new run.",
         "Secondary cascades are not presented as independent root causes."
       ]
     },
@@ -81,7 +81,7 @@
       "scope": "rtl-dv",
       "summary": "Plan protocol or VIP mapping, connectivity and smoke validation.",
       "roles": ["vip-integration", "rtl-architect", "dv-engineer", "evidence-reviewer"],
-      "skills": ["rtl-dv-context", "protocol-vip", "rtl-dv-evidence"],
+      "skills": ["rtl-dv-kit", "protocol-vip", "rtl-dv-evidence"],
       "preferred_commands": ["inspect", "lint", "compile", "simulate"],
       "required_facts": ["target", "simulator", "source_revision"],
       "pack_hints": ["vip.generic"],
@@ -122,7 +122,7 @@
       "scope": "rtl-dv",
       "summary": "Perform a read-only RTL/DV correctness and evidence review.",
       "roles": ["reviewer", "evidence-reviewer"],
-      "skills": ["rtl-dv-context", "rtl-dv-review", "rtl-dv-evidence"],
+      "skills": ["rtl-dv-kit", "rtl-dv-review", "rtl-dv-evidence"],
       "preferred_commands": ["inspect"],
       "required_facts": ["source_revision"],
       "pack_hints": ["common"],
@@ -146,7 +146,7 @@
       "scope": "rtl-dv",
       "summary": "Prepare a reproducible RTL/DV handoff, evidence package or sign-off record.",
       "roles": ["evidence-reviewer", "reviewer"],
-      "skills": ["rtl-dv-context", "rtl-dv-evidence", "rtl-dv-review"],
+      "skills": ["rtl-dv-kit", "rtl-dv-evidence", "rtl-dv-review"],
       "preferred_commands": ["inspect", "collect_artifacts"],
       "required_facts": ["source_revision"],
       "pack_hints": ["common"],
@@ -156,12 +156,12 @@
         "Enumerate changed files and the reason for each change.",
         "Attach exact commands, statuses, exit results and artifact paths.",
         "Separate passed, failed, skipped, blocked and unknown checks.",
-        "Run strict evidence validation and list residual risks and coverage gaps."
+        "Audit supplied evidence read-only; prepare files only when requested, and run strict validation on final evidence JSON while preserving residual risks."
       ],
       "completion": [
-        "The evidence file matches the current project and task.",
+        "Any requested evidence file matches the project/task; read-only audits identify their reviewed sources without requiring a new file.",
         "Every claimed check has execution evidence or an explicit exception.",
-        "Strict evidence validation passes."
+        "Report strict validation status for evidence files; record validity does not imply that checks or design verification passed."
       ]
     }
   ]

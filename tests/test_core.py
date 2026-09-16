@@ -17,6 +17,7 @@ from claude_kit.core import (
     doctor,
     discover_regression_artifacts,
     inspect_project,
+    integration_skill,
     load_profile,
     mcp_config,
     read_artifact,
@@ -253,7 +254,7 @@ class CoreTests(unittest.TestCase):
         )
         self.assertIn("review APB reset behavior", context)
         self.assertIn("APB Guidance", context)
-        self.assertIn("RTL/DV Context", context)
+        self.assertIn(integration_skill().strip(), context)
         self.assertIn("RTL/DV Review", context)
         self.assertEqual(manifest["project"], "minimal_fixture")
         self.assertEqual(manifest["skills"], ["rtl-dv-context", "rtl-dv-review"])
@@ -671,8 +672,9 @@ class CoreTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as resources_directory, tempfile.TemporaryDirectory() as project_directory:
             resources = Path(resources_directory)
-            (resources / "templates").mkdir()
-            (resources / "templates" / "SKILL.md").write_text(
+            integration = resources / "skills" / "rtl-dv-kit"
+            integration.mkdir(parents=True)
+            (integration / "SKILL.md").write_text(
                 "# Integration fixture\n",
                 encoding="utf-8",
             )

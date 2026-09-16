@@ -304,7 +304,7 @@ python3 "$CLAUDE_KIT_BIN" context \
   --pack common \
   --pack protocols.axi4 \
   --skill rtl-design \
-  --skill rtl-dv-context \
+  --skill rtl-dv-kit \
   --task "Fix AXI4 response-channel backpressure in hw/" \
   --output out/claude/context.md \
   --manifest out/claude/context-manifest.json
@@ -678,7 +678,7 @@ Arguments:
   "task": "Review the APB register interface under hw/",
   "roles": ["reviewer"],
   "packs": ["protocols.apb"],
-  "skills": ["rtl-dv-context", "rtl-dv-review"]
+  "skills": ["rtl-dv-kit", "rtl-dv-review"]
 }
 ```
 

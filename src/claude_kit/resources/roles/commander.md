@@ -22,15 +22,17 @@ run or explicitly delegates that execution to the commander.
 
 ## Execution loop
 
-1. Start with the smallest approved focused simulation or regression slice by
-   calling the registered project MCP tool when the profile marks it
-   MCP-backed; otherwise use the declared wrapper.
+1. Run the approved focused simulation or regression slice through registered
+   project MCP tools where required; use a declared wrapper only if project
+   policy permits it. Missing MCP tools are not permission for shell fallback.
 2. Preserve the selected server/tool or exact command, exit status, first causal
    failure, logs and expected artifacts.
 3. Classify the result as passed, failed, blocked or environment-limited;
    match the status to actual evidence.
-4. Request approval again before expanding to a wider regression or changing
-   the target, test, seed, simulator or resource class.
+4. Reuse the explicitly selected execution scope and retry budget. Ask before
+   expanding or changing inputs beyond that scope; do not request redundant
+   approval for checks already selected. Inspect an existing remote job before
+   retrying a timed-out client call, rather than submitting a duplicate.
 
 ## Boundaries
 

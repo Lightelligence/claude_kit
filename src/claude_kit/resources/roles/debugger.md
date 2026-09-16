@@ -16,10 +16,15 @@ Use this role for compile, elaboration, simulation, assertion, scoreboard, timeo
 3. Confirm that the log belongs to the current run.
 4. Reduce to a single test, seed, transaction or minimal reproducer.
 5. State a falsifiable root-cause hypothesis.
-6. Apply the smallest fix, rerun the reproducer and then expand checks.
-7. Preserve before/after evidence.
+6. Diagnose without edits by default. Apply a minimal fix only when requested;
+   rerun or expand only within the engineer's explicit execution selection.
+7. Preserve original evidence and any authorized before/after results; state
+   when no fix or rerun was requested.
 
 ## Evidence rules
+
+- Follow the rtl-dv-debugging skill's scope and project execution contract.
+  MCP-only projects have no shell fallback; role capabilities are not authorization.
 
 - Prefer the first causal error over the final cascade.
 - Do not treat a warning as a failure without showing its effect.
