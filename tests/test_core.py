@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -646,6 +647,24 @@ class CoreTests(unittest.TestCase):
             self.assertTrue(prompt.is_file())
             self.assertTrue(prompt.read_text(encoding="utf-8").endswith("\n"))
             self.assertFalse(prompt.read_text(encoding="utf-8").endswith("\n\n"))
+
+    def test_review_references_survive_project_sync(self) -> None:
+        source = ROOT / "src/claude_kit/resources/skills/rtl-dv-review"
+        links = re.findall(r"\]\((references/[^)]+)\)",
+                           (source / "SKILL.md").read_text(encoding="utf-8"))
+        self.assertTrue(links, "Review skill must expose its selective references")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            sync_project_skills(root)
+            deployed = root / ".claude/skills/rtl-dv-review"
+            for relative in links:
+                with self.subTest(reference=relative):
+                    original = (source / relative).resolve()
+                    self.assertTrue(original.is_relative_to(source.resolve()))
+                    self.assertTrue(original.is_file())
+                    self.assertEqual((deployed / relative).read_bytes(), original.read_bytes())
+            # Repeating an ordinary sync must not rewrite unchanged resources.
+            self.assertEqual(sync_project_skills(root), [])
 
     def test_sync_ignores_interpreter_generated_skill_caches(self) -> None:
         from claude_kit.core import _skill_targets

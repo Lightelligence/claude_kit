@@ -2,6 +2,9 @@
 
 [English](tool-selection.md)
 
+限定范围的静态 review、可选 EDA 验证与可复制 prompt，参见
+[rtl-dv-review 使用说明](rtl-dv-review.zh-CN.md)。
+
 当前 17 个 server 的完整清单与用户排除项，见[工具验证快照](tool-verification.zh-CN.md)。
 
 以项目 `.mcp.json` 和 Claude settings 为准：有 skill、源码或目录，不代表 server 已启用；能列出工具，也不代表业务运行通过。
