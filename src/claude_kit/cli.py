@@ -112,6 +112,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     attach = subparsers.add_parser("attach", help="Link shared kit resources without overwriting project configuration")
     attach.add_argument("--project-root", help="Project root")
+    attach.add_argument("--manifest", help="Optional attachment manifest path relative to the project root")
     attach.add_argument("--dry-run", action="store_true", help="Check conflicts and report planned changes without writing")
     attach.set_defaults(handler=handle_attach)
 
@@ -300,7 +301,11 @@ def handle_upstream(args: argparse.Namespace) -> dict[str, Any]:
 def handle_attach(args: argparse.Namespace) -> int:
     from .deployment import attach_project
 
-    _json_print(attach_project(_root(args.project_root), dry_run=args.dry_run))
+    _json_print(
+        attach_project(
+            _root(args.project_root), dry_run=args.dry_run, manifest=args.manifest
+        )
+    )
     return 0
 
 

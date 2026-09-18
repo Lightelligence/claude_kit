@@ -17,7 +17,7 @@ claude_kit 把通用 RTL/DV roles、protocol/VIP packs、项目 profile、repo-l
 - profile 解析和校验，支持 TOML/JSON；
 - 项目根目录发现和路径权限检查；
 - context resolver 和可审计 manifest；
-- 11 个通用 RTL/DV roles，包括 waveform-debugger、regression-triager 和显式委托的执行 commander；
+- 13 个通用 RTL/DV 与实现 roles，包括时钟复位生成、物理设计交付、waveform-debugger、regression-triager 和显式委托的执行 commander；
 - 13 个可按需同步或触发的通用 skills；
 - 6 个可按任务路由的 RTL/DV workflows；
 - common、AXI4、AXI4-Lite、AXI4-Stream、APB、AHB、Wishbone、Ethernet、PCIe、UCIe、SPI、UART、JTAG、I2C、CHI 和 generic VIP packs；
@@ -556,6 +556,8 @@ Adapter 不应该：
 | commander | 已明确批准/委托的 simulation 或 regression 执行和 evidence 采集 |
 | reviewer | 只读 RTL/DV review |
 | evidence-reviewer | 交付前 evidence、日志和未验证声明检查 |
+| crg-engineer | 由 generator 管理的时钟复位 RTL、约束和已选择的验证 |
+| physical-design-engineer | profile 驱动的物理设计交付和真实实现证据 |
 
 Role 的工作方式跨项目大体一致；项目 profile 注入架构、代码、target、test 和 VIP 细节。
 

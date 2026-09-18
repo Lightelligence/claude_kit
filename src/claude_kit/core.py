@@ -427,8 +427,9 @@ def _front_matter(path: Path) -> dict[str, str]:
     return result
 
 
-def role_catalog() -> list[dict[str, str]]:
-    directory = resource_root() / "roles"
+def role_catalog(resources: Path | None = None) -> list[dict[str, str]]:
+    resources = resource_root() if resources is None else resources
+    directory = resources / "roles"
     result: list[dict[str, str]] = []
     for path in sorted(directory.rglob("*.md")):
         metadata = _front_matter(path)
@@ -437,8 +438,9 @@ def role_catalog() -> list[dict[str, str]]:
             "id": metadata["id"],
             "version": metadata.get("version", "1"),
             "scope": metadata.get("scope", "any"),
+            "summary": metadata.get("summary", ""),
             "title": title,
-            "path": str(path.relative_to(resource_root())).replace(os.sep, "/"),
+            "path": str(path.relative_to(resources)).replace(os.sep, "/"),
         })
     return result
 
@@ -460,8 +462,9 @@ def pack_catalog() -> list[dict[str, Any]]:
     return result
 
 
-def skill_catalog() -> list[dict[str, str]]:
-    directory = resource_root() / "skills"
+def skill_catalog(resources: Path | None = None) -> list[dict[str, str]]:
+    resources = resource_root() if resources is None else resources
+    directory = resources / "skills"
     result: list[dict[str, str]] = []
     for path in sorted(directory.rglob("SKILL.md")):
         metadata = _front_matter(path)
@@ -469,7 +472,7 @@ def skill_catalog() -> list[dict[str, str]]:
             "id": metadata.get("name", path.parent.name),
             "version": metadata.get("version", "1"),
             "description": metadata.get("description", ""),
-            "path": str(path.relative_to(resource_root())).replace(os.sep, "/"),
+            "path": str(path.relative_to(resources)).replace(os.sep, "/"),
         })
     return result
 

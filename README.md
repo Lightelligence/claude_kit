@@ -11,8 +11,11 @@ the [verification snapshot](docs/tool-verification.md).
 
 For a shared installation loaded with `module add claude_kit`, see
 [shared installation and project attachment](docs/shared-installation.md).
-`claude-kit attach` links the shared resources without copying them or replacing
-project-owned MCP definitions. Existing copy-based `init` remains supported.
+`claude-kit attach` links shared resources without copying them or replacing
+project-owned MCP definitions. An optional attachment manifest selects roles,
+skills, aliases, and a vendored kit path while leaving project profile and MCP
+management disabled when requested. Existing copy-based `init` remains
+supported.
 
 claude_kit keeps cross-project RTL/DV roles, protocol and VIP packs, project-profile schemas, a repository-local CLI, artifact/evidence contracts, and an optional thin MCP bridge in one versioned repository. A consumer project normally needs only a pinned submodule plus a small profile or adapter.
 
@@ -25,7 +28,7 @@ The repository currently provides a runnable Python MVP with:
 - TOML and JSON project-profile loading and validation;
 - project-root discovery and path-boundary checks;
 - context resolution and auditable manifests;
-- eleven reusable RTL/DV roles, including waveform debugging, regression triage and explicitly delegated execution;
+- thirteen reusable RTL/DV and implementation roles, including clock/reset generation, physical-design handoff, waveform debugging, regression triage and explicitly delegated execution;
 - thirteen reusable skills that can be synchronized into a project on demand;
 - six task-routing RTL/DV workflows;
 - common, AXI4, AXI4-Lite, AXI4-Stream, APB, AHB, Wishbone, Ethernet, PCIe, UCIe, SPI, UART, JTAG, I2C, CHI, and generic VIP packs;
@@ -586,6 +589,8 @@ The built-in roles are:
 | commander | Explicitly approved simulation/regression execution and evidence capture |
 | reviewer | Read-only RTL/DV review |
 | evidence-reviewer | Evidence, logs, skipped checks, and delivery review |
+| crg-engineer | Generator-owned clock/reset RTL, constraints, and selected validation |
+| physical-design-engineer | Profile-driven physical-design handoff and real implementation evidence |
 
 Role behavior is intentionally similar across projects. The profile supplies architecture, source, target, test, and VIP facts.
 

@@ -267,6 +267,35 @@ class CliTests(unittest.TestCase):
             self.assertNotIn(".claude/skills/rtl-dv-kit/SKILL.md", created)
             self.assertFalse((project / ".claude" / "skills").exists())
 
+    def test_attach_accepts_selective_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            manifest = project / ".claude" / "kit-attachment.toml"
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text(
+                '''schema_version = 1
+manage_profile = false
+manage_mcp = false
+roles = []
+skills = ["rtl-design"]
+''',
+                encoding="utf-8",
+            )
+            result = self.run_cli(
+                "attach",
+                "--project-root",
+                str(project),
+                "--manifest",
+                ".claude/kit-attachment.toml",
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["manifest"], ".claude/kit-attachment.toml")
+            self.assertEqual(payload["skills"], ["rtl-design"])
+            self.assertEqual(payload["roles"], [])
+            self.assertFalse((project / ".mcp.json").exists())
+            self.assertTrue((project / ".claude/skills/rtl-design").is_symlink())
+
 
 if __name__ == "__main__":
     unittest.main()

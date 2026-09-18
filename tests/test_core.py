@@ -42,9 +42,16 @@ FIXTURE = ROOT / "tests" / "fixtures" / "minimal_project"
 
 class CoreTests(unittest.TestCase):
     def test_catalogs_have_expected_entries(self) -> None:
-        self.assertIn("reviewer", {item["id"] for item in role_catalog()})
-        self.assertIn("waveform-debugger", {item["id"] for item in role_catalog()})
-        self.assertIn("commander", {item["id"] for item in role_catalog()})
+        roles = {item["id"]: item for item in role_catalog()}
+        self.assertIn("reviewer", roles)
+        self.assertIn("waveform-debugger", roles)
+        self.assertIn("commander", roles)
+        self.assertIn("crg-engineer", roles)
+        self.assertIn("physical-design-engineer", roles)
+        self.assertEqual(
+            roles["crg-engineer"]["summary"],
+            "Generate clock/reset RTL and constraints from approved requirements through a registered project generator.",
+        )
         self.assertIn("protocols.apb", {item["id"] for item in pack_catalog()})
         self.assertIn("protocols.chi", {item["id"] for item in pack_catalog()})
         self.assertIn("protocols.axi4lite", {item["id"] for item in pack_catalog()})

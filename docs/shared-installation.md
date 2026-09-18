@@ -65,12 +65,46 @@ exists. Add the project's actual build/test mapping and permissions there;
 the initial profile grants no write access and invents no test target.
 Existing `.ai` profiles remain supported and are not silently migrated.
 
-The command links every built-in skill, including its supporting files, into
-`.claude/skills`. Thin native `kit-*` agent definitions in `.claude/agents`
-refer to the shared role documents. The reviewer wrappers expose only read
-tools. It adds only the `claude-kit` entry in the root `.mcp.json`, preserving
-every other server and setting. It does not change `.claude/settings.json`,
-root `CLAUDE.md`, user-level MCPs, credentials or existing project skills.
+Without a manifest, the command links every built-in skill, including its
+supporting files, into `.claude/skills`. Thin native `kit-*` agent definitions
+in `.claude/agents` refer to the shared role documents. The reviewer wrappers
+expose only read tools. It adds only the `claude-kit` entry in the root
+`.mcp.json`, preserving every other server and setting. It does not change
+`.claude/settings.json`, root `CLAUDE.md`, user-level MCPs, credentials or
+existing project skills.
+
+Projects with an existing Claude layer can select resources explicitly:
+
+```toml
+# .claude/kit-attachment.toml
+schema_version = 1
+manage_profile = false
+manage_mcp = false
+kit_path = "third_party/claude_kit"
+roles = ["reviewer"]
+skills = ["rtl-design", "rtl-dv-evidence"]
+
+[aliases.roles]
+project-reviewer = "reviewer"
+
+[aliases.skills]
+rtl = "rtl-design"
+```
+
+Apply it with:
+
+```sh
+claude-kit attach --manifest .claude/kit-attachment.toml --dry-run
+claude-kit attach --manifest .claude/kit-attachment.toml
+```
+
+`roles` and `skills` are reusable catalog IDs. Alias keys are project-facing
+names and alias values are catalog IDs. `kit_path` is optional; when present,
+it must identify a vendored kit directory inside the project and generated
+skill links are relative to that checkout. Set `manage_profile = false` or
+`manage_mcp = false` when those files remain entirely project-owned. MCP
+management requires an existing or managed profile. Omitting `--manifest`
+retains the attach-all behavior above.
 
 Installation-local links, native wrappers and `.claude/kit-state.json` are
 generated deployment state, not project facts. Keep those managed paths out
