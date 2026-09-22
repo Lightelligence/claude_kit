@@ -157,7 +157,7 @@ if [ "${1:-}" = "--setup-only" ]; then
 fi
 
 [ "$#" -gt 0 ] || {
-    echo "Usage: scripts/mcp_python.sh <server_script.py> [args...]" >&2
+    echo "Usage: .claude/scripts/run_mcp_python.sh <server_script.py> [args...]" >&2
     exit 2
 }
 exec "$python" "$@"
@@ -175,11 +175,15 @@ exec /bin/sh "$plugin_root/scripts/run_mcp_python.sh" --setup-only
 
 
 def expected_runtime_files() -> dict[Path, str]:
-    return {
-        ROOT / "scripts/mcp_python.sh": _root_launcher(),
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    outputs = {
         ROOT / ".claude/scripts/run_mcp_python.sh": _runtime_launcher(),
         ROOT / ".claude/scripts/setup_mcp_env.sh": _setup_launcher(),
     }
+    # Keep existing consumers compatible; migrated projects have no scripts/ shim.
+    if manifest.get("launcher") == "scripts/mcp_python.sh":
+        outputs[ROOT / "scripts/mcp_python.sh"] = _root_launcher()
+    return outputs
 
 
 def validate_inputs() -> None:
@@ -195,8 +199,8 @@ def validate_inputs() -> None:
     manifest: dict[str, Any] = json.loads(MANIFEST.read_text(encoding="utf-8"))
     if manifest.get("schema_version") != 1 or not manifest.get("servers"):
         raise ValueError("invalid or empty MCP server manifest")
-    if manifest.get("launcher") != "scripts/mcp_python.sh":
-        raise ValueError("MCP manifest must use the generated root launcher")
+    if manifest.get("launcher") not in (".claude/scripts/run_mcp_python.sh", "scripts/mcp_python.sh"):
+        raise ValueError("MCP manifest must use .claude/scripts/run_mcp_python.sh or the legacy scripts/mcp_python.sh")
 
 
 def sync_runtime(write: bool) -> int:

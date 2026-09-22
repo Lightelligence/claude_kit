@@ -30,7 +30,8 @@ class FrameworkTests(unittest.TestCase):
                 self.assertEqual(attach_project(root, manifest='.claude/kit-attachment.toml')['changed'], [])
                 self.assertFalse((root / '.mcp.json').exists())
                 self.assertEqual(json.loads((root / '.claude/soc-lsp.json').read_text())['bazel_target'], f'//benches/p{i}:bench')
-                for rel in ('.claude/agents/soc-reviewer.md', '.claude/scripts/dv_log_evidence.py', '.claude/skills/soc-lsp/mcp_server.py'):
+                for rel in ('.claude/agents/soc-reviewer.md', '.claude/scripts/dv_log_evidence.py', '.claude/skills/soc-lsp/mcp_server.py',
+                            '.claude/scripts/atlassian_mcp.sh', '.claude/scripts/xverif_mcp.sh'):
                     self.assertTrue((root / rel).is_symlink())
                     cross_drive = root.resolve().drive.casefold() != resource_root().resolve().drive.casefold()
                     self.assertEqual(os.path.isabs(os.readlink(root / rel)), cross_drive)
