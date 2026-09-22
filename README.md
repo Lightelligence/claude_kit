@@ -1310,6 +1310,7 @@ to make one CI platform pass.
 ### Local checks
 
 ~~~powershell
+python -m pip install "setuptools>=68" wheel
 python -m compileall -q src bin
 python -m unittest discover -s tests -v
 ~~~
