@@ -35,6 +35,7 @@ through the project profile; it does not guess source roots or execution targets
 Set `.claude/soc-lsp.json` with `bazel_target = //package:target` (JSON string value)
 and optionally `verible_path`. The legacy tool name `configure_sys_tb_index` now
 uses that explicit target, including its generated inventory/runfiles filenames.
+Reconnect soc-lsp after changing its project configuration.
 Do not replace the project scheduler or licensed execution policy with kit defaults.
 
 Shared scripts resolve `PROJ_DIR` or the nearest project profile from the current
