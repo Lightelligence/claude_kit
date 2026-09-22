@@ -357,8 +357,8 @@ class VeribleLSPBridge:
         import re
         if not isinstance(target, str) or not re.fullmatch(r'//[A-Za-z0-9_./-]+:[A-Za-z0-9_.-]+', target):
             raise ValueError('Set bazel_target to an explicit //package:target in .claude/soc-lsp.json')
-        package, name = target[2:].split(':')
-        if any(part in ('', '.', '..') for part in package.split('/')) or name in ('.', '..'):
+        package, artifact_stem = target[2:].split(':')
+        if any(part in ('', '.', '..') for part in package.split('/')) or artifact_stem in ('.', '..'):
             raise ValueError('Invalid Bazel target path')
         base = self.root / 'bazel-bin' / package
         artifacts = {}
@@ -370,10 +370,10 @@ class VeribleLSPBridge:
                 raise ValueError('Generated artifact exceeds 16 MiB: ' + name)
             artifacts[str(path)] = hashlib.sha256(raw).hexdigest()
             return raw.decode('utf-8')
-        inventory = read((name + '_compile_inputs.txt'))
-        mapping = read((name + '.runfiles_manifest'))
-        read((name + '_compile_args.f'))
-        digest = read((name + '_compile_inputs.sha256')).strip()
+        inventory = read((artifact_stem + '_compile_inputs.txt'))
+        mapping = read((artifact_stem + '.runfiles_manifest'))
+        read((artifact_stem + '_compile_args.f'))
+        digest = read((artifact_stem + '_compile_inputs.sha256')).strip()
         if len(digest) != 64 or any(c not in '0123456789abcdef' for c in digest):
             raise ValueError('Invalid generated compile-input digest')
         runfiles = {}
@@ -415,8 +415,8 @@ class VeribleLSPBridge:
         return self._install_index(paths, {
             'authority': 'bazel_generated_compile_inventory', 'target': target,
             'generation_command': 'bazel build ' + target,
-            'filelist': str(base / (name + '_compile_inputs.txt')),
-            'sha256': artifacts[str(base / (name + '_compile_inputs.txt'))],
+            'filelist': str(base / (artifact_stem + '_compile_inputs.txt')),
+            'sha256': artifacts[str(base / (artifact_stem + '_compile_inputs.txt'))],
             'compile_inputs_digest': digest, 'excluded_input_extensions': ignored,
             'external_sources': sum(not p.is_relative_to(self.root) for p in paths),
             'build_freshness': 'not_verified_run_bazel_build_to_refresh',

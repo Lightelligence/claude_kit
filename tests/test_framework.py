@@ -80,6 +80,10 @@ class FrameworkTests(unittest.TestCase):
             (root / 'CLAUDE.md').write_text('@shared.md\n')
             (root / 'shared.md').write_text('shared instructions\n@CLAUDE.md\n')
             self.assertEqual(module.instruction_text(root / 'CLAUDE.md', root).count('shared instructions'), 1)
+            (root / 'shared.md').write_text('```python\n@mcp.tool()\n```\n')
+            self.assertIn('@mcp.tool()', module.instruction_text(root / 'CLAUDE.md', root))
+            (root / 'sample.py').write_text('@mcp.tool()\n')
+            self.assertEqual(module.instruction_text(root / 'sample.py', root), '@mcp.tool()\n')
             (root / 'shared.md').write_text('@../outside.md\n')
             with self.assertRaises((ValueError, FileNotFoundError)):
                 module.instruction_text(root / 'CLAUDE.md', root)

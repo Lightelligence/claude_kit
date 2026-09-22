@@ -63,6 +63,28 @@ class ParseTests(unittest.TestCase):
         with patch.object(self.bridge, 'start'), self.assertRaises(FileNotFoundError):
             self.bridge.configure_sys_tb_index()
 
+    def test_other_project_target_controls_all_artifact_names(self):
+        external = self.root / 'defs.vp'
+        external.write_text('module child; endmodule')
+        old = self.make_bazel_outputs(external)
+        new = self.root / 'bazel-bin/benches/alternate'
+        new.mkdir(parents=True)
+        for path in old.iterdir():
+            path.rename(new / path.name.replace('sys_tb', 'selected', 1))
+        self.bridge.bazel_target = '//benches/alternate:selected'
+        with patch.object(self.bridge, 'start'):
+            result = self.bridge.configure_sys_tb_index()
+        self.addCleanup(self.bridge._index_temp.cleanup)
+        self.assertEqual(result['target'], '//benches/alternate:selected')
+        self.assertTrue(result['filelist'].endswith('/benches/alternate/selected_compile_inputs.txt'))
+
+    def test_missing_or_escaping_target_is_not_inferred(self):
+        for target in (None, '///etc:target', '//../escape:target'):
+            with self.subTest(target=target):
+                self.bridge.bazel_target = target
+                with self.assertRaises(ValueError):
+                    self.bridge.configure_sys_tb_index()
+
     def setUp(self):
         self.mod = load()
         self.tmp = tempfile.TemporaryDirectory()

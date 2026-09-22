@@ -32,6 +32,16 @@ def instruction_text(path, root, seen=None):
     seen.add(path)
     text = path.read_text(encoding='utf-8')
     parts = [text]
-    for reference in re.findall(r'^@([^\s]+)\s*$', text, re.MULTILINE):
-        parts.append(instruction_text(path.parent / reference, root, seen))
+    if path.suffix != '.md':
+        return text
+    fence = None
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(('```', '~~~')):
+            marker = stripped[:3]
+            fence = None if fence == marker else (marker if fence is None else fence)
+            continue
+        match = re.fullmatch(r'@([^\s]+)\s*', stripped) if fence is None else None
+        if match:
+            parts.append(instruction_text(path.parent / match.group(1), root, seen))
     return '\n'.join(parts)
