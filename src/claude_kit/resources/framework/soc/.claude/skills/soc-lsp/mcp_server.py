@@ -358,7 +358,7 @@ class VeribleLSPBridge:
         if not isinstance(target, str) or not re.fullmatch(r'//[A-Za-z0-9_./-]+:[A-Za-z0-9_.-]+', target):
             raise ValueError('Set bazel_target to an explicit //package:target in .claude/soc-lsp.json')
         package, name = target[2:].split(':')
-        if any(part in ('.', '..') for part in package.split('/')) or name in ('.', '..'):
+        if any(part in ('', '.', '..') for part in package.split('/')) or name in ('.', '..'):
             raise ValueError('Invalid Bazel target path')
         base = self.root / 'bazel-bin' / package
         artifacts = {}
