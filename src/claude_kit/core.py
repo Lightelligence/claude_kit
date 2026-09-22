@@ -382,6 +382,7 @@ def validate_profile(root: Path, profile: dict[str, Any]) -> list[dict[str, str]
 
 
 def doctor(root: Path, explicit_profile: str | Path | None = None, strict: bool = False) -> dict[str, Any]:
+    root = root.resolve()
     try:
         profile_path, profile = load_profile(root, explicit_profile)
     except KitError as exc:

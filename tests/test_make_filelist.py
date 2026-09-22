@@ -28,7 +28,7 @@ class MakeFilelistTests(unittest.TestCase):
     def setUp(self):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
-        self.root = Path(temp.name)
+        self.root = Path(temp.name).resolve()
         self.scan = self.root / 'input'
         (self.scan / 'nested').mkdir(parents=True)
         (self.scan / 'top.sv').write_text('module top; endmodule\n')

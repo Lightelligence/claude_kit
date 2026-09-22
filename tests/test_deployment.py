@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from claude_kit.core import KitError, _front_matter, discover_profile, doctor, find_project_root, resource_root, role_catalog, skill_catalog
-from claude_kit.deployment import attach_project
+from claude_kit.deployment import _link_fingerprint, attach_project
 
 
 class DeploymentTests(unittest.TestCase):
@@ -19,6 +19,7 @@ class DeploymentTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name) / "example-project"
         self.root.mkdir()
+        self.root = self.root.resolve()
 
     def write_manifest(self, content):
         directory = self.root / ".claude"
@@ -465,9 +466,19 @@ skills = []
     def test_cross_volume_links_fall_back_to_absolute_paths(self):
         with patch("claude_kit.deployment.os.path.relpath", side_effect=ValueError("different drives")):
             attach_project(self.root)
+            self.assertEqual(attach_project(self.root)["changed"], [])
         for entry in skill_catalog():
             target = os.readlink(self.root / ".claude/skills" / entry["id"])
             self.assertTrue(Path(target).is_absolute())
+
+    @unittest.skipUnless(os.name == "nt", "Windows device-prefix spelling")
+    def test_link_fingerprints_ignore_device_prefix_not_target_changes(self):
+        for ordinary, extended in (
+            ("C:\\kit\\skill", "\\\\?\\C:\\kit\\skill"),
+            ("\\\\server\\share\\skill", "\\\\?\\UNC\\server\\share\\skill"),
+        ):
+            self.assertEqual(_link_fingerprint(ordinary), _link_fingerprint(extended))
+            self.assertNotEqual(_link_fingerprint(ordinary + "-other"), _link_fingerprint(extended))
 
     @unittest.skipUnless(os.name == "nt", "Windows junction regression")
     def test_windows_junction_parent_is_rejected(self):

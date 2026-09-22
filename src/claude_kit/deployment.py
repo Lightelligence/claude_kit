@@ -31,9 +31,21 @@ def _checked_target(root: Path, relative: str) -> Path:
     return path
 
 
+def _link_fingerprint(target: str) -> str:
+    # Windows readlink adds a device prefix to absolute targets even when
+    # symlink_to received a normal drive/UNC path. Ignore that OS spelling,
+    # not actual target changes, when checking ownership and idempotence.
+    if os.name == "nt":
+        if target.startswith("\\\\?\\UNC\\"):
+            target = "\\\\" + target[8:]
+        elif target.startswith("\\\\?\\"):
+            target = target[4:]
+    return "link:" + target
+
+
 def _fingerprint(path: Path) -> str | None:
     if path.is_symlink():
-        return "link:" + os.readlink(path)
+        return _link_fingerprint(os.readlink(path))
     if path.is_file():
         return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
     return "directory" if path.exists() else None
@@ -519,7 +531,7 @@ tools for configured checks and report missing prerequisites as unverified.
             parsed_fingerprint = "sha256:" + hashlib.sha256(original_config).hexdigest() if original_config is not None else None
             if current != parsed_fingerprint:
                 raise KitError("MCP configuration changed during attachment planning")
-        expected = "link:" + value if kind == "link" else "sha256:" + hashlib.sha256(value.encode("utf-8")).hexdigest()
+        expected = _link_fingerprint(value) if kind == "link" else "sha256:" + hashlib.sha256(value.encode("utf-8")).hexdigest()
         if current != expected:
             marker = alias_markers.get(relative)
             marker_matches = False

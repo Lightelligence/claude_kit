@@ -76,6 +76,7 @@ class FrameworkTests(unittest.TestCase):
             root = self.project(Path(temp))
             with patch('claude_kit.deployment.os.path.relpath', side_effect=ValueError('different drives')):
                 result = attach_project(root, manifest='.claude/kit-attachment.toml')
+                self.assertEqual(attach_project(root, manifest='.claude/kit-attachment.toml')['changed'], [])
             self.assertEqual(result['status'], 'passed')
             target = root / '.claude/agents/soc-reviewer.md'
             self.assertTrue(Path(os.readlink(target)).is_absolute())

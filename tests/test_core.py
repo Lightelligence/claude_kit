@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -244,6 +245,10 @@ class CoreTests(unittest.TestCase):
         result = doctor(FIXTURE, strict=True)
         self.assertEqual(result["status"], "passed", result)
         self.assertEqual(result["issues"], [])
+
+    def test_doctor_accepts_a_relative_project_root(self) -> None:
+        relative = Path(os.path.relpath(FIXTURE, Path.cwd()))
+        self.assertEqual(doctor(relative, strict=True), doctor(FIXTURE, strict=True))
 
     def test_context_and_manifest_have_sources(self) -> None:
         profile_path, profile = load_profile(FIXTURE)
