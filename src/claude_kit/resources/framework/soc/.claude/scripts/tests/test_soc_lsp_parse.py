@@ -122,9 +122,9 @@ class ParseTests(unittest.TestCase):
             self.mod.page('items', [{'name': 'a' * 20000}])
 
     def test_utf8_frame_and_extra_headers(self):
-        payload = json.dumps({'message': '模块'}, ensure_ascii=False).encode()
+        payload = json.dumps({'message': '妯″潡'}, ensure_ascii=False).encode()
         data = b'Content-Length: ' + str(len(payload)).encode() + b'\r\nContent-Type: application/vscode-jsonrpc\r\n\r\n' + payload
-        self.assertEqual(self.bridge._frame(io.BytesIO(data))['message'], '模块')
+        self.assertEqual(self.bridge._frame(io.BytesIO(data))['message'], '妯″潡')
         with self.assertRaisesRegex(RuntimeError, 'Truncated'):
             self.bridge._frame(io.BytesIO(data[:-1]))
 
@@ -133,7 +133,7 @@ class ParseTests(unittest.TestCase):
         proc.poll.return_value = None
         proc.stdin = io.BytesIO()
         self.bridge.process = proc
-        self.bridge._write({'message': '模块'})
+        self.bridge._write({'message': '妯″潡'})
         header, payload = proc.stdin.getvalue().split(b'\r\n\r\n')
         self.assertEqual(int(header.split(b':')[1]), len(payload))
 
@@ -146,7 +146,7 @@ class ParseTests(unittest.TestCase):
         self.assertEqual(self.bridge.diagnostics[uri]['diagnostics'][0]['message'], 'syntax error')
 
     def test_missing_and_stale_diagnostics_are_pending(self):
-        self.bridge.document_symbol = lambda p: []
+        self.bridge.document_symbol = lambda p, **kwargs: []
         self.bridge._versions[str(self.source.resolve())] = 2
         self.assertEqual(self.bridge.get_diagnostics(self.source)['state'], 'pending')
         self.bridge.diagnostics[self.source.as_uri()] = {'version': 1, 'diagnostics': []}
@@ -222,6 +222,71 @@ class ParseTests(unittest.TestCase):
     def test_hover_capability_is_honored(self):
         with patch.object(self.mod, 'get_lsp_bridge', return_value=self.bridge):
             self.assertFalse(json.loads(self.mod.hover(str(self.source), 0, 0))['supported'])
+
+    def test_references_add_and_deduplicate_declarations(self):
+        definition = {'file': str(self.source), 'range': {'start': {'line': 0, 'character': 7}}}
+        usage = {'file': str(self.source), 'range': {'start': {'line': 2, 'character': 3}}}
+        self.bridge._at = lambda *args, **kwargs: [
+            {'uri': self.source.as_uri(), 'range': usage['range']}]
+        self.bridge.go_to_definition = lambda *args: [definition]
+        self.assertEqual(self.bridge.find_references(self.source, 0, 7), [usage, definition])
+        self.assertEqual(self.bridge.find_references(self.source, 0, 7, False), [usage])
+        self.bridge._at = lambda *args, **kwargs: [
+            {'uri': self.source.as_uri(), 'range': definition['range']},
+            {'uri': self.source.as_uri(), 'range': definition['range']}]
+        self.assertEqual(self.bridge.find_references(self.source, 0, 7), [definition])
+        self.assertEqual(self.bridge.find_references(self.source, 0, 7, False), [])
+
+    def test_definition_links_use_identifier_selection_range(self):
+        selected = {'start': {'line': 1, 'character': 7}, 'end': {'line': 1, 'character': 10}}
+        location = {'targetUri': self.source.as_uri(), 'targetRange': {}, 'targetSelectionRange': selected}
+        self.assertEqual(self.bridge._normalize_locations([location])[0]['range'], selected)
+
+    def test_symbol_cache_avoids_roundtrips_but_detects_same_mtime_edits(self):
+        self.bridge._send_notification = lambda *args: None
+        self.bridge._send_message = MagicMock(side_effect=[[{'name': 'old'}], [{'name': 'new'}], [{'name': 'new'}]])
+        self.source.write_text('module old; endmodule\n')
+        self.assertEqual(self.bridge.document_symbol(self.source)[0]['name'], 'old')
+        for _ in range(10):
+            self.assertEqual(self.bridge.document_symbol(self.source)[0]['name'], 'old')
+        self.assertEqual(self.bridge._send_message.call_count, 1)
+        saved = self.source.stat()
+        self.source.write_text('module new; endmodule\n')
+        os.utime(self.source, ns=(saved.st_atime_ns, saved.st_mtime_ns))
+        self.assertEqual(self.bridge.document_symbol(self.source)[0]['name'], 'new')
+        self.assertEqual(self.bridge._send_message.call_count, 2)
+        self.bridge.stop()
+        self.assertEqual(self.bridge.document_symbol(self.source)[0]['name'], 'new')
+        self.assertEqual(self.bridge._send_message.call_count, 3)
+
+    def test_cached_symbols_do_not_replace_diagnostic_protocol_barrier(self):
+        self.bridge._send_notification = lambda *args: None
+        self.bridge._send_message = MagicMock(return_value=[])
+        self.bridge.document_symbol(self.source)
+        self.assertEqual(self.bridge.get_diagnostics(self.source)['state'], 'pending')
+        self.assertEqual(self.bridge._send_message.call_count, 2)
+
+    def test_symbol_cache_is_bounded_and_evicted_documents_are_requested_again(self):
+        self.bridge._send_notification = lambda *args: None
+        self.bridge._send_message = MagicMock(return_value=[])
+        with patch.object(self.mod, 'MAX_SYMBOL_CACHE_DOCUMENTS', 2), patch.object(self.mod, 'MAX_SYMBOL_CACHE_BYTES', 4):
+            sources = []
+            for n in range(3):
+                source = self.root / ('m%d.sv' % n)
+                source.write_text('module m; endmodule\n')
+                sources.append(source)
+                self.bridge.document_symbol(source)
+            self.bridge.document_symbol(sources[0])
+            self.assertEqual(self.bridge._send_message.call_count, 4)
+            self.assertLessEqual(self.bridge._symbol_cache_bytes, 4)
+            self.assertLessEqual(len(self.bridge._symbol_cache), 2)
+
+    def test_configure_tool_does_not_launch_an_unused_empty_index_server(self):
+        bridge = MagicMock()
+        bridge.configure_sys_tb_index.return_value = {}
+        with patch.object(self.mod, 'get_lsp_bridge', return_value=bridge) as get:
+            self.mod.configure_sys_tb_index()
+        get.assert_called_once_with(start_server=False)
 
 
 if __name__ == '__main__':

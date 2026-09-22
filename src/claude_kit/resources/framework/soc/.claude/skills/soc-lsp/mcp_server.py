@@ -14,6 +14,7 @@ import sys
 import tempfile
 import threading
 from functools import wraps
+from collections import OrderedDict
 from urllib.parse import unquote, urlparse
 
 from mcp.server.fastmcp import FastMCP
@@ -21,6 +22,8 @@ from mcp.server.fastmcp import FastMCP
 MAX_RESPONSE = 12000
 MAX_FRAME = 16 * 1024 * 1024
 MAX_SOURCE = 8 * 1024 * 1024
+MAX_SYMBOL_CACHE_BYTES = 4 * 1024 * 1024
+MAX_SYMBOL_CACHE_DOCUMENTS = 32
 SV_SUFFIXES = ('.sv', '.svh', '.svp', '.v', '.vh', '.vp')
 
 
@@ -93,6 +96,8 @@ class VeribleLSPBridge:
         self.index_artifacts = {}
         self._index_temp = None
         self._responses = queue.Queue()
+        self._symbol_cache = OrderedDict()
+        self._symbol_cache_bytes = 0
 
     def find_workspace_root(self, file_path):
         p = Path(file_path).resolve()
@@ -233,6 +238,8 @@ class VeribleLSPBridge:
         self._opened_documents.clear()
         self._versions.clear()
         self.diagnostics.clear()
+        self._symbol_cache.clear()
+        self._symbol_cache_bytes = 0
 
     def _file_to_uri(self, file_path):
         return Path(file_path).resolve().as_uri()
@@ -274,7 +281,7 @@ class VeribleLSPBridge:
             p = Path(self._uri_to_file(loc.get('uri', loc.get('targetUri')))).resolve()
             if not self._allowed_source(p):
                 raise ValueError('LSP returned a location outside the checkout')
-            result.append({'file': str(p), 'range': loc.get('range', loc.get('targetRange', {}))})
+            result.append({'file': str(p), 'range': loc.get('range', loc.get('targetSelectionRange', loc.get('targetRange', {})))})
         return result
 
     @serialized
@@ -285,23 +292,57 @@ class VeribleLSPBridge:
         return self._send_message(method, {'textDocument': {'uri': self._file_to_uri(file_path)},
                                   'position': {'line': line, 'character': column}, **extra})
 
+    @serialized
     def go_to_definition(self, file_path, line, column):
         return self._normalize_locations(self._at('textDocument/definition', file_path, line, column))
 
+    @serialized
     def find_references(self, file_path, line, column, include_declaration=True):
-        return self._normalize_locations(self._at('textDocument/references', file_path, line, column,
-                                         context={'includeDeclaration': include_declaration}))
+        references = self._normalize_locations(self._at(
+            'textDocument/references', file_path, line, column,
+            context={'includeDeclaration': include_declaration}))
+        # Some Verible releases omit declarations regardless of the request flag.
+        # Reconcile with definition results so the MCP flag has stable semantics.
+        definitions = self.go_to_definition(file_path, line, column)
+        def identity(location):
+            return json.dumps(location, sort_keys=True)
+        declaration_keys = {identity(location) for location in definitions}
+        candidates = references + definitions if include_declaration else [
+            location for location in references if identity(location) not in declaration_keys]
+        unique = {}
+        for location in candidates:
+            unique.setdefault(identity(location), location)
+        return list(unique.values())
 
     @serialized
-    def document_symbol(self, file_path):
+    def document_symbol(self, file_path, refresh=False):
         self._ensure_document_open(file_path)
-        return self._send_message('textDocument/documentSymbol', {'textDocument': {'uri': self._file_to_uri(file_path)}}) or []
+        key = str(Path(file_path).resolve())
+        digest = self._opened_documents[key]
+        cached = self._symbol_cache.pop(key, None)
+        if cached:
+            self._symbol_cache_bytes -= cached[2]
+            if not refresh and cached[0] == digest:
+                self._symbol_cache[key] = cached
+                self._symbol_cache_bytes += cached[2]
+                return cached[1]
+        symbols = self._send_message('textDocument/documentSymbol', {
+            'textDocument': {'uri': self._file_to_uri(file_path)}}) or []
+        size = len(json.dumps(symbols, ensure_ascii=False).encode('utf-8'))
+        if size <= MAX_SYMBOL_CACHE_BYTES:
+            while self._symbol_cache and (len(self._symbol_cache) >= MAX_SYMBOL_CACHE_DOCUMENTS
+                    or self._symbol_cache_bytes + size > MAX_SYMBOL_CACHE_BYTES):
+                _, evicted = self._symbol_cache.popitem(last=False)
+                self._symbol_cache_bytes -= evicted[2]
+            self._symbol_cache[key] = (digest, symbols, size)
+            self._symbol_cache_bytes += size
+        return symbols
 
     @serialized
     def get_diagnostics(self, file_path):
         # A request after didOpen acts as a protocol barrier for Verible's
         # synchronous parse notifications. Absence is explicitly not a clean parse.
-        self.document_symbol(file_path)
+        self.document_symbol(file_path, refresh=True)
         uri = self._file_to_uri(file_path)
         diagnostic = self.diagnostics.get(uri)
         version = self._versions[str(Path(file_path).resolve())]
@@ -440,19 +481,21 @@ class VeribleLSPBridge:
                 'index': {k: v for k, v in (self.index or {}).items() if k != 'effective_filelist'},
                 'default_filelist_present': (self.root / 'verible.filelist').is_file(),
                 'capabilities': self.capabilities,
+                'symbol_cache': {'documents': len(self._symbol_cache), 'bytes': self._symbol_cache_bytes},
                 'limitation': 'Source parsing only; macros, elaboration and dynamic UVM factory behavior require compiler/runtime evidence.'}
 
 
 lsp_bridge = None
 
 
-def get_lsp_bridge(file_path=None):
+def get_lsp_bridge(file_path=None, *, start_server=True):
     global lsp_bridge
     if lsp_bridge is None:
         lsp_bridge = VeribleLSPBridge()
     if file_path and not lsp_bridge._allowed_source(Path(file_path).resolve()):
         raise ValueError('Source is outside the fixed checkout root')
-    lsp_bridge.start()
+    if start_server:
+        lsp_bridge.start()
     return lsp_bridge
 
 
@@ -468,13 +511,13 @@ def index_status() -> str:
 @mcp.tool()
 def configure_index(filelist_path: str) -> str:
     """Index an explicit partial plain SV list. For SoC use configure_sys_tb_index and Bazel sys_tb outputs; verible.filelist is not authoritative."""
-    return json.dumps(get_lsp_bridge().configure_index(filelist_path))
+    return json.dumps(get_lsp_bridge(start_server=False).configure_index(filelist_path))
 
 
 @mcp.tool()
 def configure_sys_tb_index() -> str:
     """Index outputs of the bazel_target configured in .claude/soc-lsp.json using its full compile inventory and runfiles map. Read-only; run the build first for freshness. Does not run Bazel or simulation."""
-    return json.dumps(get_lsp_bridge().configure_sys_tb_index())
+    return json.dumps(get_lsp_bridge(start_server=False).configure_sys_tb_index())
 
 
 @mcp.tool()
