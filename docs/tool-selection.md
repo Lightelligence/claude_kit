@@ -262,11 +262,51 @@ If Claude cannot find that skill, ask it to inspect the kit's `skills` catalog
 and resolve the selected guidance. A catalog entry alone does not mean a native
 Claude slash command or subagent has been installed.
 
-`rtl-dv-kit` is the thin project entrypoint; `rtl-dv-context` is for missing or
-stale facts and unclear workflow selection. Keep both names compatible, but do
-not run both as a fixed pre-edit checklist. Minimal installations may contain
-only the entrypoint. Revalidate changed configuration and resolve permission
-errors before affected actions; reusing context does not waive those checks.
+`rtl-dv-kit` handles missing/stale facts and unclear workflow selection.
+`rtl-dv-context` is a compatibility ID for that same guidance, not another
+workflow to load. Minimal installations contain only the canonical entrypoint.
+Revalidate changed configuration and resolve permission errors before affected
+actions; reusing context does not waive those checks.
+
+## Efficient defaults
+
+- Reuse current facts. For a known file edit, skip catalog/profile/plan/context
+  calls unless they answer a missing question. Native skill guidance already
+  loaded in the session does not need a second `resolve_context` call.
+- Start with one primary skill: `rtl-design` for RTL edits, `dv-engineering`
+  for testbench changes, `rtl-dv-review` for a read-only diff, or
+  `rtl-dv-debugging` for one failure. Add `rtl-dv-regression` for batch selection
+  or comparing runs; `rtl-dv-evidence` for a formal evidence package requested
+  by the engineer or required by project policy. Normal edits still report
+  actual checks and gaps without a separate evidence workflow.
+- The kit's compact MCP profile combines six catalog tools into `list_catalog`.
+  Keep project build, navigation and xverif servers separate: they have different
+  execution/permission contracts. Select servers with the existing task profile
+  mechanism; do not enable generators, coverage or live debugging for a code review.
+- When resolving only a skill, pass `roles=[]` and `packs=[]` to omit profile
+  defaults. Repeated IDs and the old context alias are deduplicated. Responses
+  retain project facts/permissions; this is not a permission bypass.
+- Read a bounded log window, e.g. `read_artifact(path="out/compile.log",
+  max_bytes=4096)`. The budget now limits disk reads as well as returned text;
+  `bytes` reports file size at the read and `truncated` marks partial evidence.
+  A prefix without errors is not proof of a passing run. For late failures use
+  the project's permitted targeted log/evidence query rather than repeat prefixes.
+- MCP JSON is compact without deleting fields or changing log whitespace inside
+  strings. CLI pretty JSON remains available for humans. Reduced payload bytes
+  and fewer recommended skills do not establish a measured token/latency saving
+  for a particular Claude model or IT router.
+
+```text
+Use dv-engineering to fix <scoreboard-comparison> in <file>.
+Reuse the known project context; read only the affected logic and dependencies.
+Do not run EDA. Explain the fix and offer the relevant checks once.
+```
+
+```text
+Review <diff> with rtl-dv-review. Report concrete RTL/DV correctness issues.
+Use existing evidence only; do not compile, simulate, or create a formal
+evidence package unless the project requires one.
+```
 
 ## Effective RTL prompts
 

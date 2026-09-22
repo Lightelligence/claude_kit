@@ -88,7 +88,7 @@ The core principles are:
 
 1. Put reusable behavior in the kit; keep project facts in the profile or adapter.
 2. Give Claude Code structured context through the CLI and files rather than through guessed paths.
-3. Let the planner select the smallest useful workflow and context before execution.
+3. Use the planner when workflow selection is unclear; reuse known context for straightforward work.
 4. Treat MCP as an interface layer, not as the RTL/DV execution engine.
 5. Keep the CLI and profile workflow fully usable when MCP is disabled.
 6. Do not couple the kit to ETX, bsub, or a particular scheduler.
@@ -214,7 +214,7 @@ The normal initialization creates:
 .ai/project.toml
 .claude/CLAUDE.md
 .claude/skills/rtl-dv-kit/SKILL.md
-.claude/skills/rtl-dv-context/SKILL.md
+.claude/skills/rtl-dv-kit/SKILL.md
 .claude/skills/rtl-design/SKILL.md
 .claude/skills/dv-engineering/SKILL.md
 .claude/skills/protocol-vip/SKILL.md
@@ -615,7 +615,7 @@ completion path is planning, testbench edits, profile/read-only inspection,
 static or lint checks, and evidence. It does not start simulation or
 regression automatically.
 
-Before a simulation or regression, ask for approval and show the profile
+Before a simulation or regression without existing approval, ask and show the profile
 command, target, test selector, simulator, expected runtime/resource cost and
 artifact location. The `commander` role is available for an explicitly
 approved or explicitly delegated run; it still uses only profile-declared
@@ -629,7 +629,7 @@ Skills are Claude Code procedures that can be synchronized into .claude/skills o
 
 | Skill | Trigger and responsibility |
 | --- | --- |
-| rtl-dv-context | Read the profile, inspect the project, and choose the smallest useful context |
+| rtl-dv-kit | Resolve missing project facts or workflow choices; reuse known context |
 | rtl-design | Plan and implement bounded RTL changes |
 | dv-engineering | Plan tests, sequences, scoreboards, assertions, and coverage |
 | protocol-vip | Apply a protocol/VIP pack and verify connectivity |
@@ -644,6 +644,15 @@ Skills are Claude Code procedures that can be synchronized into .claude/skills o
 | xwiki | Query or update authorized persistent verification-project knowledge |
 
 Normal init synchronizes all kit skills, including their relative `references/` and support files. init minimal creates only one integration skill. init no-skills creates no project-side skill files. Both minimal modes can later be followed by sync. The xverif skills remain optional guidance until the consumer project registers its own xverif MCP server.
+
+For a small project footprint, use a selective attachment manifest or `init
+--minimal`. The former `rtl-dv-context` ID remains a CLI/MCP compatibility alias
+for `rtl-dv-kit`, but is not a second catalog entry or a newly installed skill.
+Existing project copies are not silently deleted; review and retire obsolete
+copies/links through your project's normal Git workflow when updating the pin.
+Plans recommend the primary task skill, not a bundle of context, regression,
+review and formal-evidence skills for every edit. See the
+[efficient-use examples](docs/tool-selection.md#efficient-defaults) for routing.
 
 ## xverif provider
 

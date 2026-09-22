@@ -29,7 +29,7 @@ class ModulefileTests(unittest.TestCase):
             self.assertIn("#%Module1.0", rendered)
             self.assertIn("conflict claude_kit", rendered)
             root_text = str(root.resolve()).replace("\\", "\\\\")
-            python_text = str(python.resolve()).replace("\\", "\\\\")
+            python_text = str(python.absolute()).replace("\\", "\\\\")
             bin_text = str((root / "bin").resolve()).replace("\\", "\\\\")
             self.assertIn(f'CLAUDE_KIT_ROOT "{root_text}"', rendered)
             self.assertIn(f'CLAUDE_KIT_PYTHON "{python_text}"', rendered)

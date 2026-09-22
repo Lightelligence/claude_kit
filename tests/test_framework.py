@@ -32,7 +32,8 @@ class FrameworkTests(unittest.TestCase):
                 self.assertEqual(json.loads((root / '.claude/soc-lsp.json').read_text())['bazel_target'], f'//benches/p{i}:bench')
                 for rel in ('.claude/agents/soc-reviewer.md', '.claude/scripts/dv_log_evidence.py', '.claude/skills/soc-lsp/mcp_server.py'):
                     self.assertTrue((root / rel).is_symlink())
-                    self.assertFalse(os.path.isabs(os.readlink(root / rel)))
+                    cross_drive = root.resolve().drive.casefold() != resource_root().resolve().drive.casefold()
+                    self.assertEqual(os.path.isabs(os.readlink(root / rel)), cross_drive)
             self.assertEqual((projects[0] / '.claude/scripts/dv_log_evidence.py').resolve(),
                              (projects[1] / '.claude/scripts/dv_log_evidence.py').resolve())
 
@@ -57,6 +58,30 @@ class FrameworkTests(unittest.TestCase):
             with self.assertRaises(KitError):
                 attach_project(root, manifest='.claude/kit-attachment.toml')
             self.assertFalse((root / '.claude/agents').exists())
+
+    def test_framework_and_catalog_overlap_fails_before_writes(self):
+        for identifier in ('xwiki', 'rtl-dv-kit'):
+            with self.subTest(skill=identifier), tempfile.TemporaryDirectory() as temp:
+                root = self.project(Path(temp))
+                manifest = root / '.claude/kit-attachment.toml'
+                manifest.write_text(manifest.read_text().replace('skills = []', f'skills = ["{identifier}"]'))
+                with patch('claude_kit.deployment.os.replace') as replace:
+                    with self.assertRaisesRegex(KitError, 'Overlapping attachment targets'):
+                        attach_project(root, manifest=manifest)
+                    replace.assert_not_called()
+                self.assertFalse((root / '.claude/skills').exists())
+                self.assertFalse((root / '.claude/agents').exists())
+
+    def test_framework_cross_volume_links_fall_back_to_absolute(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = self.project(Path(temp))
+            with patch('claude_kit.deployment.os.path.relpath', side_effect=ValueError('different drives')):
+                result = attach_project(root, manifest='.claude/kit-attachment.toml')
+                self.assertEqual(attach_project(root, manifest='.claude/kit-attachment.toml')['changed'], [])
+            self.assertEqual(result['status'], 'passed')
+            target = root / '.claude/agents/soc-reviewer.md'
+            self.assertTrue(Path(os.readlink(target)).is_absolute())
+            self.assertTrue(target.is_file())
 
     def test_project_resolution_uses_consumer_and_rejects_stale_environment(self):
         helper = resource_root() / 'framework/soc/.claude/scripts/framework_project.py'

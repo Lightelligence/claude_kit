@@ -1,12 +1,14 @@
 ---
 name: rtl-dv-evidence
 version: 1
-description: Record reproducible RTL/DV checks, artifacts and unresolved risks before handoff, review or sign-off.
+description: Prepare or validate a formal RTL/DV evidence package for requested handoff/sign-off or project-required verification records.
 ---
 
 # RTL/DV Evidence
 
-Use this skill when a task changes files, runs a project check, prepares a handoff, or claims verification.
+Use this skill for a requested or project-required evidence package. For an
+ordinary edit, report changes, actual checks and gaps in the normal response;
+do not create a formal evidence file unless project policy requires one.
 
 1. Reuse the task's actual workflow, selected roles/packs, checks and warnings.
    Use `plan_task` only for unresolved routing, not to recreate known context.

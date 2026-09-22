@@ -6,6 +6,10 @@ import sys
 import unittest
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from claude_kit.core import workflow_catalog
+from claude_kit.mcp_server import _text_result
+
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "minimal_project"
@@ -30,6 +34,13 @@ def read_frame(stream) -> dict:
 
 
 class CompactMcpTests(unittest.TestCase):
+    def test_result_json_preserves_values_without_pretty_print_overhead(self) -> None:
+        payload = {"workflows": workflow_catalog(), "log": "错误\n  indented evidence\n"}
+        text = _text_result(payload)["content"][0]["text"]
+        self.assertEqual(json.loads(text), payload)
+        pretty = json.dumps(payload, indent=2, ensure_ascii=False)
+        self.assertLess(len(text.encode("utf-8")), len(pretty.encode("utf-8")) * 0.85)
+
     def _start(self, *options: str) -> subprocess.Popen:
         return subprocess.Popen(
             [

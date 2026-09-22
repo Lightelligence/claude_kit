@@ -305,7 +305,7 @@ python3 "$CLAUDE_KIT_BIN" context \
   --pack common \
   --pack protocols.axi4 \
   --skill rtl-design \
-  --skill rtl-dv-context \
+  --skill rtl-dv-kit \
   --task "Fix AXI4 response-channel backpressure in hw/" \
   --output out/claude/context.md \
   --manifest out/claude/context-manifest.json
@@ -665,7 +665,7 @@ action、simulator 或 XVERIF_HOME 路径。
   "task": "Review the APB register interface under hw/",
   "roles": ["reviewer"],
   "packs": ["protocols.apb"],
-  "skills": ["rtl-dv-context", "rtl-dv-review"]
+  "skills": ["rtl-dv-review"]
 }
 ```
 
@@ -1019,7 +1019,7 @@ src/claude_kit/cli.py
 src/claude_kit/mcp_server.py
 src/claude_kit/core.py
 src/claude_kit/resources/templates/project.toml
-src/claude_kit/resources/templates/SKILL.md
+src/claude_kit/resources/skills/rtl-dv-kit/SKILL.md
 src/claude_kit/resources/claude/CLAUDE.md
 src/claude_kit/resources/roles/
 src/claude_kit/resources/skills/

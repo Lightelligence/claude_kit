@@ -185,7 +185,7 @@ class McpTests(unittest.TestCase):
             process.stdin.flush()
             context_response = read_frame(process.stdout)
             context_text = json.loads(context_response["result"]["content"][0]["text"])["context"]
-            self.assertIn("RTL/DV Context", context_text)
+            self.assertIn("RTL/DV Claude Kit", context_text)
         finally:
             process.terminate()
             process.wait(timeout=5)
@@ -235,7 +235,7 @@ class McpTests(unittest.TestCase):
             }))
             process.stdin.flush()
             allowed = read_frame(process.stdout)
-            self.assertIn('"status": "passed"', allowed["result"]["content"][0]["text"])
+            self.assertEqual(json.loads(allowed["result"]["content"][0]["text"])["status"], "passed")
 
             process.stdin.write(frame({
                 "jsonrpc": "2.0",

@@ -29,6 +29,21 @@ The local `kit-state.json` is attachment bookkeeping and can remain ignored.
 Do not edit through a shared link: exclude its exact path for a project override,
 or change the kit and review a pin update. Retired resources require explicit review.
 
+Do not also select a catalog skill that owns the same framework destination
+(for example `xwiki` or `rtl-dv-kit`). Keep `skills = []` for framework-owned
+skills, or explicitly exclude all overlapping framework files before selecting
+the catalog version. Attachment rejects parent/child collisions before writes,
+including attempts to add the old `rtl-dv-context` alias alongside a canonical
+`rtl-dv-kit` owner. A legacy-only manifest remains supported.
+Relative links are preferred; Windows cross-drive installs use absolute links
+and must be reattached if the shared installation moves.
+
+Read-only guidance is not a filesystem sandbox. A link inherits the shared
+target's OS permissions; an administrator must make shared releases read-only
+to consuming users. A writable development submodule can still be edited through
+its links. Review its Git diff and change the kit deliberately, not via a project
+skill path. Attachment itself does not chmod the shared installation.
+
 The framework uses the existing hw/rtl, hw/dv and hw/pd layout conventions. For a
 different layout, select overrides for affected roles/rules and supply actual paths
 through the project profile; it does not guess source roots or execution targets.
