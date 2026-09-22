@@ -17,6 +17,7 @@ test:
       - PYTHON_VERSION: ["3.11", "3.12", "3.13"]
   script:
     - python --version
+    - python -m pip install "setuptools>=68" wheel
     - python -m pip install --no-cache-dir --no-deps --editable .
     - python -m compileall -q src bin
     - python -m unittest discover -s tests -v

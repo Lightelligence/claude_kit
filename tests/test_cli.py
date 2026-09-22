@@ -27,9 +27,10 @@ class CliTests(unittest.TestCase):
 
     def run_cli(self, *args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [sys.executable, str(ENTRY), *args],
+            [sys.executable, "-X", "utf8", str(ENTRY), *args],
             cwd=ROOT,
             text=True,
+            encoding="utf-8",
             capture_output=True,
             check=False,
         )

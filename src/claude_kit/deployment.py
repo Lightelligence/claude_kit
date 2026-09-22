@@ -166,7 +166,7 @@ def _load_manifest(root: Path, value: str | Path | None) -> dict[str, Any] | Non
         manifest = tomllib.loads(path.read_text(encoding="utf-8"))
     except (OSError, tomllib.TOMLDecodeError) as exc:
         raise KitError(f"Cannot read attachment manifest: {path.relative_to(root)}") from exc
-    allowed = {"schema_version", "manage_profile", "manage_mcp", "kit_path", "roles", "skills", "aliases"}
+    allowed = {"schema_version", "manage_profile", "manage_mcp", "kit_path", "roles", "skills", "aliases", "framework", "framework_exclude"}
     unknown = sorted(set(manifest) - allowed)
     if unknown:
         raise KitError(f"Unknown attachment manifest keys: {', '.join(unknown)}")
@@ -184,6 +184,11 @@ def _load_manifest(root: Path, value: str | Path | None) -> dict[str, Any] | Non
         "roles": _aliases(aliases.get("roles", {}), "roles"),
         "skills": _aliases(aliases.get("skills", {}), "skills"),
     }
+    if manifest.get("framework") not in (None, "soc"):
+        raise KitError("Unknown framework; supported value is soc")
+    manifest["framework_exclude"] = _string_list(manifest.get("framework_exclude", []), "framework_exclude")
+    if manifest["framework_exclude"] and not manifest.get("framework"):
+        raise KitError("framework_exclude requires a framework")
     kit_path = manifest.get("kit_path")
     if kit_path is not None:
         if not isinstance(kit_path, str) or not kit_path:
@@ -305,6 +310,28 @@ def _attach_project(
         if relative in desired:
             raise KitError(f"Duplicate attachment target: {relative}")
         desired[relative] = (kind, value)
+
+    if attachment and attachment.get("framework"):
+        framework = (resources / "framework" / attachment["framework"]).resolve(strict=True)
+        if not framework.is_relative_to(resources):
+            raise KitError("Framework escapes kit resources")
+        catalog = json.loads((framework / "manifest.json").read_text(encoding="utf-8"))
+        files = _string_list(catalog.get("files"), "framework files")
+        if catalog.get("schema_version") != 1 or len(files) != len(set(files)):
+            raise KitError("Invalid framework manifest")
+        excluded = set(attachment["framework_exclude"])
+        if excluded - set(files):
+            raise KitError("Unknown framework exclusion")
+        for relative in files:
+            if not relative.startswith(".claude/") or Path(relative).is_absolute() or ".." in Path(relative).parts:
+                raise KitError("Invalid framework attachment path")
+            if relative in excluded:
+                continue
+            source = (framework / relative).resolve(strict=True)
+            if not source.is_file() or not source.is_relative_to(framework):
+                raise KitError("Framework file escapes resources or is missing")
+            destination = _checked_target(root, relative)
+            add_desired(relative, "link", os.path.relpath(source, destination.parent))
 
     skill_targets = [(item, item) for item in selected_skills] + list(skill_aliases.items())
     _reject_duplicate_targets(
@@ -530,7 +557,7 @@ tools for configured checks and report missing prerequisites as unverified.
             try:
                 if kind == "link":
                     tmp.unlink()
-                    tmp.symlink_to(value, target_is_directory=True)
+                    tmp.symlink_to(value, target_is_directory=(path.parent / value).is_dir())
                 else:
                     tmp.write_text(value, encoding="utf-8", newline="\n")
                     if path.is_file() and not path.is_symlink():
@@ -559,7 +586,7 @@ tools for configured checks and report missing prerequisites as unverified.
                     path.unlink()
                 if previous is not None:
                     if previous[0] == "link":
-                        path.symlink_to(previous[1], target_is_directory=True)
+                        path.symlink_to(previous[1], target_is_directory=(path.parent / previous[1]).is_dir())
                     else:
                         path.write_bytes(previous[1])
                         path.chmod(previous[2])

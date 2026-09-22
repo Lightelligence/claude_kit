@@ -20,7 +20,7 @@ where = ["src"]
 namespaces = false
 
 [tool.setuptools.package-data]
-claude_kit = ["resources/**/*", "resources/upstream/vibe_soc/source/.agents/**/*", "resources/upstream/vibe_soc/source/.agents/**/.*", "resources/upstream/vibe_soc/source/scripts/**/.*"]
+claude_kit = ["resources/**/*", "resources/framework/soc/.claude/**/*", "resources/framework/soc/.claude/**/.*", "resources/upstream/vibe_soc/source/.agents/**/*", "resources/upstream/vibe_soc/source/.agents/**/.*", "resources/upstream/vibe_soc/source/scripts/**/.*"]
 
 [tool.setuptools.exclude-package-data]
 claude_kit = ["**/__pycache__/*", "**/*.pyc", "**/*.pyo"]
