@@ -353,11 +353,11 @@ class VeribleLSPBridge:
     @serialized
     def configure_sys_tb_index(self):
         """Consume project-configured Bazel testbench outputs; never infer authority from a plain filelist."""
-        target = self.bazel_target
+        bazel_label = self.bazel_target
         import re
-        if not isinstance(target, str) or not re.fullmatch(r'//[A-Za-z0-9_./-]+:[A-Za-z0-9_.-]+', target):
+        if not isinstance(bazel_label, str) or not re.fullmatch(r'//[A-Za-z0-9_./-]+:[A-Za-z0-9_.-]+', bazel_label):
             raise ValueError('Set bazel_target to an explicit //package:target in .claude/soc-lsp.json')
-        package, artifact_stem = target[2:].split(':')
+        package, artifact_stem = bazel_label[2:].split(':')
         if any(part in ('', '.', '..') for part in package.split('/')) or artifact_stem in ('.', '..'):
             raise ValueError('Invalid Bazel target path')
         base = self.root / 'bazel-bin' / package
@@ -413,8 +413,8 @@ class VeribleLSPBridge:
         self.index_artifacts = artifacts
         self.index_sources = seen
         return self._install_index(paths, {
-            'authority': 'bazel_generated_compile_inventory', 'target': target,
-            'generation_command': 'bazel build ' + target,
+            'authority': 'bazel_generated_compile_inventory', 'target': bazel_label,
+            'generation_command': 'bazel build ' + bazel_label,
             'filelist': str(base / (artifact_stem + '_compile_inputs.txt')),
             'sha256': artifacts[str(base / (artifact_stem + '_compile_inputs.txt'))],
             'compile_inputs_digest': digest, 'excluded_input_extensions': ignored,
