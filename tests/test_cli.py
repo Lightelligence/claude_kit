@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -16,6 +17,19 @@ ENTRY = ROOT / "bin" / "claude-kit"
 
 
 class CliTests(unittest.TestCase):
+    def test_json_catalog_preserves_unicode_on_legacy_encoded_stdout(self):
+        for encoding in ("ascii", "cp1252"):
+            with self.subTest(encoding=encoding):
+                result = subprocess.run(
+                    [sys.executable, str(ENTRY), "list", "skills", "--json"],
+                    cwd=ROOT, capture_output=True, text=True, encoding="ascii",
+                    env={**os.environ, "PYTHONIOENCODING": encoding}, timeout=20,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                entries = {entry["id"]: entry for entry in json.loads(result.stdout)}
+                self.assertIn("xverif", entries)
+                self.assertTrue(any(ord(c) > 127 for c in entries["xverif"]["description"]))
+
     def test_export_adapted_is_explicit_and_does_not_activate(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "adapted"

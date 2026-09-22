@@ -36,7 +36,14 @@ from .core import (
 
 
 def _json_print(value: Any) -> None:
-    print(json.dumps(value, indent=2, ensure_ascii=False))
+    rendered = json.dumps(value, indent=2, ensure_ascii=False)
+    try:
+        rendered.encode(getattr(sys.stdout, "encoding", None) or "utf-8")
+    except UnicodeEncodeError:
+        # JSON Unicode escapes preserve values on legacy Windows/ASCII pipes;
+        # do not replace characters or override the caller's stream encoding.
+        rendered = json.dumps(value, indent=2, ensure_ascii=True)
+    print(rendered)
 
 
 def _root(value: str | None) -> Path:

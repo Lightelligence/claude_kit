@@ -32,7 +32,8 @@ class FrameworkTests(unittest.TestCase):
                 self.assertEqual(json.loads((root / '.claude/soc-lsp.json').read_text())['bazel_target'], f'//benches/p{i}:bench')
                 for rel in ('.claude/agents/soc-reviewer.md', '.claude/scripts/dv_log_evidence.py', '.claude/skills/soc-lsp/mcp_server.py'):
                     self.assertTrue((root / rel).is_symlink())
-                    self.assertFalse(os.path.isabs(os.readlink(root / rel)))
+                    cross_drive = root.resolve().drive.casefold() != resource_root().resolve().drive.casefold()
+                    self.assertEqual(os.path.isabs(os.readlink(root / rel)), cross_drive)
             self.assertEqual((projects[0] / '.claude/scripts/dv_log_evidence.py').resolve(),
                              (projects[1] / '.claude/scripts/dv_log_evidence.py').resolve())
 

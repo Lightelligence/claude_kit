@@ -672,6 +672,7 @@ skills = []
         attach_project(self.root)
         copy = Path(self.temp.name) / "relocated-resources"
         shutil.copytree(resource_root(), copy)
+        copy = copy.resolve()
         with patch("claude_kit.deployment.resource_root", return_value=copy):
             result = attach_project(self.root)
         self.assertTrue(result["changed"])
