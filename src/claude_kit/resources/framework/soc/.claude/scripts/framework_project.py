@@ -45,3 +45,8 @@ def instruction_text(path, root, seen=None):
         if match:
             parts.append(instruction_text(path.parent / match.group(1), root, seen))
     return '\n'.join(parts)
+
+
+def require_project_owned(path):
+    if Path(path).is_symlink():
+        raise ValueError('Shared link is read-only: update the kit or select a local framework override: ' + str(path))

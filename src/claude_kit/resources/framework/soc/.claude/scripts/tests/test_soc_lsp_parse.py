@@ -75,8 +75,8 @@ class ParseTests(unittest.TestCase):
         with patch.object(self.bridge, 'start'):
             result = self.bridge.configure_sys_tb_index()
         self.addCleanup(self.bridge._index_temp.cleanup)
-        self.assertEqual(result['target'], '//benches/alternate:selected')
-        self.assertTrue(result['filelist'].endswith('/benches/alternate/selected_compile_inputs.txt'))
+        self.assertEqual(result['index']['target'], '//benches/alternate:selected')
+        self.assertTrue(result['index']['filelist'].endswith('/benches/alternate/selected_compile_inputs.txt'))
 
     def test_missing_or_escaping_target_is_not_inferred(self):
         for target in (None, '///etc:target', '//../escape:target'):

@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+import sys
 from unittest.mock import patch
 
 from claude_kit.core import KitError, resource_root
@@ -87,3 +88,25 @@ class FrameworkTests(unittest.TestCase):
             (root / 'shared.md').write_text('@../outside.md\n')
             with self.assertRaises((ValueError, FileNotFoundError)):
                 module.instruction_text(root / 'CLAUDE.md', root)
+
+    def test_role_sync_cannot_write_through_shared_link(self):
+        scripts = resource_root() / 'framework/soc/.claude/scripts'
+        spec = importlib.util.spec_from_file_location('framework_project', scripts / 'framework_project.py')
+        helper = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(helper)
+        with tempfile.TemporaryDirectory() as temp:
+            root = self.project(Path(temp))
+            source = root / 'common.md'
+            source.write_text('shared original')
+            alias = root / '.claude/agents/shared.md'
+            alias.parent.mkdir()
+            alias.symlink_to(source)
+            with patch.dict(os.environ, {'PROJ_DIR': str(root)}), patch.dict(sys.modules, {'framework_project': helper}):
+                spec = importlib.util.spec_from_file_location('role_sync_test', scripts / 'sync_agent_profiles.py')
+                sync = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(sync)
+                with patch.object(sync, 'expected', return_value={alias: 'unwanted edit'}):
+                    with self.assertRaises(ValueError):
+                        sync.run(write=True)
+            self.assertEqual(source.read_text(), 'shared original')
+            self.assertTrue(alias.is_symlink())

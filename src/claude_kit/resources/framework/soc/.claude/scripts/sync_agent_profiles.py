@@ -7,7 +7,7 @@ import argparse
 import re
 import sys
 from pathlib import Path
-from framework_project import project_root
+from framework_project import project_root, require_project_owned
 
 ROOT = project_root()
 CANONICAL_DIR = ROOT / ".claude" / "agents"
@@ -75,6 +75,7 @@ def run(write: bool) -> int:
             continue
         mismatches.append(path)
         if write:
+            require_project_owned(path)
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content, encoding="utf-8")
             print(f"[AGENT-PROFILE] Wrote {path.relative_to(ROOT)}")

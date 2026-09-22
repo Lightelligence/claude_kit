@@ -9,7 +9,7 @@ import stat
 import subprocess
 import sys
 from pathlib import Path
-from framework_project import project_root
+from framework_project import project_root, require_project_owned
 from typing import Any
 
 ROOT = project_root()
@@ -201,7 +201,14 @@ def validate_inputs() -> None:
 
 def sync_runtime(write: bool) -> int:
     mismatches: list[Path] = []
-    for path, expected in expected_runtime_files().items():
+    outputs = expected_runtime_files()
+    if write:
+        for path, expected in outputs.items():
+            if path.is_symlink() and (not path.is_file() or path.read_text(encoding="utf-8") != expected or not path.stat().st_mode & stat.S_IXUSR):
+                require_project_owned(path)
+    for path, expected in outputs.items():
+        if write and path.is_symlink():
+            continue  # Already checked identical; do not change shared content or mode.
         if write:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(expected, encoding="utf-8")
