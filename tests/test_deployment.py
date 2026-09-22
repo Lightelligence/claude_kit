@@ -436,6 +436,12 @@ skills = []
             return {"status": "passed"}
 
         with patch("claude_kit.deployment._attach_project", side_effect=replace_lock):
+            if os.name == "nt":
+                # Windows prohibits replacing an open lock; cleanup still releases it.
+                with self.assertRaises(PermissionError):
+                    attach_project(self.root)
+                self.assertFalse(lock.exists())
+                return
             result = attach_project(self.root)
         self.assertEqual(result["status"], "passed")
         self.assertEqual(lock.read_text(encoding="utf-8"), "replacement")
