@@ -21,6 +21,9 @@ claude_kit keeps cross-project RTL/DV roles, protocol and VIP packs, project-pro
 
 The kit is deliberately project-neutral. It does not contain consumer-project RTL/DV source, waveform databases, licensed tools, or site-specific runner logic. Its pinned upstream snapshot includes generic generator/build templates, kept separate from kit and project adapters.
 
+For shared native SoC agents, rules, generators and MCP helpers, see
+[the SoC framework](docs/shared-framework.md).
+
 ## Status
 
 The repository currently provides a runnable Python MVP with:

@@ -1,0 +1,6 @@
+interface:
+  display_name: "SoC Pipeline"
+  short_description: "Close router-selected merge or signoff evidence"
+  default_prompt: "Use $soc-pipeline to close only the stale stages in this merge or signoff packet."
+policy:
+  allow_implicit_invocation: false
