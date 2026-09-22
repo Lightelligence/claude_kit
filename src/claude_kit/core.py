@@ -33,6 +33,9 @@ def resource_root() -> Path:
     return Path(__file__).resolve().parent / "resources"
 
 
+SKILL_ALIASES = {"rtl-dv-context": "rtl-dv-kit"}
+
+
 def _as_list(value: Any) -> list[str]:
     if value is None:
         return []
@@ -468,8 +471,14 @@ def skill_catalog(resources: Path | None = None) -> list[dict[str, str]]:
     result: list[dict[str, str]] = []
     for path in sorted(directory.rglob("SKILL.md")):
         metadata = _front_matter(path)
+        identifier = metadata.get("name", path.parent.name)
+        # Retain old resource paths for pinned consumers, without advertising
+        # two native skills for the same capability. Old resource trees still work.
+        replacement = SKILL_ALIASES.get(identifier)
+        if replacement and (directory / replacement / "SKILL.md").is_file():
+            continue
         result.append({
-            "id": metadata.get("name", path.parent.name),
+            "id": identifier,
             "version": metadata.get("version", "1"),
             "description": metadata.get("description", ""),
             "path": str(path.relative_to(resources)).replace(os.sep, "/"),
@@ -881,6 +890,8 @@ def resolve_plan(
 
 def _find_by_id(entries: Iterable[dict[str, Any]], identifier: str, kind: str) -> dict[str, Any]:
     entries = list(entries)
+    if kind == "skill" and not any(entry.get("id") == identifier for entry in entries):
+        identifier = SKILL_ALIASES.get(identifier, identifier)
     for entry in entries:
         if entry.get("id") == identifier:
             return entry
@@ -909,9 +920,14 @@ def resolve_context(
         raise KitError("task must be a string")
     role_config = profile.get("roles", {})
     defaults = role_config.get("defaults", []) if isinstance(role_config, dict) else role_config
-    role_ids = _as_list(roles) if roles is not None else _as_list(defaults)
-    pack_ids = _as_list(packs) if packs is not None else _as_list(profile.get("packs", []))
-    skill_ids = _as_list(skills) if skills is not None else []
+    role_ids = list(dict.fromkeys(_as_list(roles) if roles is not None else _as_list(defaults)))
+    pack_ids = list(dict.fromkeys(_as_list(packs) if packs is not None else _as_list(profile.get("packs", []))))
+    requested_skills = _as_list(skills) if skills is not None else []
+    skill_entries = skill_catalog() if requested_skills else []
+    skill_ids = list(dict.fromkeys(
+        _find_by_id(skill_entries, identifier, "skill")["id"]
+        for identifier in requested_skills
+    ))
     resources = resource_root()
     sources: list[dict[str, str]] = []
     sections: list[str] = []
@@ -947,7 +963,7 @@ def resolve_context(
     else:
         sections.append("## Skills")
         for identifier in skill_ids:
-            entry = _find_by_id(skill_catalog(), identifier, "skill")
+            entry = _find_by_id(skill_entries, identifier, "skill")
             path = resources / entry["path"]
             sources.append(_source_entry(path, resources))
             sections.append(f"\n### {identifier}\n\n{path.read_text(encoding='utf-8').strip()}\n")
@@ -1035,6 +1051,19 @@ DEFAULT_ARTIFACT_MAX_BYTES = 100_000
 MAX_ARTIFACT_BYTES = 1_000_000
 
 
+def _read_bounded_file(path: Path, max_bytes: int) -> dict[str, Any]:
+    # Stat the opened file, not a second path lookup. DV logs may be gigabytes;
+    # the response budget must also bound the read, including a zero-byte probe.
+    with path.open("rb") as stream:
+        size = os.fstat(stream.fileno()).st_size
+        data = stream.read(max_bytes)
+    return {
+        "bytes": size,
+        "truncated": size > max_bytes,
+        "text": data.decode("utf-8", errors="replace"),
+    }
+
+
 def read_artifact(root: Path, relative_path: str, max_bytes: int = DEFAULT_ARTIFACT_MAX_BYTES) -> dict[str, Any]:
     if isinstance(max_bytes, bool) or not isinstance(max_bytes, int) or max_bytes < 0:
         raise KitError("max_bytes must be a non-negative integer")
@@ -1043,14 +1072,9 @@ def read_artifact(root: Path, relative_path: str, max_bytes: int = DEFAULT_ARTIF
     path = _project_path(root, relative_path, "artifact path")
     if not path.is_file():
         raise KitError(f"Artifact does not exist: {relative_path}")
-    data = path.read_bytes()
-    truncated = len(data) > max_bytes
-    text = data[:max_bytes].decode("utf-8", errors="replace")
     return {
         "path": path.relative_to(root.resolve()).as_posix(),
-        "bytes": len(data),
-        "truncated": truncated,
-        "text": text,
+        **_read_bounded_file(path, max_bytes),
     }
 
 
@@ -1274,14 +1298,11 @@ def read_regression_artifact(
         raise KitError(f"regression artifact path leaves the configured root: {path}") from exc
     if not resolved.is_file():
         raise KitError(f"Regression artifact does not exist: {path}")
-    data = resolved.read_bytes()
     return {
         "path": str(resolved),
         "relative_path": relative.as_posix(),
         "regression_root": str(regression_root),
-        "bytes": len(data),
-        "truncated": len(data) > max_bytes,
-        "text": data[:max_bytes].decode("utf-8", errors="replace"),
+        **_read_bounded_file(resolved, max_bytes),
     }
 
 
@@ -1819,7 +1840,7 @@ def check_adapter(root: Path, profile: dict[str, Any]) -> dict[str, Any]:
 
 
 def integration_skill() -> str:
-    return (resource_root() / "templates" / "SKILL.md").read_text(encoding="utf-8")
+    return (resource_root() / "skills" / "rtl-dv-kit" / "SKILL.md").read_text(encoding="utf-8")
 
 
 def _is_generated_skill_cache(path: Path) -> bool:
@@ -1829,7 +1850,7 @@ def _is_generated_skill_cache(path: Path) -> bool:
 
 
 def _skill_targets(root: Path) -> dict[Path, str]:
-    targets = {root / ".claude" / "skills" / "rtl-dv-kit" / "SKILL.md": integration_skill()}
+    targets: dict[Path, str] = {}
     resources = resource_root()
     for entry in skill_catalog():
         source = resources / entry["path"]

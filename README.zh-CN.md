@@ -63,7 +63,7 @@ Claude Code
 
 1. 通用能力放在 kit，项目差异放在 project profile/adapter。
 2. Claude Code 通过 CLI 和文件化 context 获得结构化上下文。
-3. 先由 planner 选择最小 workflow/context，再由 CLI 或 MCP 提供可审计事实。
+3. 工作流不明确时才使用 planner；简单任务复用已知上下文，CLI/MCP 按需提供事实。
 4. MCP 只是 Claude Code 的接口层，不是 RTL/DV 能力的核心。
 5. 没有 MCP 时，CLI 和 profile 工作流仍然完整可用。
 6. kit 不耦合 ETX runner、bsub 或其他调度平台。
@@ -182,7 +182,7 @@ python third_party/claude_kit/bin/claude-kit init \
 .ai/project.toml
 .claude/CLAUDE.md
 .claude/skills/rtl-dv-kit/SKILL.md
-.claude/skills/rtl-dv-context/SKILL.md
+.claude/skills/rtl-dv-kit/SKILL.md
 .claude/skills/rtl-design/SKILL.md
 .claude/skills/dv-engineering/SKILL.md
 .claude/skills/protocol-vip/SKILL.md
@@ -578,7 +578,7 @@ Role 的共通流程：
 testbench 修改、profile/只读 inspect、static 或 lint 检查和 evidence；不会
 自动启动 simulation 或 regression。
 
-启动 simulation 或 regression 前，先询问并展示 profile command、target、
+启动尚未获得授权的 simulation 或 regression 前，询问并展示 profile command、target、
 test selector、simulator、预计运行/资源成本和 artifact 位置。只有用户明确
 批准或明确委托时才使用 `commander` role；它仍然只能使用 profile 声明的
 wrapper。即使没有填写 `confirmation`，或者填写为 `optional`，
@@ -591,7 +591,7 @@ skills 是可由 Claude Code 按任务触发或由项目按需同步到 `.claude
 
 | Skill | 触发和职责 |
 | --- | --- |
-| rtl-dv-context | 读取 profile、做只读 inspect 并选择最小 context |
+| rtl-dv-kit | 补齐缺失的项目事实或工作流选择；复用已知上下文 |
 | rtl-design | 规划和实施有边界的 RTL 修改 |
 | dv-engineering | 规划 test、sequence、scoreboard、assertion 和 coverage |
 | protocol-vip | 应用对应 protocol/VIP pack 并验证连接 smoke |
@@ -606,6 +606,13 @@ skills 是可由 Claude Code 按任务触发或由项目按需同步到 `.claude
 | xwiki | 查询或更新获得授权的验证项目长期知识 |
 
 默认 `init` 会同步 kit 的全部 skills，包括相对路径下的 `references/` 和辅助文件；`init --minimal` 只生成一个 integration skill；`init --no-skills` 不生成任何项目侧 skill 文件。两种最小模式之后都可以用 `sync` 同步完整集合。xverif skills 在消费项目注册自己的 xverif MCP server 之前只提供 guidance。
+
+需要精简项目配置时，使用选择性的 attachment manifest 或 `init --minimal`。
+旧 `rtl-dv-context` 名称仍兼容 CLI/MCP 请求，但统一解析为 `rtl-dv-kit`，
+不再作为第二个 catalog 条目或新安装 skill。已有项目的旧副本/链接不会被静默
+删除；更新 pin 时通过项目 Git 流程审查、退役。任务计划只推荐主要 skill，
+不会为每次编辑同时推荐 context、regression、review 和正式 evidence 流程。
+具体用法见[高效使用默认方式](docs/tool-selection.zh-CN.md#高效使用默认方式)。
 
 ## xverif provider
 

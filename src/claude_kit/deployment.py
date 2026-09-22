@@ -10,7 +10,7 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-from .core import KitError, discover_profile, resource_root, role_catalog, skill_catalog
+from .core import SKILL_ALIASES, KitError, discover_profile, resource_root, role_catalog, skill_catalog
 
 
 def _json(value: Any) -> str:
@@ -282,6 +282,12 @@ def _attach_project(
     selected_skills = list(skill_entries) if attachment is None else attachment["skills"]
     role_aliases = {} if attachment is None else attachment["aliases"]["roles"]
     skill_aliases = {} if attachment is None else attachment["aliases"]["skills"]
+    # Explicit legacy manifests keep their destination names. Fresh installs
+    # advertise only canonical skills; do not introduce a duplicate by default.
+    for old, canonical in SKILL_ALIASES.items():
+        if canonical in skill_entries and old not in skill_entries:
+            if old in selected_skills or old in skill_aliases.values():
+                skill_entries[old] = skill_entries[canonical]
     alias_markers = {
         **{
             f".claude/agents/{name}.md": (
@@ -309,6 +315,14 @@ def _attach_project(
         _checked_target(root, relative)
         if relative in desired:
             raise KitError(f"Duplicate attachment target: {relative}")
+        candidate = Path(relative.casefold())
+        for existing in desired:
+            other = Path(existing.casefold())
+            if candidate == other or candidate in other.parents or other in candidate.parents:
+                raise KitError(
+                    f"Overlapping attachment targets: {existing} and {relative}; "
+                    "select one owner or exclude the framework paths explicitly"
+                )
         desired[relative] = (kind, value)
 
     if attachment and attachment.get("framework"):
@@ -331,9 +345,25 @@ def _attach_project(
             if not source.is_file() or not source.is_relative_to(framework):
                 raise KitError("Framework file escapes resources or is missing")
             destination = _checked_target(root, relative)
-            add_desired(relative, "link", os.path.relpath(source, destination.parent))
+            try:
+                link_target = os.path.relpath(source, destination.parent)
+            except ValueError:
+                # Match catalog attachment behavior for Windows cross-drive installs.
+                link_target = str(source)
+            add_desired(relative, "link", link_target)
 
     skill_targets = [(item, item) for item in selected_skills] + list(skill_aliases.items())
+    for old, canonical in SKILL_ALIASES.items():
+        if old in selected_skills and canonical in skill_entries:
+            canonical_prefix = f".claude/skills/{canonical}"
+            if canonical in selected_skills or any(
+                path == canonical_prefix or path.startswith(canonical_prefix + "/")
+                for path in desired
+            ):
+                raise KitError(
+                    f"Duplicate skill selection: {old} resolves to {canonical}; "
+                    "select only the canonical skill or its framework owner"
+                )
     _reject_duplicate_targets(
         [name for name, _ in skill_targets], ".claude/skills"
     )

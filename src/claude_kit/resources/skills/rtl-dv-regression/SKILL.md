@@ -1,20 +1,21 @@
 ---
 name: rtl-dv-regression
 version: 1
-description: Select and triage focused-to-regression RTL/DV checks through declared project wrappers, with explicit execution approval and reproducible evidence.
+description: Select authorized RTL/DV check batches or triage multi-test regression results; use rtl-dv-debugging for a single failure.
 ---
 
 # RTL/DV Regression
 
-Use the `regression-triager` role for analysis and selection when a task involves
-compile, elaboration, simulation, a regression, a Bazel target, a verification
-service or a result set that must be compared. Use `commander` only for a run
-that the user explicitly approved or delegated.
+Use this skill for check selection, regression expansion or comparing a result
+set, not merely because a task mentions a Bazel target or compilation. Use
+`rtl-dv-debugging` for one existing failure; `dv-engineering` owns testbench edits.
+Use `commander` only for a run the user explicitly approved or delegated.
 
 1. Reuse current routing and check choices; use `plan_task` only when unclear.
    Inspect the current check catalog (`list_catalog(category="checks")` in
    compact MCP mode) if needed. Present unresolved choices to the engineer;
-   a recommended quick check is not automatic permission.
+   a recommended quick check is not automatic permission. Reuse approval for
+   the engineer's exact selection; ask again only for missing inputs or expansion.
 2. Bind each run to source revision, target, test selector, seed, simulator,
    working directory and artifact locations.
 3. Start with the cheapest check that can distinguish environment, compile,

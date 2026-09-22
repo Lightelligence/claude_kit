@@ -100,10 +100,41 @@ Read only missing project context. Do not compile or simulate.
 如果 Claude 找不到该 skill，再查询 kit 的 `skills` 目录并读取所选指引。目录里
 存在一个条目，不代表对应的原生 Claude slash command 或 subagent 已经安装。
 
-`rtl-dv-kit` 是薄项目入口；`rtl-dv-context` 用于补齐缺失或过期事实、选择不明确的
-工作流。两个名称保留兼容，但不要求每次编辑都依次执行；最小安装可能只包含项目
-入口。配置变化需要重新验证，权限错误必须在相关操作前解决，不能用复用上下文
-绕过这些检查。
+`rtl-dv-kit` 统一处理缺失/过期的事实和不明确的工作流选择。旧名称
+`rtl-dv-context` 是同一指引的兼容 ID，不是需要另读的工作流。最小安装只包含
+统一入口。配置变化需要重新验证，权限错误必须在相关操作前解决。
+
+## 高效使用默认方式
+
+- 已知文件和任务范围时，不固定执行 catalog/profile/plan/context 调用链。
+  当前会话已经加载的原生 skill，不再通过 MCP 重读一次。
+- RTL 修改用 `rtl-design`，DV 环境修改用 `dv-engineering`，只读检查用
+  `rtl-dv-review`，单个失败用 `rtl-dv-debugging`。批量检查选择/回归结果比较
+  才加 `rtl-dv-regression`；用户要求或项目策略规定正式证据包才加
+  `rtl-dv-evidence`。普通改动仍需在答复中说明实际检查结果和未验证项。
+- compact MCP 把六个目录查询合并为 `list_catalog`。build、导航、xverif
+  的执行和权限合同不同，不强行合并 server。用已有 task profile 按需选择，
+  不为代码 review 启用生成器、coverage 或 live debug。
+- 只需 skill 指引时，`resolve_context` 显式传 `roles=[]`、`packs=[]`，
+  不加载 profile 中的默认集合。重复 ID 和旧 context 别名会去重；项目事实
+  和权限仍保留，不以省 token 为由跳过权限。
+- 读取日志可设 `max_bytes=4096`。此限制同时约束文件读取和返回内容；
+  `bytes` 为读取时的文件大小，`truncated` 表示证据不完整。日志开头没有错误
+  不代表通过；末尾失败应使用项目允许的定向日志查询，不反复读取同一段。
+- MCP 返回紧凑 JSON，保留全部字段和值及日志字符串内部空白。CLI 的易读格式
+  不变。返回字节数和推荐 skill 数减少，不等同于某个模型实测 token 或耗时降幅。
+
+```text
+Use dv-engineering to fix <scoreboard-comparison> in <file>.
+Reuse the known project context; read only the affected logic and dependencies.
+Do not run EDA. Explain the fix and offer the relevant checks once.
+```
+
+```text
+Review <diff> with rtl-dv-review. Report concrete RTL/DV correctness issues.
+Use existing evidence only; do not compile, simulate, or create a formal
+evidence package unless the project requires one.
+```
 
 ## RTL 工程师：常用 prompt
 

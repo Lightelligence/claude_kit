@@ -259,10 +259,10 @@ class CoreTests(unittest.TestCase):
         )
         self.assertIn("review APB reset behavior", context)
         self.assertIn("APB Guidance", context)
-        self.assertIn("RTL/DV Context", context)
+        self.assertIn("RTL/DV Claude Kit", context)
         self.assertIn("RTL/DV Review", context)
         self.assertEqual(manifest["project"], "minimal_fixture")
-        self.assertEqual(manifest["skills"], ["rtl-dv-context", "rtl-dv-review"])
+        self.assertEqual(manifest["skills"], ["rtl-dv-kit", "rtl-dv-review"])
         self.assertTrue(manifest["sources"])
         self.assertTrue(all(item["sha256"] for item in manifest["sources"]))
         _, default_manifest = resolve_context(FIXTURE, profile_path, profile, None, None, "use profile defaults")
@@ -659,11 +659,6 @@ class CoreTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as resources_directory, tempfile.TemporaryDirectory() as project_directory:
             resources = Path(resources_directory)
-            (resources / "templates").mkdir()
-            (resources / "templates" / "SKILL.md").write_text(
-                "# Integration fixture\n",
-                encoding="utf-8",
-            )
             skill_root = resources / "skills" / "cache-fixture"
             skill_root.mkdir(parents=True)
             (skill_root / "SKILL.md").write_text(

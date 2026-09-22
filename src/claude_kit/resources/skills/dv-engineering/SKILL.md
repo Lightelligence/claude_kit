@@ -22,12 +22,13 @@ Use dv-architect for the verification plan and dv-engineer for testbench edits.
    simulation automatically. Use the profile check menu and present
    the engineer with suggested quick checks and separately marked explicit
    simulation, regression, coverage, synthesis and CDC choices.
-5. When a focused simulation is useful, ask for explicit approval with the
+5. When a focused simulation is useful and not already authorized, ask with the
    command, target, test selector, expected cost and artifact location. After
    approval, or after explicit delegation to `commander`, run one focused test
    through the required project interface. If project policy is MCP-only,
    use its registered MCP tool and report unavailable tools; never fall back
-   to a shell wrapper. A declared wrapper is usable only where project policy
+   to a shell wrapper. Do not ask again for the same already approved scope.
+   A declared wrapper is usable only where project policy
    explicitly permits it. Before requesting a
    larger regression, preserve the first causal failure. Use
    `rtl-dv-regression` for focused-to-regression expansion.

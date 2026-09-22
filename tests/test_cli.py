@@ -193,7 +193,7 @@ class CliTests(unittest.TestCase):
             self.assertIn("check APB", output.read_text(encoding="utf-8"))
             manifest_payload = json.loads(manifest.read_text(encoding="utf-8"))
             self.assertEqual(manifest_payload["project"], "minimal_fixture")
-            self.assertEqual(manifest_payload["skills"], ["rtl-dv-context"])
+            self.assertEqual(manifest_payload["skills"], ["rtl-dv-kit"])
 
     def test_task_file_is_project_relative(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -256,7 +256,7 @@ def _tool_definitions(allow_exec: bool, tool_profile: str = "full") -> list[dict
 
 
 def _text_result(value: Any) -> dict[str, Any]:
-    return {"content": [{"type": "text", "text": json.dumps(value, indent=2, ensure_ascii=False)}]}
+    return {"content": [{"type": "text", "text": json.dumps(value, separators=(",", ":"), ensure_ascii=False)}]}
 
 
 def _bool_argument(arguments: dict[str, Any], name: str, default: bool = False) -> bool:
