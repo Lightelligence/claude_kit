@@ -129,7 +129,7 @@ if [ "${1:-}" = "--setup-only" ]; then
 fi
 
 [ "$#" -gt 0 ] || {
-    echo "Usage: scripts/mcp_python.sh <server_script.py> [args...]" >&2
+    echo "Usage: .claude/scripts/run_mcp_python.sh <server_script.py> [args...]" >&2
     exit 2
 }
 exec "$python" "$@"
