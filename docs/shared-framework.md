@@ -57,6 +57,21 @@ Shared scripts resolve `PROJ_DIR` or the nearest project profile from the curren
 directory rather than treating the kit's directory as the project. Run them from
 the consumer checkout. Native entrypoints remain at the same `.claude` paths.
 
+The shared task branch and worktree helpers also live under `.claude/scripts`.
+They use `codex/` branches and `CODEX_WORKTREE_ROOT` by default. A consumer can
+set project-specific values in `.claude/task-worktree.env`, for example:
+
+```sh
+CLAUDE_KIT_TASK_BRANCH_PREFIX=claude
+CLAUDE_KIT_WORKTREE_ROOT="${CLAUDE_WORKTREE_ROOT:-${TMPDIR:-/tmp}/claude_code_tasks}"
+```
+
+The helpers source this project-owned file from the selected checkout. Existing
+`scripts/prepare_task_*.sh` entrypoints can forward to the shared helpers during
+migration. `sync_local_configs.sh` keeps the SoC local-file whitelist and accepts
+`CLAUDE_KIT_LOCAL_CONFIG_ROOT` or `claudeKit.localConfigRoot`; the older
+`VIBE_SOC_LOCAL_CONFIG_ROOT` and `vibeSoc.localConfigRoot` remain supported.
+
 Moving a file into the kit does not itself reduce token usage. Scoped loading,
 selected context, bounded evidence, and the prompt budget remain in effect. Budget
 checks expand the entrypoint's standalone local @imports and count linked rules.
