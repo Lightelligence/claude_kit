@@ -6,6 +6,21 @@ This is the fast lookup guide for using `claude_kit` from a consumer RTL/DV repo
 
 Use this document when you already know what you want to do and need the shortest path to the correct command or Claude Code prompt.
 
+## Project tool inventory
+
+For configuration inventory before changing tool selection:
+
+```bash
+python <kit>/bin/claude-kit tool-audit --project-root . --format markdown
+python <kit>/bin/claude-kit tool-audit --project-root . --tools debug
+```
+
+This reads project declarations only: default/catalog MCP differences, duplicate
+skill entrypoints, document sizes and plugin declarations. It does not inspect
+effective runtime loading or execute tools. JSON is the default; exit 0 means
+inventory produced (even with findings), 2 means invalid input.
+See the [minimal attachment guide](tool-slimming.zh-CN.md).
+
 ## Requirement-level DV evidence
 
 Use the pinned submodule CLI with Python >=3.11:

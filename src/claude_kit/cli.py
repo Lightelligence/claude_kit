@@ -91,6 +91,12 @@ def build_parser() -> argparse.ArgumentParser:
     tool_profiles.add_argument("--project-root", help="Project root")
     tool_profiles.set_defaults(handler=handle_tool_profiles)
 
+    tool_audit = subparsers.add_parser("tool-audit", help="Read-only project MCP, skill and plugin declaration audit")
+    tool_audit.add_argument("--project-root", help="Project root")
+    tool_audit.add_argument("--tools", help="Compare a configured task profile with the default MCP set")
+    tool_audit.add_argument("--format", choices=("json", "markdown"), default="json")
+    tool_audit.set_defaults(handler=handle_tool_audit)
+
     session = subparsers.add_parser("session", help="Launch native Claude with a selected project MCP profile")
     session.add_argument("--project-root", help="Project root")
     session.add_argument("--tools", required=True, help="Name from tool-profiles")
@@ -629,6 +635,17 @@ def handle_tool_profiles(args: argparse.Namespace) -> dict[str, Any]:
     from .tool_profiles import profile_catalog
 
     return {"profiles": profile_catalog(_root(args.project_root))}
+
+
+def handle_tool_audit(args: argparse.Namespace) -> int:
+    from .tool_audit import audit_project, render_audit
+
+    result = audit_project(_root(args.project_root), args.tools)
+    if args.format == "markdown":
+        print(render_audit(result), end="")
+    else:
+        _json_print(result)
+    return 0
 
 
 def handle_session(args: argparse.Namespace) -> int:

@@ -2,7 +2,8 @@
 
 [English](tool-selection.md)
 
-当前 17 个 server 的完整清单与用户排除项，见[工具验证快照](tool-verification.zh-CN.md)。
+历史 17 个 server 的清单与当时的用户排除项，见[工具验证快照](tool-verification.zh-CN.md)。
+当前项目的只读配置审计、最小 skills 接入和 MCP 分组见[精简接入指南](tool-slimming.zh-CN.md)。
 
 以项目 `.mcp.json` 和 Claude settings 为准：有 skill、源码或目录，不代表 server 已启用；能列出工具，也不代表业务运行通过。
 

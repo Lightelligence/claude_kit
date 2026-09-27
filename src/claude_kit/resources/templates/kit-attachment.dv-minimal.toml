@@ -1,0 +1,8 @@
+# Copy to .claude/kit-attachment.toml in the consumer project.
+# Adjust kit_path to the pinned submodule. Retired links are reported, not deleted.
+schema_version = 1
+kit_path = "third_party/claude_kit"
+manage_profile = false
+manage_mcp = false
+roles = []
+skills = ["rtl-dv-kit", "dv-engineering", "rtl-dv-debugging", "rtl-dv-review"]
