@@ -46,7 +46,9 @@ class DvEvidenceTests(unittest.TestCase):
 
     def artifact(self, path, content):
         self.write(path, content)
-        return {"path": path, "sha256": hashlib.sha256(content.encode()).hexdigest()}
+        # Hash persisted bytes, including platform newline conversion, just as
+        # a real result collector must do for the artifact integrity contract.
+        return {"path": path, "sha256": hashlib.sha256((self.root / path).read_bytes()).hexdigest()}
 
     def result(self, *runs):
         self.write("plan.json", self.plan)
@@ -65,6 +67,14 @@ class DvEvidenceTests(unittest.TestCase):
         self.assertEqual(result["status"], "ready_for_review")
         self.assertFalse(result["signoff"])
         self.assertEqual(result["rows"][0]["accepted_runs"], ["run1"])
+
+    def test_crlf_artifact_hashes_use_persisted_bytes(self):
+        content = b"checker active\r\ntarget hit\r\n"
+        (self.root / "out/result.txt").write_bytes(content)
+        self.ref["sha256"] = hashlib.sha256(content).hexdigest()
+        self.assertEqual(self.result(self.run)["status"], "ready_for_review")
+        self.ref["sha256"] = hashlib.sha256(content.replace(b"\r\n", b"\n")).hexdigest()
+        self.assertEqual(self.result(self.run)["status"], "gaps")
 
     def test_all_configurations_and_cases_are_required(self):
         self.plan["requirements"][0]["configurations"].append("wide")
