@@ -6,6 +6,40 @@ This is the fast lookup guide for using `claude_kit` from a consumer RTL/DV repo
 
 Use this document when you already know what you want to do and need the shortest path to the correct command or Claude Code prompt.
 
+## Requirement-level DV evidence
+
+Use the pinned submodule CLI with Python >=3.11:
+
+```bash
+python <kit>/bin/claude-kit dv template plan
+python <kit>/bin/claude-kit dv template run
+python <kit>/bin/claude-kit dv snapshot --project-root . --plan dv-plan.json
+python <kit>/bin/claude-kit dv report --project-root . --plan dv-plan.json \
+  --run out/run-001.json --run out/run-002.json --format markdown
+```
+
+`template` prints project-owned starter JSON. `snapshot` prints the current
+declared-input and plan digest; capture it before submitting the actual run.
+`report` reads an explicit review set and checks each requirement × configuration
+× case. JSON is the default format. All commands are read-only and available
+without a new MCP server; snapshot/report accept the existing `--profile` option.
+Exit codes: 0 ready for review, 1 evidence gaps, 2 invalid input.
+
+Schemas: `resources/schemas/dv-plan.schema.json` and `dv-run.schema.json` in the
+installed Python package. The report also checks project identity, mappings,
+baseline freshness, required checker activity, complete coverage queries,
+negative controls when required, formal proof qualifiers and artifact SHA-256.
+Artifacts are project-relative or `regression:<relative-path>` below the
+profile's configured regression root. Existing `evidence check` continues to
+validate task handoff records; it is not requirement closure.
+
+Keep inputs separate from generated outputs. Capture the staged sources actually
+used by remote jobs; never apply a new snapshot to old results. The adapter must
+export all runs in the selected review set, including unsuccessful seeds.
+The checker cannot discover omitted requirements/runs or establish the truth of
+adapter-extracted claims. `ready_for_review` is never automatic signoff.
+See the [full flow, assessment and adapter contract](ai-dv-flow.zh-CN.md).
+
 ## 1. The shortest path
 
 From the consumer project root:

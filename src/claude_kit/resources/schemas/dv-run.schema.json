@@ -1,0 +1,322 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Lightelligence/claude_kit/dv-run.schema.json",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "project",
+    "run_id",
+    "requirement_id",
+    "case_id",
+    "configuration",
+    "method",
+    "test",
+    "tool_version",
+    "command",
+    "baseline",
+    "status",
+    "complete",
+    "artifacts",
+    "checkers",
+    "coverage"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "project": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requirement_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "configuration": {
+      "type": "string",
+      "minLength": 1
+    },
+    "method": {
+      "enum": [
+        "simulation",
+        "formal"
+      ]
+    },
+    "test": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tool_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "command": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "baseline": {
+      "type": "object",
+      "required": [
+        "source_revision",
+        "input_digest"
+      ],
+      "properties": {
+        "source_revision": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "input_digest": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "status": {
+      "enum": [
+        "passed",
+        "proven",
+        "failed",
+        "counterexample",
+        "inconclusive",
+        "compile_error",
+        "timeout",
+        "infra_error",
+        "running",
+        "skipped",
+        "unknown"
+      ]
+    },
+    "complete": {
+      "type": "boolean"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "checkers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "active"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "passed",
+              "proven",
+              "failed",
+              "unknown"
+            ]
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              }
+            },
+            "minItems": 1
+          },
+          "negative_control": {
+            "type": "object",
+            "required": [
+              "detected",
+              "artifacts"
+            ],
+            "properties": {
+              "detected": {
+                "type": "boolean"
+              },
+              "artifacts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  }
+                },
+                "minItems": 1
+              }
+            }
+          }
+        }
+      },
+      "minItems": 0
+    },
+    "coverage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "hit",
+          "complete"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "hit": {
+            "type": "boolean"
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              }
+            },
+            "minItems": 1
+          }
+        }
+      },
+      "minItems": 0
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "formal": {
+      "type": "object",
+      "required": [
+        "scope",
+        "assumptions_reviewed",
+        "nonvacuous",
+        "unbounded",
+        "artifacts"
+      ],
+      "properties": {
+        "scope": {
+          "type": "string",
+          "minLength": 1
+        },
+        "assumptions_reviewed": {
+          "type": "boolean"
+        },
+        "nonvacuous": {
+          "type": "boolean"
+        },
+        "unbounded": {
+          "type": "boolean"
+        },
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "path",
+              "sha256"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          },
+          "minItems": 1
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "method": {
+            "const": "simulation"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "seed"
+        ]
+      }
+    }
+  ]
+}

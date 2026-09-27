@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "project": "REPLACE_WITH_PROFILE_PROJECT_ID",
+  "inputs": ["spec", "rtl", "dv", "config"],
+  "requirements": [
+    {
+      "id": "REQ-RESET-001",
+      "spec_ref": "spec/reset.md#accepted-requests",
+      "statement": "Reset cancels accepted requests that have not completed.",
+      "configurations": ["default"],
+      "open_questions": ["Confirm reset versus completion priority in the same cycle."],
+      "open_bugs": [],
+      "cases": [
+        {
+          "id": "reset_with_outstanding",
+          "method": "simulation",
+          "test": "reset_under_load",
+          "checkers": ["sb_reset_cancel"],
+          "coverage_targets": ["reset_x_outstanding.nonzero"],
+          "require_negative_control": true
+        }
+      ]
+    }
+  ]
+}

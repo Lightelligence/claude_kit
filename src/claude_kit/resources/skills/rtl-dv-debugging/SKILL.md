@@ -20,3 +20,11 @@ description: Debug compile, simulation, assertion, scoreboard, timeout and cover
    diagnosing an existing log does not authorize a new simulation.
 6. Preserve before/after evidence and state blocked external prerequisites
    explicitly. Do not turn a clean exit or incomplete waveform into a pass.
+
+For a bounded failure investigation, report observed facts (source location or
+waveform time plus query/run ID), up to three competing hypotheses, supporting
+and contradicting evidence, the smallest discriminating experiment, and the
+current conclusion. Start with a ten-query budget unless the task sets another;
+stop repeating queries that add no evidence. Mark root cause as unconfirmed
+until an observation or controlled reproduction distinguishes it. Associate
+the confirmed case with an existing requirement ID when available.
