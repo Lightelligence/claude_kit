@@ -6,6 +6,27 @@
 
 如果已经知道要做什么，只需要查找对应命令、tool、参数或 Claude Code prompt，可以直接从本页开始。
 
+## 需求级 DV 证据检查
+
+```bash
+python <kit>/bin/claude-kit dv template plan
+python <kit>/bin/claude-kit dv template run
+python <kit>/bin/claude-kit dv snapshot --project-root . --plan dv-plan.json
+python <kit>/bin/claude-kit dv report --project-root . --plan dv-plan.json \
+  --run out/run-001.json --run out/run-002.json --format markdown
+```
+
+使用固定 submodule 的 Python >=3.11 CLI。`template` 输出项目模板；`snapshot` 对计划及声明的
+输入生成基线，须在实际运行前保存；`report` 按需求 × 配置 × 场景检查显式提供的完整 run 集合。
+全部只读，不执行 EDA、不修改项目、不新增 MCP server。默认 JSON，可选 Markdown；
+snapshot/report 支持现有 `--profile`。退出码 `0` 可评审、`1` 有缺口、`2` 输入错误。
+
+检查包含输入版本、产物 SHA-256、checker 活动、完整 coverage 查询、必要的负向检查和 formal
+证明条件。`regression:` 路径限 profile 声明的结果根目录。遗漏的 run、需求和 adapter 所填事实
+的真实性仍需工程审查。最高状态为 `ready_for_review`，不自动 signoff。
+既有 `evidence check` 保持任务级记录校验职责。
+接入步骤、schema 和完整数据示例见 [AI DV flow](ai-dv-flow.zh-CN.md)。
+
 ## 1. 最短使用路径
 
 在消费项目根目录执行：

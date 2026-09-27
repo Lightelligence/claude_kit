@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "project": "REPLACE_WITH_PROFILE_PROJECT_ID",
+  "run_id": "REPLACE_WITH_RUNNER_RUN_ID",
+  "requirement_id": "REQ-RESET-001",
+  "case_id": "reset_with_outstanding",
+  "configuration": "default",
+  "method": "simulation",
+  "test": "reset_under_load",
+  "seed": 1,
+  "tool_version": "REPLACE_WITH_ACTUAL_TOOL_VERSION",
+  "command": ["REPLACE_WITH_ACTUAL_RUNNER_ARGV"],
+  "baseline": {
+    "source_revision": null,
+    "input_digest": "REPLACE_WITH_PRE_RUN_SNAPSHOT_DIGEST"
+  },
+  "status": "unknown",
+  "complete": false,
+  "artifacts": [
+    {"path": "out/run/result.json", "sha256": "REPLACE_WITH_ACTUAL_ARTIFACT_SHA256"}
+  ],
+  "checkers": [],
+  "coverage": []
+}

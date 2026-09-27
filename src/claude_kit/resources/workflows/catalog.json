@@ -35,10 +35,11 @@
       "preferred_commands": ["inspect", "lint", "compile", "simulate", "regression"],
       "required_facts": ["target", "test_selector", "simulator", "source_revision"],
       "pack_hints": ["common"],
-      "keywords": ["dv", "验证", "test", "测试", "testbench", "测试平台", "sequence", "序列", "driver", "驱动", "monitor", "监视器", "scoreboard", "记分板", "coverage", "覆盖率", "assertion", "断言", "regression", "回归"],
+      "keywords": ["dv", "验证", "test", "测试", "testbench", "测试平台", "sequence", "序列", "driver", "驱动", "monitor", "监视器", "scoreboard", "记分板", "coverage", "覆盖率", "assertion", "断言", "regression", "回归", "requirement closure", "需求闭环", "需求追踪", "coverage hole"],
       "steps": [
         "Translate requirements into positive, boundary, negative, reset and recovery scenarios.",
         "Map each scenario to stimulus, observation, checking and coverage evidence.",
+        "For requirement closure, reuse the project testplan and sequence API; follow the dv-engineering requirement-flow reference and bind current runner evidence to each configuration and case.",
         "Preserve clear driver, monitor, scoreboard, reference-model and assertion responsibilities.",
         "Perform applicable static checks, then present the categorized project check menu; RTL-only lint is not DV syntax validation.",
         "Let the engineer multi-select checks; run selected MCP tools or approved wrappers in order and report each result before requesting wider execution.",
@@ -156,7 +157,8 @@
         "Enumerate changed files and the reason for each change.",
         "Attach exact commands, statuses, exit results and artifact paths.",
         "Separate passed, failed, skipped, blocked and unknown checks.",
-        "Run strict evidence validation and list residual risks and coverage gaps."
+        "Run strict evidence validation and list residual risks and coverage gaps.",
+        "When requirement tracking is in scope, run dv report on the complete selected run set; evidence readiness requires engineering review and is not signoff."
       ],
       "completion": [
         "The evidence file matches the current project and task.",

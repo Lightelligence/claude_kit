@@ -277,7 +277,43 @@ def build_parser() -> argparse.ArgumentParser:
     evidence_template_parser.add_argument("--project-root")
     evidence_template_parser.set_defaults(handler=handle_evidence_template)
 
+    dv = subparsers.add_parser("dv", help="Read-only requirement evidence readiness (not signoff)")
+    dv_commands = dv.add_subparsers(dest="dv_command", required=True)
+    dv_template = dv_commands.add_parser("template", help="Print a project-owned DV plan or run template")
+    dv_template.add_argument("kind", choices=("plan", "run"))
+    dv_template.set_defaults(handler=handle_dv)
+    dv_snapshot = dv_commands.add_parser("snapshot", help="Hash declared inputs before an existing runner executes")
+    _add_project_options(dv_snapshot)
+    dv_snapshot.add_argument("--plan", required=True, help="Project-relative DV plan JSON")
+    dv_snapshot.set_defaults(handler=handle_dv)
+    dv_report = dv_commands.add_parser("report", help="Join requirements, configurations and supplied run evidence")
+    _add_project_options(dv_report)
+    dv_report.add_argument("--plan", required=True, help="Project-relative DV plan JSON")
+    dv_report.add_argument("--run", action="append", default=[], help="Run JSON; repeat for the full review set")
+    dv_report.add_argument("--format", choices=("json", "markdown"), default="json")
+    dv_report.set_defaults(handler=handle_dv)
+
     return parser
+
+
+def handle_dv(args: argparse.Namespace) -> int:
+    from .core import resource_root
+    from .dv import load_json, markdown_report, report, snapshot
+
+    if args.dv_command == "template":
+        print((resource_root() / "templates" / f"dv-{args.kind}.json").read_text(encoding="utf-8"), end="")
+        return 0
+    root = _root(args.project_root)
+    _, profile = load_profile(root, args.profile)
+    if args.dv_command == "snapshot":
+        _json_print(snapshot(root, profile, load_json(root, profile, args.plan)))
+        return 0
+    result = report(root, profile, args.plan, args.run)
+    if args.format == "markdown":
+        print(markdown_report(result), end="")
+    else:
+        _json_print(result)
+    return 0 if result["status"] == "ready_for_review" else 1
 
 
 def handle_init(args: argparse.Namespace) -> int:

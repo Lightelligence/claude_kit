@@ -1,5 +1,10 @@
 # claude_kit
 
+Requirement-driven DV: [AI assistant DV flow and upstream assessment (Chinese)](docs/ai-dv-flow.zh-CN.md)
+and [DV evidence CLI](docs/command-reference.md#requirement-level-dv-evidence).
+`dv snapshot/report` adds source-bound evidence readiness per requirement,
+configuration and case while reusing the project's runner and xverif.
+
 [English] | [简体中文](README.zh-CN.md)
 
 A reusable Claude Code kit for RTL and DV engineering.

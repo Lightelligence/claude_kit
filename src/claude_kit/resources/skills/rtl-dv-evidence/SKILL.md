@@ -24,3 +24,13 @@ do not create a formal evidence file unless project policy requires one.
    to run it manually inside an ordinary Claude Code conversation.
 
 Completion means the evidence file matches the current project and task, every claimed check has execution evidence or an explicit exception, ordinary changes are inside `permissions.writable`, audited deletions are inside `permissions.deletable`, and strict evidence validation passes.
+
+For requirement-level closure, additionally use the project-owned DV plan and
+normalized runs with `claude-kit dv report --plan <plan.json> --run <run.json>`
+(repeat `--run` for the complete selected review set). The existing
+`evidence check` validates task records; it does not establish requirement
+closure. `dv report` reports `ready_for_review` or gaps, never signoff.
+Preserve stale runs, unsuccessful seeds, missing artifacts and incomplete
+queries. Do not recreate a pre-run baseline from the current tree after a run.
+The detailed task loop is in the sibling `dv-engineering` skill's
+`references/requirement-flow.md` when needed.

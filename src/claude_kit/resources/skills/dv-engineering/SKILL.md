@@ -37,6 +37,11 @@ Use dv-architect for the verification plan and dv-engineer for testbench edits.
 7. Report tests changed, scenarios covered, assertions, coverage, exact
    commands/results, skipped or blocked checks and remaining blind spots.
 
+For a requirement or coverage closure task, read
+[requirement-flow.md](references/requirement-flow.md). Reuse the project's
+testplan and runner; the kit's `dv report` checks evidence readiness across
+configurations without creating a second execution state machine.
+
 ## Simulation gate
 
 - Default new-test handoff: simulation and regression are `not run`.
