@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "mcp_config": ".claude/mcp-catalog.json",
+  "profiles": {
+    "daily": {
+      "description": "DV editing and focused project checks",
+      "servers": ["claude-kit", "soc-build-bazel", "soc-lsp"]
+    },
+    "debug": {
+      "description": "Analyze existing logs, waves and coverage; add build tools when reruns are needed",
+      "servers": ["claude-kit", "xverif"]
+    },
+    "closure": {
+      "description": "Collect and review requirement-level evidence",
+      "servers": ["claude-kit", "soc-build-bazel", "soc-lsp", "xverif"]
+    }
+  }
+}

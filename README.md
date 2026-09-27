@@ -11,6 +11,9 @@ A reusable Claude Code kit for RTL and DV engineering.
 
 For everyday tool choice, RTL/DV prompts, and context-efficient workflows, read
 the [engineer's tool-selection guide](docs/tool-selection.md).
+
+Use `tool-audit --project-root .` for a read-only project configuration inventory;
+see the [minimal DV attachment and task profiles](docs/tool-slimming.zh-CN.md).
 For the current server inventory and tested versus blocked capabilities, see
 the [verification snapshot](docs/tool-verification.md).
 

@@ -6,6 +6,19 @@
 
 如果已经知道要做什么，只需要查找对应命令、tool、参数或 Claude Code prompt，可以直接从本页开始。
 
+## 项目工具清单
+
+调整工具选择前，可先只读审计项目配置：
+
+```bash
+python <kit>/bin/claude-kit tool-audit --project-root . --format markdown
+python <kit>/bin/claude-kit tool-audit --project-root . --tools debug
+```
+
+报告默认/目录 MCP 差异、重复 skill 入口、文档体积和插件声明；不推断运行时加载，
+不执行工具。默认 JSON；退出码 `0` 表示生成成功（可以有 findings），`2` 表示输入错误。
+最小接入模板及迁移步骤见[精简接入指南](tool-slimming.zh-CN.md)。
+
 ## 需求级 DV 证据检查
 
 ```bash
