@@ -88,6 +88,70 @@ skills = ["vendored-skill"]
         self.assertTrue((self.root / ".claude/agents/kit-vendored-reviewer.md").is_file())
         self.assertEqual((self.root / ".claude/skills/vendored-skill").resolve(), skill.parent)
 
+    def test_scoped_alias_keeps_source_and_project_configuration(self):
+        settings = self.root / ".claude/settings.local.json"
+        settings.parent.mkdir()
+        settings.write_text('{"permissions":{"deny":["Bash(*)"]}}', encoding="utf-8")
+        original_settings = settings.read_bytes()
+        manifest = self.write_manifest('''schema_version = 1
+manage_profile = false
+manage_mcp = false
+roles = []
+skills = []
+[aliases.skills.dv-review]
+resource = "rtl-dv-review"
+description = 'Review DV stimulus and checkers; do not run EDA.'
+scope = 'DV-only review. Read RTL only to understand the test contract.'
+''')
+        source = resource_root() / "skills/rtl-dv-review/SKILL.md"
+        source_before = source.read_bytes()
+        planned = attach_project(self.root, manifest=manifest, dry_run=True)
+        self.assertIn(".claude/skills/dv-review/SKILL.md", planned["changed"])
+        self.assertFalse((self.root / ".claude/skills").exists())
+        attach_project(self.root, manifest=manifest)
+        wrapper = self.root / ".claude/skills/dv-review/SKILL.md"
+        metadata = _front_matter(wrapper)
+        self.assertEqual(metadata["name"], "dv-review")
+        self.assertEqual(metadata["description"], 'Review DV stimulus and checkers; do not run EDA.')
+        body = wrapper.read_text(encoding="utf-8")
+        self.assertIn("DV-only review", body)
+        self.assertIn(source.as_posix(), body)
+        self.assertEqual(source.read_bytes(), source_before)
+        self.assertEqual(settings.read_bytes(), original_settings)
+        self.assertEqual(attach_project(self.root, manifest=manifest)["changed"], [])
+        wrapper.write_text(body + "\nUser customization\n", encoding="utf-8")
+        with self.assertRaisesRegex(KitError, "conflicts|modified"):
+            attach_project(self.root, manifest=manifest)
+        self.assertTrue(wrapper.read_text().endswith("User customization\n"))
+
+    def test_scoped_alias_rejects_invalid_metadata_before_writes(self):
+        invalid = ('{resource="rtl-dv-review", command="bad"}',
+                   '{scope="DV only"}', '{resource=123}',
+                   '{resource="rtl-dv-review", description=123}',
+                   '{resource="rtl-dv-review", scope=""}',
+                   '{resource="rtl-dv-review", scope=' + json.dumps("x" * 2001) + '}')
+        for value in invalid:
+            with self.subTest(value=value[:80]):
+                manifest = self.write_manifest('schema_version=1\nmanage_profile=false\nmanage_mcp=false\n'
+                                               '[aliases.skills]\ndv-review=' + value + '\n')
+                with self.assertRaises(KitError):
+                    attach_project(self.root, manifest=manifest)
+                self.assertFalse((self.root / ".claude/skills").exists())
+
+    def test_scoped_same_name_alias_is_not_silently_linked(self):
+        manifest = self.write_manifest('''schema_version=1
+manage_profile=false
+manage_mcp=false
+[aliases.skills.rtl-dv-review]
+resource="rtl-dv-review"
+description="Project-scoped DV review"
+scope="Review DV only."
+''')
+        attach_project(self.root, manifest=manifest)
+        wrapper = self.root / ".claude/skills/rtl-dv-review/SKILL.md"
+        self.assertFalse(wrapper.parent.is_symlink())
+        self.assertEqual(_front_matter(wrapper)["description"], "Project-scoped DV review")
+
     def test_vendored_role_wrapper_uses_catalog_summary(self):
         vendored = self.root / "third_party/claude_kit"
         shutil.copytree(Path(__file__).resolve().parents[1] / "src", vendored / "src")

@@ -6,6 +6,7 @@
 
 日常工具选择、RTL/DV prompt 与节省上下文的方法，参见
 [工程师工具选择指南](docs/tool-selection.zh-CN.md)。
+需要明确区分 RTL / DV 日常工作时，参见[四入口模板与迁移说明](docs/rtl-dv-entrypoints.zh-CN.md)。
 
 用 `tool-audit --project-root .` 只读检查项目工具配置；最小 skills 接入与按任务选择
 MCP 的步骤见[精简接入指南](docs/tool-slimming.zh-CN.md)。

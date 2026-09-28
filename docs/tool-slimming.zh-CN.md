@@ -1,5 +1,8 @@
 # 精简项目的 MCP、skills 和 plugins
 
+需要明确区分 RTL / DV 日常入口时，使用[精简入口模板与英文示例](rtl-dv-entrypoints.zh-CN.md)。
+已有 framework 需要审查迁移，不能直接覆盖 manifest 或把更新 pin 当成入口已经退休。
+
 目标是让日常 DV 工作只看到常用入口，按任务打开其余能力。
 `claude_kit` 作为固定版本的 submodule 提供共享指引和检查；项目保留自己的
 工具路径、EDA 配置和权限。下面是建议的起点，不是对某个现场环境的验收结果。

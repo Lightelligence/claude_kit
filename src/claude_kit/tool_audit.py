@@ -4,10 +4,11 @@ from __future__ import annotations
 from collections import defaultdict
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Any
 
-from .core import KitError, _front_matter
+from .core import KitError, SKILL_ALIASES, _front_matter
 from .tool_profiles import (
     _load_mcp_servers, _load_project_configuration, _project_root,
     _read_json, _safe_project_file,
@@ -71,6 +72,9 @@ def _documents(root: Path, directory: str, *, skills: bool = False) -> tuple[lis
             record["name"] = metadata.get("name", entry.name)
             record["description_bytes"] = len(metadata.get("description", "").encode("utf-8"))
             record["manual_only_declared"] = metadata.get("disable-model-invocation", "false").lower() == "true"
+            marker = re.search(rb"<!-- claude-kit skill-alias: ([A-Za-z0-9._-]+) -->", data)
+            implementation = marker.group(1).decode("ascii") if marker else record["name"]
+            record["source_skill"] = SKILL_ALIASES.get(implementation, implementation)
         records.append(record)
         hashes[relative] = hashlib.sha256(data).hexdigest()
     return sorted(records, key=lambda record: record["path"]), hashes
@@ -108,6 +112,9 @@ def audit_project(root: Path, selected: str | None = None) -> dict:
         findings.append({"code": "identical_server_definitions", "names": names})
     if catalog and not profiles:
         findings.append({"code": "no_task_profiles", "recommendation": "Define small task subsets in tool-profiles.json."})
+    for names in _groups({name: sorted(value["servers"]) for name, value in profiles.items()}):
+        findings.append({"code": "equivalent_server_profiles", "names": names,
+                         "recommendation": "These profiles select the same servers, not distinct per-tool RTL/DV surfaces."})
     servers = []
     for name in sorted(set(defaults) | set(catalog)):
         memberships = [p for p, value in profiles.items() if name in value["servers"]]
@@ -122,6 +129,14 @@ def audit_project(root: Path, selected: str | None = None) -> dict:
     names = {s["path"]: s["name"] for s in skills if "name" in s}
     for paths in _groups(names):
         findings.append({"code": "duplicate_skill_names", "paths": paths})
+    for paths in _groups({s["path"]: s["source_skill"] for s in skills if "source_skill" in s}):
+        findings.append({"code": "multiple_skill_entrypoints_for_resource", "paths": paths,
+                         "recommendation": "Review intended scopes; retire redundant native entrypoints without removing source guidance."})
+    installed_names = set(names.values())
+    if {"soc-build", "soc-build-bazel"} <= installed_names:
+        findings.append({"code": "multiple_build_backend_skills",
+                         "names": ["soc-build", "soc-build-bazel"],
+                         "recommendation": "Make and Bazel are different backends; expose the project's backend by default."})
     for skill in skills:
         if skill["status"] != "present":
             findings.append({"code": "missing_skill_entrypoint", "path": skill["path"]})
@@ -133,6 +148,7 @@ def audit_project(root: Path, selected: str | None = None) -> dict:
     plugin_declarations = []
     hook_events = []
     mcp_disable_declarations = []
+    mcp_enable_declarations = []
     # These declarations may be overridden by managed/user/runtime state. Do not
     # infer the effective plugin set or read credentials from the user's home.
     for relative in (".claude/settings.json", ".claude/settings.local.json"):
@@ -148,10 +164,30 @@ def audit_project(root: Path, selected: str | None = None) -> dict:
         if not isinstance(hooks, dict):
             raise KitError(f"hooks must be an object: {relative}")
         hook_events.extend({"event": event, "source": relative} for event in sorted(hooks))
-        disabled = settings.get("disabledMcpjsonServers", [])
-        if not isinstance(disabled, list) or any(not isinstance(name, str) for name in disabled):
-            raise KitError(f"disabledMcpjsonServers must be a name list: {relative}")
-        mcp_disable_declarations.extend({"name": name, "source": relative} for name in disabled)
+        for key, target in (("disabledMcpjsonServers", mcp_disable_declarations),
+                            ("enabledMcpjsonServers", mcp_enable_declarations)):
+            declared = settings.get(key, [])
+            if not isinstance(declared, list) or any(not isinstance(name, str) for name in declared):
+                raise KitError(f"{key} must be a name list: {relative}")
+            target.extend({"name": name, "source": relative} for name in declared)
+            duplicates = sorted(name for name in set(declared) if declared.count(name) > 1)
+            if duplicates:
+                findings.append({"code": "duplicate_mcp_declarations", "field": key,
+                                 "source": relative, "names": duplicates})
+    declared_names = set(defaults) | set(catalog)
+    for kind, declarations in (("enabled", mcp_enable_declarations), ("disabled", mcp_disable_declarations)):
+        unmatched = sorted({d["name"] for d in declarations} - declared_names)
+        if unmatched:
+            findings.append({"code": "unmatched_project_mcp_declarations", "kind": kind, "names": unmatched,
+                             "recommendation": "Check spelling and user/plugin registrations; project-only inventory cannot declare these invalid."})
+    enabled_names = {d["name"] for d in mcp_enable_declarations}
+    disabled_names = {d["name"] for d in mcp_disable_declarations}
+    if enabled_names & disabled_names:
+        findings.append({"code": "conflicting_mcp_declarations", "names": sorted(enabled_names & disabled_names),
+                         "recommendation": "Review declaration sources and verify effective state in native /mcp."})
+    if set(selection) & disabled_names:
+        findings.append({"code": "selected_servers_have_disable_declarations", "names": sorted(set(selection) & disabled_names),
+                         "recommendation": "Selection is not activation; verify the actual session before relying on these servers."})
     if plugin_declarations:
         findings.append({"code": "plugin_contents_uninspected", "recommendation":
                          "Check enabled plugin MCP/skill/hook contents for overlap with kit resources."})
@@ -167,6 +203,7 @@ def audit_project(root: Path, selected: str | None = None) -> dict:
             "servers": servers, "profiles": [{"name": name, "servers": value["servers"]} for name, value in profiles.items()],
             "skills": skills, "rules": rules, "agents": agents, "instructions": instructions,
             "plugin_declarations": plugin_declarations, "hook_events": hook_events,
+            "mcp_enable_declarations": mcp_enable_declarations,
             "mcp_disable_declarations": mcp_disable_declarations, "findings": findings,
             "limitations": [
                 "Static project files only; no MCP, EDA, hook or plugin code is executed.",
@@ -190,9 +227,12 @@ def render_audit(result: dict) -> str:
     lines.extend("- " + cell(json.dumps(f, ensure_ascii=False)) for f in result["findings"])
     lines.extend(["", "Project plugin declarations (not effective runtime state):"])
     lines.extend("- " + cell(json.dumps(p, ensure_ascii=False)) for p in result["plugin_declarations"])
-    lines.extend(["", "| Skill entrypoint | Bytes | Manual-only declaration |", "| --- | --- | --- |"])
+    lines.extend(["", "MCP enable/disable declarations (not effective runtime state):"])
+    for kind, key in (("enabled", "mcp_enable_declarations"), ("disabled", "mcp_disable_declarations")):
+        lines.extend("- " + kind + ": " + cell(json.dumps(d, ensure_ascii=False)) for d in result[key])
+    lines.extend(["", "| Skill entrypoint | Source skill | Bytes | Manual-only declaration |", "| --- | --- | --- | --- |"])
     for skill in result["skills"]:
-        values = [skill["path"], skill.get("bytes", skill["status"]), skill.get("manual_only_declared", "unknown")]
+        values = [skill["path"], skill.get("source_skill", "unknown"), skill.get("bytes", skill["status"]), skill.get("manual_only_declared", "unknown")]
         lines.append("| " + " | ".join(cell(v) for v in values) + " |")
     lines.extend(["", *result["limitations"], ""])
     return "\n".join(lines)
