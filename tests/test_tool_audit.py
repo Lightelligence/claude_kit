@@ -96,6 +96,60 @@ class ToolAuditTests(unittest.TestCase):
         self.assertEqual(result["summary"]["agents"], 1)
         self.assertNotIn("private-", json.dumps(result))
 
+    def test_enable_disable_sources_and_profile_overlap_are_not_runtime_claims(self):
+        self.write(".mcp.json", {"mcpServers": {"build": {}, "lsp": {}}})
+        self.write(".claude/tool-profiles.json", {"schema_version": 1, "profiles": {
+            "rtl": {"description": "RTL", "servers": ["build", "lsp"]},
+            "dv": {"description": "DV", "servers": ["lsp", "build"]}}})
+        self.write(".claude/settings.json", {"enabledMcpjsonServers": ["build", "build"],
+                                           "disabledMcpjsonServers": ["old-name"]})
+        self.write(".claude/settings.local.json", {"disabledMcpjsonServers": ["build"]})
+        result = audit_project(self.root, "rtl")
+        findings = {f["code"]: f for f in result["findings"]}
+        self.assertEqual(findings["equivalent_server_profiles"]["names"], ["dv", "rtl"])
+        self.assertEqual(findings["duplicate_mcp_declarations"]["names"], ["build"])
+        self.assertEqual(findings["conflicting_mcp_declarations"]["names"], ["build"])
+        self.assertEqual(findings["unmatched_project_mcp_declarations"]["names"], ["old-name"])
+        self.assertEqual(findings["selected_servers_have_disable_declarations"]["names"], ["build"])
+        self.assertEqual(result["mcp_enable_declarations"][0]["source"], ".claude/settings.json")
+        self.assertEqual(result["summary"]["selected_servers"], 2)
+        self.assertFalse(result["runtime_verified"])
+
+    def test_compatibility_skill_and_build_backends_are_reported(self):
+        for name in ("rtl-dv-context", "rtl-dv-kit", "soc-build", "soc-build-bazel"):
+            self.write(f".claude/skills/{name}/SKILL.md", f"---\nname: {name}\n---\n{name}\n")
+        result = audit_project(self.root)
+        findings = {f["code"]: f for f in result["findings"]}
+        self.assertEqual(findings["multiple_skill_entrypoints_for_resource"]["paths"],
+                         [".claude/skills/rtl-dv-context/SKILL.md", ".claude/skills/rtl-dv-kit/SKILL.md"])
+        self.assertIn("multiple_build_backend_skills", findings)
+
+    def test_focused_templates_have_four_discriminating_native_names(self):
+        templates = resource_root() / "templates"
+        # No vendored copy is necessary for the shared-installation variant.
+        for domain, expected in (("rtl", {"rtl-design", "rtl-review", "project-context", "sim-debug"}),
+                                 ("dv", {"dv-test", "dv-review", "project-context", "sim-debug"})):
+            with self.subTest(domain=domain), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                manifest = root / "attachment.toml"
+                manifest.write_text((templates / f"kit-attachment.{domain}-focused.toml").read_text().replace(
+                    'kit_path = "third_party/claude_kit"', ''), encoding="utf-8")
+                attached = attach_project(root, manifest=manifest)
+                self.assertFalse((root / ".mcp.json").exists())
+                self.assertEqual(attached["roles"], [])
+                result = audit_project(root)
+                self.assertEqual({s["name"] for s in result["skills"]}, expected)
+                self.assertEqual(result["summary"]["skills_present"], 4)
+                review = root / f".claude/skills/{domain}-review/SKILL.md"
+                self.assertIn(domain.upper(), review.read_text())
+                self.assertIn("rtl-dv-review/SKILL.md", review.read_text())
+                self.assertEqual(attach_project(root, manifest=manifest)["changed"], [])
+
+    def test_invalid_enabled_declarations_rejected(self):
+        self.write(".claude/settings.json", {"enabledMcpjsonServers": "all"})
+        with self.assertRaisesRegex(KitError, "enabledMcpjsonServers must be a name list"):
+            audit_project(self.root)
+
     @unittest.skipIf(os.name == "nt", "symlink privileges vary on Windows")
     def test_shared_skill_link_and_broken_link(self):
         shared = self.root.parent / "shared"

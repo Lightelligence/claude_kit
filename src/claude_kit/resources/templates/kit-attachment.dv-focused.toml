@@ -1,0 +1,28 @@
+# Fresh/selective attachment only. Preserve existing project overrides and
+# execution rules; changing this file does not retire old installed entries.
+schema_version = 1
+kit_path = "third_party/claude_kit"
+manage_profile = false
+manage_mcp = false
+roles = []
+skills = []
+
+[aliases.skills.project-context]
+resource = "rtl-dv-kit"
+description = "Resolve missing project facts or tool routing; skip when already known."
+scope = "Use only for missing project facts, not as a mandatory preflight for every edit."
+
+[aliases.skills.dv-test]
+resource = "dv-engineering"
+description = "Develop UVM testbench, sequence, test, checker or scoreboard changes; no automatic simulation."
+scope = "Implement the requested DV change using existing project APIs. Propose relevant checks, reuse explicit selections, and do not add RTL lint unless RTL is affected or the engineer requests it."
+
+[aliases.skills.dv-review]
+resource = "rtl-dv-review"
+description = "Read-only DV review: stimulus, UVM behavior, checker validity, coverage and test evidence."
+scope = "Review the requested verification changes and their intended behavior. Consult RTL as context, not as a request for a full RTL review. Do not run EDA."
+
+[aliases.skills.sim-debug]
+resource = "rtl-dv-debugging"
+description = "Investigate an existing compile or simulation failure from logs, assertions and wave evidence."
+scope = "Investigate the specified failure using existing evidence first. Do not launch simulation or a regression unless explicitly selected."

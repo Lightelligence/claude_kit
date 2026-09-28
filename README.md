@@ -11,6 +11,8 @@ A reusable Claude Code kit for RTL and DV engineering.
 
 For everyday tool choice, RTL/DV prompts, and context-efficient workflows, read
 the [engineer's tool-selection guide](docs/tool-selection.md).
+For four clearly scoped native entrypoints per domain, see
+[focused RTL/DV skills and migration](docs/rtl-dv-entrypoints.md).
 
 Use `tool-audit --project-root .` for a read-only project configuration inventory;
 see the [minimal DV attachment and task profiles](docs/tool-slimming.zh-CN.md).

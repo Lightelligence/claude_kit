@@ -1,0 +1,23 @@
+# Fresh/selective attachment only. For existing framework deployments merge
+# reviewed selections; retired resources are reported, never automatically removed.
+schema_version = 1
+kit_path = "third_party/claude_kit"
+manage_profile = false
+manage_mcp = false
+roles = []
+skills = ["rtl-design"]
+
+[aliases.skills.project-context]
+resource = "rtl-dv-kit"
+description = "Resolve missing project facts or tool routing; skip when already known."
+scope = "Use only for missing project facts, not as a mandatory preflight for every edit."
+
+[aliases.skills.rtl-review]
+resource = "rtl-dv-review"
+description = "Read-only RTL review: reset, clocks, handshake, widths, state and error paths."
+scope = "Review the requested RTL changes. Read DV evidence only where needed to assess those changes; do not turn this into a full testbench review or run EDA."
+
+[aliases.skills.sim-debug]
+resource = "rtl-dv-debugging"
+description = "Investigate an existing compile or simulation failure from logs, assertions and wave evidence."
+scope = "Investigate the specified failure using existing evidence first. Do not launch simulation or a regression unless explicitly selected."

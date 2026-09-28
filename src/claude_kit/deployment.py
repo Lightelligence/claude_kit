@@ -136,6 +136,29 @@ def _aliases(value: Any, label: str) -> dict[str, str]:
     return aliases
 
 
+def _skill_aliases(value: Any) -> tuple[dict[str, str], dict[str, dict[str, str]]]:
+    """Keep string aliases compatible; optionally narrow native discovery/scope."""
+    if not isinstance(value, dict):
+        raise KitError("Attachment manifest aliases.skills must be a table")
+    resources: dict[str, str] = {}
+    details: dict[str, dict[str, str]] = {}
+    for name, entry in value.items():
+        if isinstance(entry, dict):
+            if set(entry) - {"resource", "description", "scope"} or "resource" not in entry:
+                raise KitError(f"Skill alias {name} requires resource and accepts only description/scope")
+            details[name] = {}
+            for field in ("description", "scope"):
+                if field in entry:
+                    text = entry[field]
+                    if not isinstance(text, str) or not text.strip() or len(text) > 2000 or "\x00" in text:
+                        raise KitError(f"Skill alias {name} {field} must be non-empty text of at most 2000 characters")
+                    details[name][field] = text.strip()
+            resources[name] = entry["resource"]
+        else:
+            resources[name] = entry
+    return _aliases(resources, "skills"), details
+
+
 def _catalog_by_id(entries: list[dict[str, str]], kind: str) -> dict[str, dict[str, str]]:
     catalog: dict[str, dict[str, str]] = {}
     normalized: set[str] = set()
@@ -192,9 +215,11 @@ def _load_manifest(root: Path, value: str | Path | None) -> dict[str, Any] | Non
     aliases = manifest.get("aliases", {})
     if not isinstance(aliases, dict) or set(aliases) - {"roles", "skills"}:
         raise KitError("Attachment manifest aliases may contain only roles and skills tables")
+    skill_aliases, skill_alias_details = _skill_aliases(aliases.get("skills", {}))
+    manifest["skill_alias_details"] = skill_alias_details
     manifest["aliases"] = {
         "roles": _aliases(aliases.get("roles", {}), "roles"),
-        "skills": _aliases(aliases.get("skills", {}), "skills"),
+        "skills": skill_aliases,
     }
     if manifest.get("framework") not in (None, "soc"):
         raise KitError("Unknown framework; supported value is soc")
@@ -381,12 +406,13 @@ def _attach_project(
     )
     for name, resource_id in skill_targets:
         entry = skill_entries[resource_id]
+        alias_details = attachment["skill_alias_details"].get(name, {}) if attachment else {}
         source = (resources / entry["path"]).parent.resolve(strict=True)
         skills_root = (resources / "skills").resolve(strict=True)
         if not source.is_dir() or not source.is_relative_to(skills_root):
             raise KitError(f"Skill escapes kit resources: {entry['id']}")
         _validate_resource_tree(source, skills_root, f"Skill {entry['id']}")
-        if name == resource_id:
+        if name == resource_id and not alias_details:
             relative = f".claude/skills/{name}"
             destination = _checked_target(root, relative)
             try:
@@ -415,8 +441,15 @@ def _attach_project(
             if source.is_relative_to(root)
             else source.as_posix()
         )
-        description = entry.get("description") or (
+        description = alias_details.get("description") or entry.get("description") or (
             f"Apply the {resource_id} reusable skill under the {name} compatibility name."
+        )
+        scope = alias_details.get("scope")
+        scope_text = (
+            f"\nTask scope: {scope}\n"
+            "This narrows task selection; it grants no additional permissions and "
+            "does not override project execution gates or the source skill's safety rules.\n"
+            if scope else ""
         )
         body = f'''---
 name: {json.dumps(name)}
@@ -424,6 +457,7 @@ description: {json.dumps(description)}
 ---
 
 {alias_markers[relative]}
+{scope_text}
 Read `{source_reference}/SKILL.md` and follow that skill's instructions.
 Resolve any relative support-file references from `{source_reference}`.
 '''

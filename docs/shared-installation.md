@@ -91,6 +91,12 @@ project-reviewer = "reviewer"
 rtl = "rtl-design"
 ```
 
+Skill aliases may also use `{ resource = "rtl-dv-review", description = "...",
+scope = "..." }` tables to narrow native discovery and task scope. String aliases
+remain supported. Neither form changes MCP tool names or project permissions.
+See [focused RTL/DV entrypoints](rtl-dv-entrypoints.md) for four-entry templates,
+scoped English prompts, and migration boundaries for existing frameworks.
+
 Apply it with:
 
 ```sh
