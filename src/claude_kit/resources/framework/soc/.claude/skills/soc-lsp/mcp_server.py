@@ -36,25 +36,53 @@ def serialized(function):
     return call
 
 
+class _PreparedSymbols:
+    """Internal flat outline and its unchanged pagination identity."""
+    def __init__(self, items):
+        self.items = items
+        encoded = json.dumps(items, sort_keys=True).encode()
+        self.snapshot = hashlib.sha256(encoded).hexdigest()
+        self.size = len(encoded)
+
+
 def page(key, items, offset=0, limit=40, expected_snapshot=None, **metadata):
     """Paginate without silently discarding nested symbols or oversized rows."""
     if offset < 0 or not 1 <= limit <= 100:
         raise ValueError('offset >= 0 and limit in 1..100 required')
-    identity = hashlib.sha256(json.dumps(items, sort_keys=True).encode()).hexdigest()
+    if isinstance(items, _PreparedSymbols):
+        identity, items = items.snapshot, items.items
+    else:
+        identity = hashlib.sha256(json.dumps(items, sort_keys=True).encode()).hexdigest()
     if expected_snapshot and identity != expected_snapshot:
         raise ValueError('Results changed; restart at offset 0')
     if offset > len(items):
         raise ValueError('Offset exceeds result count')
     result = {key: [], 'total': len(items), 'offset': offset, 'snapshot': identity,
               'next_offset': None, 'truncated': False, **metadata}
-    for item in items[offset:offset + limit]:
-        result[key].append(item)
-        if len(json.dumps(result, ensure_ascii=True).encode()) > MAX_RESPONSE - 256:
-            result[key].pop()
-            if not result[key]:
+    encoded_rows = [json.dumps(item, ensure_ascii=True, separators=(',', ':')).encode()
+                    for item in items[offset:offset + limit]]
+    # Account for both terminal-field encodings while accumulating rows. The
+    # list itself is the only variable-size value in each response template.
+    def fixed_size(truncated, next_offset):
+        template = {key: [], 'total': len(items), 'offset': offset, 'snapshot': identity,
+                    'next_offset': next_offset, 'truncated': truncated, **metadata}
+        return len(json.dumps(template, ensure_ascii=True, separators=(',', ':')).encode()) - 2
+
+    selected = []
+    encoded_rows_size = 0
+    for index, (item, encoded) in enumerate(zip(items[offset:offset + limit], encoded_rows), 1):
+        candidate_offset = offset + index
+        terminal = candidate_offset >= len(items)
+        candidate_size = fixed_size(not terminal, None if terminal else candidate_offset)
+        candidate_size += 2 + encoded_rows_size + len(encoded) + (1 if selected else 0)
+        if candidate_size > MAX_RESPONSE - 256:
+            if not selected:
                 raise ValueError('One result exceeds output budget; narrow the query or inspect its source')
             break
-    next_offset = offset + len(result[key])
+        selected.append(item)
+        encoded_rows_size += len(encoded) + (1 if selected[:-1] else 0)
+    result[key].extend(selected)
+    next_offset = offset + len(selected)
     result['truncated'] = next_offset < len(items)
     result['next_offset'] = next_offset if result['truncated'] else None
     return json.dumps(result, ensure_ascii=True, separators=(',', ':'))
@@ -309,10 +337,14 @@ class VeribleLSPBridge:
         declaration_keys = {identity(location) for location in definitions}
         candidates = references + definitions if include_declaration else [
             location for location in references if identity(location) not in declaration_keys]
-        unique = {}
+        unique = set()
+        result = []
         for location in candidates:
-            unique.setdefault(identity(location), location)
-        return list(unique.values())
+            key = identity(location)
+            if key not in unique:
+                unique.add(key)
+                result.append(location)
+        return result
 
     @serialized
     def document_symbol(self, file_path, refresh=False):
@@ -339,14 +371,46 @@ class VeribleLSPBridge:
         return symbols
 
     @serialized
+    def document_symbols_page(self, file_path, offset=0, limit=40, name_filter='', expected_snapshot=None):
+        # Always validate/read/hash the source through document_symbol first.
+        # A stat-only hit would hide same-mtime edits. Keep derived data in the
+        # same entry so refresh, eviction, stop and reindex invalidate it too.
+        symbols = self.document_symbol(file_path)
+        key = str(Path(file_path).resolve())
+        cached = self._symbol_cache.get(key)
+        if cached and len(cached) > 3:
+            prepared = cached[3]
+        else:
+            prepared = _PreparedSymbols(flatten_symbols(symbols))
+            if cached and cached[2] + prepared.size <= MAX_SYMBOL_CACHE_BYTES:
+                self._symbol_cache.pop(key)
+                self._symbol_cache_bytes -= cached[2]
+                size = cached[2] + prepared.size
+                while self._symbol_cache and self._symbol_cache_bytes + size > MAX_SYMBOL_CACHE_BYTES:
+                    _, evicted = self._symbol_cache.popitem(last=False)
+                    self._symbol_cache_bytes -= evicted[2]
+                self._symbol_cache[key] = (cached[0], symbols, size, prepared)
+                self._symbol_cache_bytes += size
+        if name_filter:
+            needle = name_filter.casefold()
+            return page('symbols', [s for s in prepared.items if needle in s['name'].casefold()],
+                        offset, limit, expected_snapshot)
+        return page('symbols', prepared, offset, limit, expected_snapshot)
+
+    @serialized
     def get_diagnostics(self, file_path):
-        # A request after didOpen acts as a protocol barrier for Verible's
-        # synchronous parse notifications. Absence is explicitly not a clean parse.
-        self.document_symbol(file_path, refresh=True)
+        # A request after didOpen acts as a protocol barrier when diagnostics
+        # are missing or stale. Reuse a current report without reparsing.
+        self._ensure_document_open(file_path)
         uri = self._file_to_uri(file_path)
-        diagnostic = self.diagnostics.get(uri)
         version = self._versions[str(Path(file_path).resolve())]
-        if diagnostic is None or diagnostic.get('version', version) != version:
+        diagnostic = self.diagnostics.get(uri)
+        needs_barrier = (diagnostic is None
+                         or diagnostic.get('version', version) != version)
+        if needs_barrier:
+            self.document_symbol(file_path, refresh=True)
+            diagnostic = self.diagnostics.get(uri)
+        if diagnostic is None or ('version' in diagnostic and diagnostic['version'] != version):
             return {'state': 'pending', 'items': [], 'version': version}
         return {'state': 'reported', 'items': diagnostic.get('diagnostics', []), 'version': version,
                 'versioned': 'version' in diagnostic}
@@ -361,6 +425,7 @@ class VeribleLSPBridge:
         if len(raw) > 1024 * 1024:
             raise ValueError('Filelist exceeds 1 MiB')
         paths = []
+        seen = set()
         for line in raw.decode('utf-8').splitlines():
             entry = line.strip()
             if not entry or entry.startswith('#'):
@@ -371,8 +436,9 @@ class VeribleLSPBridge:
             if not p.is_relative_to(self.root):
                 raise ValueError('Indexed source escapes the checkout: ' + entry[:200])
             self._source(p)
-            if p not in paths:
+            if p not in seen:
                 paths.append(p)
+                seen.add(p)
         if not paths or len(paths) > 20000:
             raise ValueError('Expected 1..20000 source files')
         self.index_artifacts = {}
@@ -523,10 +589,7 @@ def configure_sys_tb_index() -> str:
 @mcp.tool()
 def document_symbols(file_path: str, offset: int = 0, limit: int = 40, name_filter: str = '', expected_snapshot: str = '') -> str:
     """Return a flat module/class/task/function outline with parent names and zero-based ranges; paginate using next_offset and snapshot."""
-    symbols = flatten_symbols(get_lsp_bridge(file_path).document_symbol(file_path))
-    if name_filter:
-        symbols = [s for s in symbols if name_filter.casefold() in s['name'].casefold()]
-    return page('symbols', symbols, offset, limit, expected_snapshot)
+    return get_lsp_bridge(file_path).document_symbols_page(file_path, offset, limit, name_filter, expected_snapshot)
 
 
 @mcp.tool()
