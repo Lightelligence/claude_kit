@@ -117,6 +117,21 @@ class ParseTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Results changed'):
             self.mod.page('items', [1, 3], 1, 1, p['snapshot'])
 
+    def test_pagination_preserves_unicode_and_budget(self):
+        items = [{'name': '模块-%03d' % index} for index in range(120)]
+        observed = []
+        offset, snapshot = 0, ''
+        while True:
+            text = self.mod.page('items', items, offset, 100, snapshot)
+            self.assertLessEqual(len(text.encode()), self.mod.MAX_RESPONSE)
+            result = json.loads(text)
+            observed.extend(result['items'])
+            snapshot = result['snapshot']
+            offset = result['next_offset']
+            if offset is None:
+                break
+        self.assertEqual(observed, items)
+
     def test_oversized_row_is_not_silently_lost(self):
         with self.assertRaisesRegex(ValueError, 'exceeds output budget'):
             self.mod.page('items', [{'name': 'a' * 20000}])
@@ -146,6 +161,8 @@ class ParseTests(unittest.TestCase):
         self.assertEqual(self.bridge.diagnostics[uri]['diagnostics'][0]['message'], 'syntax error')
 
     def test_missing_and_stale_diagnostics_are_pending(self):
+        self.bridge._send_notification = lambda *args: None
+        self.bridge._ensure_document_open = lambda path: None
         self.bridge.document_symbol = lambda p, **kwargs: []
         self.bridge._versions[str(self.source.resolve())] = 2
         self.assertEqual(self.bridge.get_diagnostics(self.source)['state'], 'pending')
@@ -153,6 +170,16 @@ class ParseTests(unittest.TestCase):
         self.assertEqual(self.bridge.get_diagnostics(self.source)['state'], 'pending')
         self.bridge.diagnostics[self.source.as_uri()] = {'version': 2, 'diagnostics': []}
         self.assertEqual(self.bridge.get_diagnostics(self.source)['state'], 'reported')
+
+    def test_current_diagnostics_reuse_avoids_barrier(self):
+        self.bridge._send_notification = lambda *args: None
+        self.bridge._ensure_document_open = lambda path: None
+        self.bridge._versions[str(self.source.resolve())] = 1
+        self.bridge.diagnostics[self.source.as_uri()] = {
+            'uri': self.source.as_uri(), 'version': 1, 'diagnostics': []}
+        self.bridge.document_symbol = MagicMock()
+        self.assertEqual(self.bridge.get_diagnostics(self.source)['state'], 'reported')
+        self.bridge.document_symbol.assert_not_called()
 
     def test_changed_source_clears_previous_diagnostics(self):
         calls = []
@@ -287,6 +314,91 @@ class ParseTests(unittest.TestCase):
         with patch.object(self.mod, 'get_lsp_bridge', return_value=bridge) as get:
             self.mod.configure_sys_tb_index()
         get.assert_called_once_with(start_server=False)
+
+    def test_outline_pages_prepare_once_and_keep_existing_snapshot(self):
+        tree = [{'name': 'top', 'kind': 2, 'children': [{'name': 'f%d' % i, 'kind': 12} for i in range(600)]}]
+        flat = self.mod.flatten_symbols(tree)
+        self.bridge._send_notification = lambda *args: None
+        self.bridge._send_message = MagicMock(return_value=tree)
+        observed, offset, snapshot = [], 0, ''
+        with patch.object(self.mod, 'flatten_symbols', wraps=self.mod.flatten_symbols) as flatten:
+            while True:
+                actual = self.bridge.document_symbols_page(self.source, offset, 40, '', snapshot)
+                self.assertEqual(actual, self.mod.page('symbols', flat, offset, 40, snapshot))
+                result = json.loads(actual)
+                observed.extend(result['symbols'])
+                snapshot = result['snapshot']
+                if result['next_offset'] is None:
+                    break
+                offset = result['next_offset']
+            self.assertEqual(flatten.call_count, 1)
+        self.assertEqual(observed, flat)
+        self.assertEqual(self.bridge._send_message.call_count, 1)
+        self.assertEqual(self.bridge._symbol_cache_bytes, sum(entry[2] for entry in self.bridge._symbol_cache.values()))
+
+    def test_outline_page_edit_refresh_and_restart_invalidate_preparation(self):
+        self.bridge._send_notification = lambda *args: None
+        self.bridge._send_message = MagicMock(side_effect=[[{'name': name}] for name in ('old', 'new', 'fresh', 'restart')])
+        self.source.write_text('module old; endmodule\n')
+        old = json.loads(self.bridge.document_symbols_page(self.source))
+        saved = self.source.stat()
+        self.source.write_text('module new; endmodule\n')
+        os.utime(self.source, ns=(saved.st_atime_ns, saved.st_mtime_ns))
+        with self.assertRaisesRegex(ValueError, 'Results changed'):
+            self.bridge.document_symbols_page(self.source, expected_snapshot=old['snapshot'])
+        self.assertEqual(json.loads(self.bridge.document_symbols_page(self.source))['symbols'][0]['name'], 'new')
+        self.bridge.document_symbol(self.source, refresh=True)
+        self.assertEqual(json.loads(self.bridge.document_symbols_page(self.source))['symbols'][0]['name'], 'fresh')
+        self.bridge.stop()
+        self.assertEqual(self.bridge._symbol_cache_bytes, 0)
+        self.assertEqual(json.loads(self.bridge.document_symbols_page(self.source))['symbols'][0]['name'], 'restart')
+        self.assertEqual(self.bridge._send_message.call_count, 4)
+
+    def test_outline_page_filter_snapshot_and_source_checks(self):
+        tree = [{'name': 'top', 'children': [{'name': 'Straße'}, {'name': 'OTHER'}]}]
+        self.bridge._send_notification = lambda *args: None
+        self.bridge._send_message = MagicMock(return_value=tree)
+        first = json.loads(self.bridge.document_symbols_page(self.source))
+        filtered = self.bridge.document_symbols_page(self.source, name_filter='STRASSE')
+        expected = [s for s in self.mod.flatten_symbols(tree) if 'strasse' in s['name'].casefold()]
+        self.assertEqual(filtered, self.mod.page('symbols', expected))
+        self.assertNotEqual(json.loads(filtered)['snapshot'], first['snapshot'])
+        with self.assertRaisesRegex(ValueError, 'Results changed'):
+            self.bridge.document_symbols_page(self.source, name_filter='other', expected_snapshot=json.loads(filtered)['snapshot'])
+        self.source.unlink()
+        with self.assertRaisesRegex(ValueError, 'existing'):
+            self.bridge.document_symbols_page(self.source)
+
+    def test_outline_preparation_shares_byte_budget_and_lru_eviction(self):
+        tree = [{'name': '中文' * 30, 'kind': 2}]
+        raw_size = len(json.dumps(tree, ensure_ascii=False).encode('utf-8'))
+        flat_size = self.mod._PreparedSymbols(self.mod.flatten_symbols(tree)).size
+        self.bridge._send_notification = lambda *args: None
+        self.bridge._send_message = MagicMock(return_value=tree)
+        with patch.object(self.mod, 'MAX_SYMBOL_CACHE_BYTES', raw_size + flat_size - 1):
+            self.bridge.document_symbols_page(self.source)
+            cached = self.bridge._symbol_cache[str(self.source.resolve())]
+            self.assertEqual(len(cached), 3, 'Derived rows exceeded the shared budget')
+            self.assertEqual(self.bridge._symbol_cache_bytes, raw_size)
+        self.bridge.stop()
+        with patch.object(self.mod, 'MAX_SYMBOL_CACHE_BYTES', raw_size + flat_size), patch.object(self.mod, 'MAX_SYMBOL_CACHE_DOCUMENTS', 2):
+            for n in range(3):
+                source = self.root / ('prepared%d.sv' % n)
+                source.write_text('module m; endmodule\n')
+                self.bridge.document_symbols_page(source)
+                self.assertLessEqual(self.bridge._symbol_cache_bytes, raw_size + flat_size)
+                self.assertLessEqual(len(self.bridge._symbol_cache), 2)
+            self.assertEqual(len(self.bridge._symbol_cache), 1)
+            self.assertTrue(next(iter(self.bridge._symbol_cache)).endswith('prepared2.sv'))
+            calls = self.bridge._send_message.call_count
+            self.bridge.document_symbols_page(self.root / 'prepared0.sv')
+            self.assertEqual(self.bridge._send_message.call_count, calls + 1)
+
+    def test_outline_page_oversized_row_remains_an_error(self):
+        self.bridge._send_notification = lambda *args: None
+        self.bridge._send_message = MagicMock(return_value=[{'name': 'x' * 20000}])
+        with self.assertRaisesRegex(ValueError, 'One result exceeds'):
+            self.bridge.document_symbols_page(self.source)
 
 
 if __name__ == '__main__':
