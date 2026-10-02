@@ -134,6 +134,8 @@ def _tool_definitions(allow_exec: bool, tool_profile: str = "full") -> list[dict
                     "workflow": {"type": "string", "description": "Workflow id or auto"},
                     "roles": {"type": "array", "items": {"type": "string"}},
                     "packs": {"type": "array", "items": {"type": "string"}},
+                    "view": {"type": "string", "enum": ["full", "summary"],
+                             "description": "summary removes duplicate definitions; full preserves the legacy response"},
                 },
             },
         },
@@ -169,6 +171,8 @@ def _tool_definitions(allow_exec: bool, tool_profile: str = "full") -> list[dict
                 "properties": {
                     "path": {"type": "string"},
                     "max_bytes": {"type": "integer", "minimum": 0, "maximum": MAX_ARTIFACT_BYTES},
+                    "offset": {"type": "integer", "minimum": 0,
+                               "description": "Byte offset; resume with next_offset from a bounded read"},
                 },
             },
         },
@@ -259,6 +263,24 @@ def _text_result(value: Any) -> dict[str, Any]:
     return {"content": [{"type": "text", "text": json.dumps(value, separators=(",", ":"), ensure_ascii=False)}]}
 
 
+def _plan_view(plan: dict[str, Any], view: str) -> dict[str, Any]:
+    if view not in ("full", "summary"):
+        raise KitError("plan_task view must be full or summary")
+    if view == "full":
+        return plan
+    # Keep every gate, warning, source fingerprint and check-menu definition.
+    # Only remove copies already present elsewhere in the same response.
+    result = dict(plan)
+    result["facts"] = {key: value for key, value in plan["facts"].items()
+                       if key not in ("artifacts", "providers")}
+    result["available_commands"] = [{key: value for key, value in item.items()
+                                      if key != "definition"}
+                                     for item in plan["available_commands"]]
+    result["view"] = "summary"
+    result["definition_source"] = "check_plan; artifacts and providers are top-level"
+    return result
+
+
 def _bool_argument(arguments: dict[str, Any], name: str, default: bool = False) -> bool:
     value = arguments.get(name, default)
     if not isinstance(value, bool):
@@ -319,7 +341,10 @@ def _call_tool(
         workflow = arguments.get("workflow", "auto")
         if not isinstance(workflow, str):
             raise KitError("plan_task workflow must be a string")
-        return _text_result(resolve_plan(
+        view = arguments.get("view", "full")
+        if not isinstance(view, str) or view not in ("full", "summary"):
+            raise KitError("plan_task view must be full or summary")
+        return _text_result(_plan_view(resolve_plan(
             root,
             profile_path,
             profile,
@@ -327,7 +352,7 @@ def _call_tool(
             arguments.get("roles"),
             arguments.get("packs"),
             task,
-        ))
+        ), view))
     if name == "get_project_profile":
         issues = validate_profile(root, profile)
         return _text_result({
@@ -363,7 +388,7 @@ def _call_tool(
         if not isinstance(path, str):
             raise KitError("read_artifact requires path")
         max_bytes = arguments.get("max_bytes", DEFAULT_ARTIFACT_MAX_BYTES)
-        return _text_result(read_artifact(root, path, max_bytes))
+        return _text_result(read_artifact(root, path, max_bytes, offset=arguments.get("offset", 0)))
     if name == "discover_regression_artifacts":
         kind = arguments.get("kind", "all")
         if not isinstance(kind, str):

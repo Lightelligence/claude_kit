@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -167,6 +169,176 @@ class CoreTests(unittest.TestCase):
                 }}}
                 issues = validate_profile(FIXTURE, profile)
                 self.assertTrue(any(item["level"] == "error" and "applies_to" in item["message"] for item in issues))
+
+    def test_preferred_category_matches_workflow_scope_and_keeps_explicit_ids(self) -> None:
+        commands = {
+            "a_rtl_lint": {"category": "lint", "applies_to": "rtl"},
+            "z_dv_lint": {"category": "lint", "applies_to": "dv"},
+        }
+        profile_path, profile = load_profile(FIXTURE)
+        profile["build"]["commands"] = commands
+        plan = resolve_plan(FIXTURE, profile_path, profile, "dv-change", None, [], "DV testbench")
+        lint = next(item for item in plan["available_commands"] if item.get("requested") == "lint")
+        self.assertEqual(lint["name"], "z_dv_lint")
+        menu = command_menu(profile, ["lint"], "dv")
+        self.assertEqual(menu[0]["name"], "z_dv_lint")
+        explicit = command_menu(profile, ["a_rtl_lint"], "dv")
+        self.assertEqual(explicit[0]["name"], "a_rtl_lint")
+        self.assertFalse(explicit[0]["recommended"])
+        mixed = {item["name"]: item for item in command_menu(profile, scope="rtl-dv")}
+        self.assertTrue(mixed["a_rtl_lint"]["recommended"])
+        self.assertTrue(mixed["z_dv_lint"]["recommended"])
+        commands["bad_lint"] = {"category": "lint", "applies_to": ["dvv"]}
+        with self.assertRaises(KitError):
+            command_menu(profile, scope="dv")
+
+    def test_review_debug_intent_outranks_domain_keywords(self) -> None:
+        profile_path, profile = load_profile(FIXTURE)
+        for task, expected in (
+            ("review RTL module reset handshake FIFO pipeline", "review"),
+            ("debug RTL module reset handshake FIFO timeout", "debug"),
+            ("评审 DV testbench scoreboard coverage regression", "review"),
+            ("调试 RTL module reset handshake 队列超时", "debug"),
+            ("preview RTL module reset handshake FIFO", "rtl-change"),
+        ):
+            with self.subTest(task=task):
+                plan = resolve_plan(FIXTURE, profile_path, profile, "auto", None, [], task)
+                self.assertEqual(plan["workflow"]["id"], expected)
+        explicit = resolve_plan(FIXTURE, profile_path, profile, "dv-change", None, [], "review RTL module")
+        self.assertEqual(explicit["workflow"]["id"], "dv-change")
+
+    def test_context_reads_resource_once_and_refreshes_next_request(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            resources = Path(temporary) / "resources"
+            role = resources / "roles" / "role.md"
+            role.parent.mkdir(parents=True)
+            role.write_text("---\nid: role\n---\n# Original\n", encoding="utf-8")
+            root = Path(temporary)
+            profile_path = root / "project.json"
+            profile = {"project": {"id": "snapshot"}}
+            original_open = Path.open
+            reads: list[Path] = []
+
+            def traced_open(path: Path, *args: object, **kwargs: object):
+                if path == role:
+                    reads.append(path)
+                return original_open(path, *args, **kwargs)
+
+            with patch("claude_kit.core.resource_root", return_value=resources), patch.object(Path, "open", traced_open):
+                context, manifest = resolve_context(root, profile_path, profile, ["role"], [], "inspect")
+            self.assertEqual(reads, [role])
+            role.write_text("---\nid: role\n---\n# Modified\n", encoding="utf-8")
+            with patch("claude_kit.core.resource_root", return_value=resources):
+                updated, current = resolve_context(root, profile_path, profile, ["role"], [], "inspect")
+            self.assertIn("# Original", context)
+            self.assertIn("# Modified", updated)
+            self.assertNotEqual(manifest["sources"][0]["sha256"], current["sources"][0]["sha256"])
+
+    def test_large_command_outputs_are_bounded_and_complete_artifacts_are_private(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            profile = {"build": {"commands": {"large": {"argv": [
+                sys.executable, "-c",
+                "import sys; sys.stdout.write('A'*30000); sys.stderr.write('B'*40000); sys.exit(3)",
+            ]}}}}
+            result = run_project_command(root, profile, "large")
+            subprocess.run(["git", "init", "--quiet", str(root)], check=True, capture_output=True)
+            self.assertEqual(result["status"], "failed")
+            self.assertEqual(result["returncode"], 3)
+            self.assertEqual(len(result["stdout"].encode()), result["output_limit_bytes"])
+            self.assertEqual(len(result["stderr"].encode()), result["output_limit_bytes"])
+            for stream, size, character in (("stdout", 30000, "A"), ("stderr", 40000, "B")):
+                artifact = result["output_artifacts"][stream]
+                self.assertEqual(artifact["bytes"], size)
+                self.assertTrue(artifact["truncated"])
+                fetched = read_artifact(root, artifact["path"], max_bytes=size)
+                self.assertEqual(fetched["text"], character * size)
+                self.assertFalse(fetched["truncated"])
+                path = root / artifact["path"]
+                self.assertEqual((path.parent / ".gitignore").read_text(), "*\n")
+                ignored = subprocess.run(
+                    ["git", "check-ignore", "--no-index", "--", str(path), str(path.parent / ".gitignore")],
+                    cwd=root, capture_output=True,
+                )
+                self.assertEqual(ignored.returncode, 0, ignored.stderr)
+                if os.name != "nt":
+                    self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+                    self.assertEqual(path.parent.stat().st_mode & 0o777, 0o700)
+
+    def test_timeout_and_launch_failure_keep_partial_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            commands = {
+                "hang": {"argv": [sys.executable, "-c", "import sys,time; print('partial', flush=True); time.sleep(5)"]},
+                "missing": {"argv": [str(root / "missing-executable")]},
+            }
+            profile = {"build": {"commands": commands}}
+            timed = run_project_command(root, profile, "hang", timeout=1)
+            self.assertTrue(timed["timed_out"])
+            self.assertIsNone(timed["returncode"])
+            self.assertIn("partial", timed["stdout"])
+            failed = run_project_command(root, profile, "missing")
+            self.assertTrue(failed["launch_error"])
+            self.assertEqual(failed["status"], "failed")
+            self.assertTrue(failed["stderr"])
+
+    def test_artifact_byte_cursor_retrieves_entire_large_log_without_reexecution(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            data = (b"0123456789\n" * 150000) + b"last line\n"
+            (root / "large.log").write_bytes(data)
+            offset = 0
+            pieces: list[str] = []
+            versions: list[dict[str, object]] = []
+            while True:
+                chunk = read_artifact(root, "large.log", max_bytes=100000, offset=offset)
+                self.assertEqual(chunk["offset"], offset)
+                self.assertFalse(chunk["changed_during_read"])
+                versions.append(chunk["file_version"])
+                pieces.append(chunk["text"])
+                self.assertLessEqual(chunk["bytes_read"], 100000)
+                if chunk["complete"]:
+                    break
+                self.assertGreater(chunk["next_offset"], offset)
+                offset = chunk["next_offset"]
+            self.assertEqual("".join(pieces).encode(), data)
+            self.assertTrue(all(version == versions[0] for version in versions))
+            zero = read_artifact(root, "large.log", max_bytes=0)
+            self.assertEqual(zero["next_offset"], 0)
+            self.assertFalse(zero["complete"])
+            eof = read_artifact(root, "large.log", offset=len(data))
+            self.assertEqual(eof["text"], "")
+            self.assertTrue(eof["complete"])
+            for invalid in (-1, True, 0.1, "0", len(data) + 1):
+                with self.subTest(offset=invalid), self.assertRaises(KitError):
+                    read_artifact(root, "large.log", offset=invalid)
+            (root / "large.log").write_bytes(b"new log")
+            current = read_artifact(root, "large.log")
+            self.assertNotEqual(current["file_version"], versions[0])
+
+    def test_artifact_cursor_is_explicitly_bytes_for_split_utf8(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "utf8.log").write_text("你好", encoding="utf-8")
+            chunk = read_artifact(root, "utf8.log", max_bytes=1)
+            self.assertEqual(chunk["bytes_read"], 1)
+            self.assertEqual(chunk["next_offset"], 1)
+            self.assertEqual(chunk["text"], "\ufffd")
+            self.assertEqual(chunk["text_encoding"], "utf-8-replace")
+            self.assertEqual(base64.b64decode(chunk["raw_base64"]), "你好".encode()[:1])
+            offset = 0
+            pieces: list[bytes] = []
+            while True:
+                piece = read_artifact(root, "utf8.log", max_bytes=1, offset=offset)
+                pieces.append(base64.b64decode(piece["raw_base64"]) if "raw_base64" in piece else piece["text"].encode())
+                offset = piece["next_offset"]
+                if piece["complete"]:
+                    break
+            self.assertEqual(b"".join(pieces).decode(), "你好")
+            full = read_artifact(root, "utf8.log", max_bytes=6)
+            self.assertEqual(full["text"], "你好")
+            self.assertEqual(full["text_encoding"], "utf-8")
+            self.assertNotIn("raw_base64", full)
 
     def test_mcp_backed_check_is_profiled_but_not_shell_executed(self) -> None:
         profile = {

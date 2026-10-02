@@ -4,6 +4,7 @@ The kit's framing, profile validation and original tool dispatch remain unchange
 Private integration points are covered by the stdio contract test on kit upgrades.
 """
 import argparse
+import base64
 import json
 import os
 from pathlib import Path
@@ -33,10 +34,13 @@ def read_bounded_artifact(name, arguments, root, profile_path):
     from claude_kit.core import KitError, load_profile, _regression_config, _project_path, MAX_ARTIFACT_BYTES
     path = arguments.get('path')
     limit = arguments.get('max_bytes', DEFAULT_READ_BYTES)
+    offset = arguments.get('offset', 0)
     if not isinstance(path, str) or not path.strip():
         raise KitError('artifact path must be a non-empty string')
     if isinstance(limit, bool) or not isinstance(limit, int) or not 0 <= limit <= MAX_ARTIFACT_BYTES:
         raise KitError('max_bytes must be an integer in 0..' + str(MAX_ARTIFACT_BYTES))
+    if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
+        raise KitError('offset must be a non-negative byte offset')
     _, profile = load_profile(root, profile_path)
     regression = name == 'read_regression_artifact'
     base = _regression_config(profile)['root'] if regression else root.resolve()
@@ -51,14 +55,29 @@ def read_bounded_artifact(name, arguments, root, profile_path):
         raise KitError('Artifact does not exist: ' + path)
     with resolved.open('rb') as stream:
         before = os.fstat(stream.fileno())
+        if offset > before.st_size:
+            raise KitError('offset is beyond the artifact end')
+        if offset:
+            stream.seek(offset)
         data = stream.read(limit)
         after = os.fstat(stream.fileno())
     current = resolved.stat()
     signature = lambda stat: (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)
+    stable = signature(before) == signature(after) == signature(current)
+    try:
+        text = data.decode('utf-8')
+        encoding = {'text_encoding': 'utf-8'}
+    except UnicodeDecodeError:
+        text = data.decode('utf-8', errors='replace')
+        encoding = {'text_encoding': 'utf-8-replace',
+                    'raw_base64': base64.b64encode(data).decode('ascii')}
     value = {'path': str(resolved) if regression else resolved.relative_to(base).as_posix(),
-             'bytes': after.st_size, 'truncated': before.st_size > limit or after.st_size > len(data),
-             'text': data.decode('utf-8', errors='replace'), 'bytes_read': len(data),
-             'stable': signature(before) == signature(after) == signature(current)}
+             'bytes': after.st_size, 'truncated': offset + len(data) < after.st_size or not stable,
+             'text': text, **encoding, 'bytes_read': len(data),
+             'offset': offset, 'next_offset': offset + len(data),
+             'complete': offset + len(data) >= after.st_size and stable,
+             'file_version': {'bytes': before.st_size, 'mtime_ns': before.st_mtime_ns, 'inode': before.st_ino},
+             'stable': stable}
     if regression:
         value.update(relative_path=resolved.relative_to(base).as_posix(), regression_root=str(base))
     return {'content': [{'type': 'text', 'text': json.dumps(value, ensure_ascii=False, separators=(',', ':'))}]}
@@ -154,6 +173,9 @@ def main():
                     else:
                         if name == 'resolve_context':
                             arguments = context_arguments(arguments)
+                        if name == 'plan_task':
+                            arguments = dict(arguments)
+                            arguments.setdefault('view', 'summary')
                         result = kit._call_tool(str(name), arguments, root, args.profile, False)
                 # Preserve all fields while avoiding pretty-printed JSON in model context.
                 for block in result.get('content', []):

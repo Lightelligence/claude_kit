@@ -7,8 +7,8 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from claude_kit.core import workflow_catalog
-from claude_kit.mcp_server import _text_result
+from claude_kit.core import workflow_catalog, KitError
+from claude_kit.mcp_server import _text_result, _call_tool
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -34,6 +34,22 @@ def read_frame(stream) -> dict:
 
 
 class CompactMcpTests(unittest.TestCase):
+    def test_summary_preserves_gates_and_references_full_check_definitions(self) -> None:
+        arguments = {"task": "review RTL reset handshake"}
+        full = json.loads(_call_tool('plan_task', arguments, FIXTURE, None, False)['content'][0]['text'])
+        summary = json.loads(_call_tool('plan_task', {**arguments, 'view': 'summary'},
+                                       FIXTURE, None, False)['content'][0]['text'])
+        for key in ('workflow', 'check_plan', 'check_selection', 'permissions', 'evidence',
+                    'warnings', 'missing_facts', 'missing_commands', 'source', 'skill_sources'):
+            self.assertEqual(summary[key], full[key])
+        for item in summary['available_commands']:
+            self.assertNotIn('definition', item)
+            self.assertTrue(any(check['name'] == item['name'] for check in summary['check_plan']))
+        self.assertNotIn('artifacts', summary['facts'])
+        self.assertEqual(summary['artifacts'], full['artifacts'])
+        with self.assertRaises(KitError):
+            _call_tool('plan_task', {**arguments, 'view': 'invalid'}, FIXTURE, None, False)
+
     def test_result_json_preserves_values_without_pretty_print_overhead(self) -> None:
         payload = {"workflows": workflow_catalog(), "log": "错误\n  indented evidence\n"}
         text = _text_result(payload)["content"][0]["text"]
