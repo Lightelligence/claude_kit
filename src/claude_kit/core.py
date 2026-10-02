@@ -1105,7 +1105,8 @@ def _read_bounded_file(path: Path, max_bytes: int, offset: int = 0) -> dict[str,
         size = before.st_size
         if offset > size:
             raise KitError(f"offset exceeds artifact size: {size}")
-        stream.seek(offset)
+        if offset:
+            stream.seek(offset)
         data = stream.read(max_bytes)
         after = os.fstat(stream.fileno())
     changed = (before.st_size, before.st_mtime_ns, before.st_ino) != (after.st_size, after.st_mtime_ns, after.st_ino)
