@@ -56,7 +56,7 @@ class ContextEfficiencyTests(unittest.TestCase):
         with patch("claude_kit.core.skill_catalog", wraps=skill_catalog) as catalog:
             resolve_context(FIXTURE, path, profile, [], [], "review",
                             ["rtl-dv-kit", "rtl-dv-context", "rtl-dv-review"])
-            catalog.assert_called_once_with()
+            catalog.assert_called_once()
 
     def test_legacy_plus_canonical_owner_is_rejected_before_writes(self):
         for selection in ('skills = ["rtl-dv-context", "rtl-dv-kit"]\n',

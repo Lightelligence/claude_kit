@@ -1,18 +1,16 @@
 """Budget regression tests: implicit rules and bounded artifact I/O."""
 import json
+import base64
 from pathlib import Path
 import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from framework_project import project_root
-
-ROOT = project_root()
-sys.path.insert(0, str(ROOT / '.claude/scripts'))
-sys.path.insert(0, str(ROOT / 'third_party/claude_kit/src'))
-import loop_prompt_budget as budget
+SCRIPTS = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(SCRIPTS))
+with patch('framework_project.project_root', return_value=SCRIPTS.parent.parent):
+    import loop_prompt_budget as budget
 import kit_log_bridge as bridge
 
 
@@ -40,6 +38,29 @@ class RuleBudgetTest(unittest.TestCase):
 
 
 class ArtifactReadBudgetTest(unittest.TestCase):
+    def test_bridge_byte_cursor_reconstructs_split_unicode_without_rerun(self):
+        from claude_kit import core
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            data = '你好 error\n'.encode('utf-8')
+            (root / 'unicode.log').write_bytes(data)
+            offset, pieces = 0, []
+            with patch.object(core, 'load_profile', return_value=(root / 'profile', {})):
+                while True:
+                    response = bridge.read_bounded_artifact('read_artifact',
+                        {'path': 'unicode.log', 'max_bytes': 1, 'offset': offset}, root, None)
+                    value = json.loads(response['content'][0]['text'])
+                    pieces.append(base64.b64decode(value['raw_base64']) if 'raw_base64' in value else value['text'].encode())
+                    self.assertEqual(value['bytes_read'], 1)
+                    offset = value['next_offset']
+                    if value['complete']:
+                        break
+                for invalid in (-1, True, 0.5, len(data) + 1):
+                    with self.assertRaises(core.KitError):
+                        bridge.read_bounded_artifact('read_artifact',
+                            {'path': 'unicode.log', 'offset': invalid}, root, None)
+            self.assertEqual(b''.join(pieces), data)
+
     def test_file_io_is_limited_not_just_returned_text(self):
         from claude_kit import core
         with tempfile.TemporaryDirectory() as temp:

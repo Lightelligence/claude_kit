@@ -112,9 +112,11 @@ def _load_mcp_servers(root: Path, filename: str = _MCP_CONFIG_NAME) -> dict[str,
     return servers
 
 
-def _load_profiles(root: Path, registered_servers: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
-    path = _safe_project_file(root, _PROFILE_CONFIG_NAME, "Tool-profile configuration")
-    document = _read_json(path, "Tool-profile configuration")
+def _load_profiles(root: Path, registered_servers: dict[str, dict[str, Any]],
+                   document: dict[str, Any] | None = None) -> dict[str, dict[str, Any]]:
+    if document is None:
+        path = _safe_project_file(root, _PROFILE_CONFIG_NAME, "Tool-profile configuration")
+        document = _read_json(path, "Tool-profile configuration")
     _reject_unknown_fields(document, _PROFILE_DOCUMENT_FIELDS, "Tool-profile configuration")
     _require_fields(document, frozenset({"schema_version", "profiles"}), "Tool-profile configuration")
     if type(document["schema_version"]) is not int or document["schema_version"] != _SCHEMA_VERSION:
@@ -167,7 +169,7 @@ def _load_project_configuration(root: Path) -> tuple[dict[str, dict[str, Any]], 
     if Path(filename).is_absolute() or ".." in Path(filename).parts:
         raise ToolProfileError("mcp_config must be a project-relative path without traversal")
     servers = _load_mcp_servers(resolved_root, filename)
-    profiles = _load_profiles(resolved_root, servers)
+    profiles = _load_profiles(resolved_root, servers, document)
     return servers, profiles
 
 

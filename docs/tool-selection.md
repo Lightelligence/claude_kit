@@ -270,6 +270,35 @@ actions; reusing context does not waive those checks.
 
 ## Efficient defaults
 
+`plan_task(view="summary")` retains the complete check menu, permissions,
+evidence gates, source fingerprints and warnings, while removing command and
+artifact/provider definitions duplicated elsewhere in the response. The shared
+SoC log bridge uses this view by default; request `view="full"` for the legacy
+shape. A plan proposes checks and does not select or execute them.
+
+Declared shell checks spool their complete stdout/stderr into unique ignored
+`.claude/.runtime/command-*` artifacts and display at most 8,192 bytes per
+stream. Reports retain exit status, timeout and per-stream byte counts and
+truncation. Expand `output_artifacts` with `read_artifact(max_bytes=4096,
+offset=<next_offset>)`; offsets count bytes, so a UTF-8 character split across
+windows can display a replacement character; such chunks also return
+`raw_base64` for lossless byte reconstruction. Complete original files remain
+available. An error-free prefix does not prove that a check passed.
+
+RTL and DV packets load coding rules for their changed source domain. DV-only
+SystemVerilog changes do not require RTL coding standards. `loop_context`
+exposes suggestions separately from `checks_to_run`; only repeatable `--check`
+selections populate the latter. Read-only review intent takes precedence over
+domain keyword counts in automatic workflow routing.
+
+The approach borrows recoverable command-specific summaries from
+[RTK](https://github.com/rtk-ai/rtk) and selective reference loading from
+[Anthropic skills](https://github.com/anthropics/skills). No external compressor
+is required, and their advertised token savings are not measurements of this
+kit. Compare actual usage and compact boundaries using identical tasks and
+client/model/profile settings; disk bytes and repeated streaming usage events
+must not be summed as if they were billed tokens.
+
 - Reuse current facts. For a known file edit, skip catalog/profile/plan/context
   calls unless they answer a missing question. Native skill guidance already
   loaded in the session does not need a second `resolve_context` call.
