@@ -8,6 +8,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +23,15 @@ from claude_kit.tool_profiles import (
 
 
 class ToolProfileTests(unittest.TestCase):
+    def test_profile_selection_reads_one_consistent_profile_snapshot(self) -> None:
+        from claude_kit import tool_profiles
+        original = tool_profiles._read_json
+        with patch.object(tool_profiles, '_read_json', wraps=original) as read:
+            select_tool_profile(self.root, 'rtl')
+        profile_reads = [call for call in read.call_args_list
+                         if call.args[0].name == 'tool-profiles.json']
+        self.assertEqual(len(profile_reads), 1)
+
     def setUp(self) -> None:
         self.tempdir = tempfile.TemporaryDirectory()
         self.root = Path(self.tempdir.name) / "project"

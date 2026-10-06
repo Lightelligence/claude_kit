@@ -67,6 +67,13 @@ not filter individual MCP tools. A skill template does not filter tools either.
 `session --tools <profile>` selects MCP servers only; it does not select skills,
 plugins or hooks, and it never grants authorization for checks.
 
+For a domain-specific check menu, use `list_checks({"scope":"dv"})` or
+`list_catalog({"category":"checks","scope":"dv"})`; `rtl` and `rtl-dv` are
+also supported. Scope adjusts recommendations using the declared `applies_to`
+metadata. Every declared check remains available for explicit selection;
+execution permissions and confirmation requirements still apply. Omitting
+scope preserves the existing menu. Scope is only valid for the checks catalog.
+
 | Need | Existing project capability to choose |
 | --- | --- |
 | RTL lint | RTL-only lint; no DV syntax claim |

@@ -41,6 +41,11 @@ jobs:
           PYTHONPYCACHEPREFIX: ${{ runner.temp }}/claude-kit-pycache
         run: python -m unittest discover -s tests -v
 
+      - name: Verify RTL and DV packet routing on POSIX
+        # Run the POSIX packet router with its real fcntl locking dependency.
+        if: runner.os == 'Linux'
+        run: python -B -m unittest discover -s src/claude_kit/resources/framework/soc/.claude/scripts/tests -p test_loop_context.py -v
+
       - name: Smoke installed CLI
         run: |
           claude-kit version

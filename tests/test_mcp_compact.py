@@ -5,10 +5,11 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from claude_kit.core import workflow_catalog
-from claude_kit.mcp_server import _text_result
+from claude_kit.core import workflow_catalog, KitError
+from claude_kit.mcp_server import _text_result, _call_tool
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -34,6 +35,22 @@ def read_frame(stream) -> dict:
 
 
 class CompactMcpTests(unittest.TestCase):
+    def test_summary_preserves_gates_and_references_full_check_definitions(self) -> None:
+        arguments = {"task": "review RTL reset handshake"}
+        full = json.loads(_call_tool('plan_task', arguments, FIXTURE, None, False)['content'][0]['text'])
+        summary = json.loads(_call_tool('plan_task', {**arguments, 'view': 'summary'},
+                                       FIXTURE, None, False)['content'][0]['text'])
+        for key in ('workflow', 'check_plan', 'check_selection', 'permissions', 'evidence',
+                    'warnings', 'missing_facts', 'missing_commands', 'source', 'skill_sources'):
+            self.assertEqual(summary[key], full[key])
+        for item in summary['available_commands']:
+            self.assertNotIn('definition', item)
+            self.assertTrue(any(check['name'] == item['name'] for check in summary['check_plan']))
+        self.assertNotIn('artifacts', summary['facts'])
+        self.assertEqual(summary['artifacts'], full['artifacts'])
+        with self.assertRaises(KitError):
+            _call_tool('plan_task', {**arguments, 'view': 'invalid'}, FIXTURE, None, False)
+
     def test_result_json_preserves_values_without_pretty_print_overhead(self) -> None:
         payload = {"workflows": workflow_catalog(), "log": "错误\n  indented evidence\n"}
         text = _text_result(payload)["content"][0]["text"]
@@ -96,7 +113,7 @@ class CompactMcpTests(unittest.TestCase):
     def _schema_bytes(tools: list[dict]) -> int:
         return len(json.dumps(tools, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
 
-    def test_compact9_and_default_full14_readonly_schema(self) -> None:
+    def test_compact10_and_default_full15_readonly_schema(self) -> None:
         full = self._start()
         try:
             self._initialize(full)
@@ -121,8 +138,9 @@ class CompactMcpTests(unittest.TestCase):
             "list_workflows",
             "list_checks",
         }
-        self.assertEqual(len(full_tools), 14)
-        self.assertEqual(len(compact_tools), 9)
+        self.assertEqual(len(full_tools), 15)
+        self.assertEqual(len(compact_tools), 10)
+        self.assertIn("search_artifact", full_names & compact_names)
         self.assertTrue(catalog_names.issubset(full_names))
         self.assertTrue(catalog_names.isdisjoint(compact_names))
         self.assertIn("list_catalog", compact_names)
@@ -137,6 +155,52 @@ class CompactMcpTests(unittest.TestCase):
             schema["properties"]["category"]["enum"],
             ["roles", "packs", "providers", "skills", "workflows", "checks"],
         )
+        full_checks = next(tool for tool in full_tools if tool["name"] == "list_checks")
+        for check_schema in (schema, full_checks["inputSchema"]):
+            self.assertEqual(check_schema["properties"]["scope"]["enum"], ["rtl", "dv", "rtl-dv"])
+
+    def test_check_menus_recommend_by_scope_without_hiding_explicit_checks(self) -> None:
+        commands = {
+            "rtl_lint": {"category": "lint", "applies_to": "rtl"},
+            "dv_lint": {"category": "lint", "applies_to": "dv"},
+            "legacy_lint": {"category": "lint"},
+            "simulation": {"category": "simulation", "applies_to": "dv"},
+        }
+        with patch('claude_kit.mcp_server.load_profile', return_value=(FIXTURE / '.claude/project.toml', {"build": {"commands": commands}})):
+            for scope in ('rtl', 'dv', 'rtl-dv'):
+                menus = []
+                for name, arguments in (('list_checks', {"scope": scope}),
+                                        ('list_catalog', {"category": "checks", "scope": scope})):
+                    result = _call_tool(name, arguments, FIXTURE, None, False)
+                    menus.append(json.loads(result['content'][0]['text']))
+                self.assertEqual(menus[0], menus[1])
+                menu = {item['name']: item for item in menus[0]}
+                self.assertEqual(set(menu), set(commands))
+                self.assertEqual(menu['dv_lint']['recommended'], scope in ('dv', 'rtl-dv'))
+                self.assertEqual(menu['rtl_lint']['recommended'], scope in ('rtl', 'rtl-dv'))
+                self.assertFalse(menu['simulation']['recommended'])
+                if scope == 'dv':
+                    self.assertFalse(menu['legacy_lint']['recommended'])
+
+    def test_check_scope_reaches_both_stdio_menus_and_rejects_invalid_values(self) -> None:
+        process = self._start("--tool-profile", "compact")
+        try:
+            self._initialize(process)
+            for request_id, scope in enumerate(('rtl', 'dv', 'rtl-dv'), start=30):
+                full = self._request(process, request_id, 'tools/call',
+                    {'name': 'list_checks', 'arguments': {'scope': scope}})
+                compact = self._request(process, request_id + 10, 'tools/call',
+                    {'name': 'list_catalog', 'arguments': {'category': 'checks', 'scope': scope}})
+                self.assertEqual(self._payload(full), self._payload(compact))
+            request_id = 50
+            for value in (None, True, 3, 'unknown'):
+                for name, args in (('list_checks', {'scope': value}),
+                                   ('list_catalog', {'category': 'checks', 'scope': value})):
+                    response = self._request(process, request_id, 'tools/call', {'name': name, 'arguments': args})
+                    request_id += 1
+                    self.assertIn('check scope must be', response['error']['message'])
+        finally:
+            self._stop(process)
 
     def test_six_compact_catalogs_match_historical_calls(self) -> None:
         process = self._start("--tool-profile", "compact")
@@ -178,6 +242,7 @@ class CompactMcpTests(unittest.TestCase):
                 (11, {"category": 3}, "list_catalog category must be a string"),
                 (12, {"category": "unknown"}, "list_catalog category must be one of"),
                 (13, {"category": "roles", "extra": True}, "list_catalog unknown argument: extra"),
+                (14, {"category": "roles", "scope": "dv"}, "list_catalog scope is only valid for checks"),
             )
             for request_id, arguments, message in cases:
                 response = self._request(

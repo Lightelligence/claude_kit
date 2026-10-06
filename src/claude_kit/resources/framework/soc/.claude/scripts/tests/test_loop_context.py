@@ -25,6 +25,9 @@ def write(path: Path, content: str = "content\n") -> None:
 class LoopContextCase(unittest.TestCase):
 
     def setUp(self) -> None:
+        self.root_patch = patch.object(loop_context, "project_root", return_value=SCRIPTS.parent.parent)
+        self.root_patch.start()
+        self.addCleanup(self.root_patch.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.repo = Path(self.temp.name)
         subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
@@ -61,6 +64,7 @@ class LoopContextCase(unittest.TestCase):
         review_result: str | None = None,
         risk_checks_passed: bool = False,
         scope: str = "auto",
+        selected_checks: list[str] | None = None,
     ) -> dict:
         return loop_context.build_context(
             self.workspace,
@@ -71,6 +75,7 @@ class LoopContextCase(unittest.TestCase):
             impacts=impacts or set(),
             review_result=review_result,
             risk_checks_passed=risk_checks_passed,
+            selected_checks=selected_checks,
         )
 
     def test_low_risk_single_module_rtl_uses_dev(self) -> None:
@@ -93,11 +98,9 @@ class LoopContextCase(unittest.TestCase):
         self.assertEqual(result["execution"]["profile"], "light")
         self.assertEqual(result["execution"]["max_parallel_owners"], 1)
         self.assertEqual(result["execution"]["same_failure_retry_limit"], 1)
-        self.assertTrue(result["execution"]["preflight"]["required"])
-        self.assertEqual(
-            result["execution"]["preflight"]["before_checks"],
-            ["targeted_soc_sim_or_soc_comp"],
-        )
+        self.assertFalse(result["execution"]["preflight"]["required"])
+        self.assertEqual(result["checks_to_run"], [])
+        self.assertIn("targeted_soc_sim_or_soc_comp", result["suggested_checks"])
         self.assertEqual(
             result["execution"]["preflight"]["on_unavailable"],
             "record_once_and_continue_independent_checks_only",
@@ -184,26 +187,100 @@ class LoopContextCase(unittest.TestCase):
         self.assertEqual(result["required_checks"], ["closest_non_eda_validation"])
         self.assertIn("lightweight verification manifest", result["reasons"][0])
 
-    def test_testbench_only_dev_runs_sim_without_rtl_checks(self) -> None:
+    def test_testbench_only_dev_suggests_sim_without_rtl_reads_or_checks(self) -> None:
         result = self.context(["ip/digital/demo/dv/tb/tb_demo.sv"])
         self.assertEqual(result["mode"], "dev")
         self.assertEqual(result["required_checks"], ["soc_sim", "sim_log"])
         self.assertNotIn("soc_lint", result["required_checks"])
+        self.assertEqual(result["required_reads"], [])
+        self.assertNotIn(".claude/rules/04_coding_style.md", result["rules"])
+        self.assertNotIn(".claude/rules/06_design_knowledge.md", result["rules"])
+        self.assertIn(".claude/rules/11_verif_recovery_gate.md", result["rules"])
+        self.assertEqual(result["checks_to_run"], [])
+        self.assertFalse(any(item.startswith("run ") for item in result["next_actions"]))
         self.assertIn("start or keep verif in_progress", result["next_actions"])
         self.assertFalse(any("stale delivery stages" in item for item in result["next_actions"]))
 
-    def test_synthesis_script_only_dev_runs_synthesis_check(self) -> None:
+    def test_synthesis_script_only_dev_suggests_synthesis_check(self) -> None:
         result = self.context(["ip/digital/demo/de/syn/setup.tcl"])
         self.assertEqual(result["mode"], "dev")
         self.assertEqual(result["owner"], "soc-synthesis-engineer")
         self.assertEqual(result["required_checks"], ["soc_syn"])
         self.assertIn("start or keep syn in_progress", result["next_actions"])
 
+    def test_dv_module_clock_changes_do_not_escalate_rtl_risk(self) -> None:
+        write(self.workspace / "dv/tb/tb_demo.sv", "module tb_demo; logic clk; endmodule\n")
+        result = self.context(["ip/digital/demo/dv/tb/tb_demo.sv"])
+        self.assertEqual(result["mode"], "dev")
+        self.assertEqual(result["detected_impacts"], [])
+        self.assertEqual(result["owner"], "soc-verification-engineer")
+        self.assertEqual(result["required_reads"], [])
+
+    def test_dv_delivery_does_not_load_rtl_style_for_stale_rtl_evidence(self) -> None:
+        result = self.context(["ip/digital/demo/dv/tb/tb_demo.sv"], mode="merge")
+        self.assertEqual(result["required_reads"], [])
+        self.assertNotIn(".claude/rules/04_coding_style.md", result["rules"])
+        self.assertFalse(result["delivery_ready"])
+        self.assertEqual(result["checks_to_run"], [])
+
+    def test_mixed_rtl_and_dv_retains_rtl_standard_and_both_gates(self) -> None:
+        result = self.context([
+            "ip/digital/demo/de/rtl/demo.sv", "ip/digital/demo/dv/tb/tb_demo.sv"
+        ])
+        self.assertIn(".claude/references/04_verilog_coding_style.md", result["required_reads"])
+        self.assertIn(".claude/rules/10_rtl_change_gate.md", result["rules"])
+        self.assertIn(".claude/rules/11_verif_recovery_gate.md", result["rules"])
+        self.assertEqual(result["checks_to_run"], [])
+
+    def test_selected_dv_check_preserves_target_menu_and_requires_preflight(self) -> None:
+        result = self.context(
+            ["ip/digital/demo/dv/tb/tb_demo.sv"], selected_checks=["soc_sim", "soc_sim"]
+        )
+        self.assertEqual(result["checks_to_run"], ["soc_sim"])
+        self.assertEqual(result["suggested_checks"], ["soc_sim", "sim_log"])
+        self.assertEqual(result["execution"]["preflight"]["before_checks"], ["soc_sim"])
+        self.assertEqual(result["check_selection_policy"], "explicit_selection_only")
+
+    def test_rtl_alternative_allows_selected_compile_without_simulation(self) -> None:
+        result = self.context(
+            ["ip/digital/demo/de/rtl/demo.sv"], selected_checks=["soc_comp"]
+        )
+        self.assertEqual(result["checks_to_run"], ["soc_comp"])
+        self.assertEqual(result["execution"]["preflight"]["before_checks"], ["soc_comp"])
+
+    def test_checks_outside_delta_are_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "outside the current delta: soc_syn"):
+            self.context(["ip/digital/demo/dv/tb/tb_demo.sv"], selected_checks=["soc_syn"])
+
+    def test_default_packet_is_read_only_and_selects_no_checks(self) -> None:
+        before = sorted(path.relative_to(self.repo).as_posix() for path in self.repo.rglob("*"))
+        result = self.context(["ip/digital/demo/dv/tb/tb_demo.sv"])
+        after = sorted(path.relative_to(self.repo).as_posix() for path in self.repo.rglob("*"))
+        self.assertEqual(before, after)
+        self.assertEqual(result["selected_checks"], [])
+        self.assertEqual(result["checks_to_run"], [])
+
+    def test_cli_selected_check_is_a_plan_and_does_not_write_or_execute(self) -> None:
+        args = [
+            "loop_context.py", str(self.workspace), "--base-ref", "HEAD",
+            "--changed", "ip/digital/demo/dv/tb/tb_demo.sv", "--check", "soc_sim",
+        ]
+        output = io.StringIO()
+        real_run = subprocess.run
+        with patch.object(sys, "argv", args), contextlib.redirect_stdout(output):
+            with patch.object(subprocess, "run", wraps=real_run) as calls:
+                self.assertEqual(loop_context.main(), 0)
+        self.assertEqual(json.loads(output.getvalue())["checks_to_run"], ["soc_sim"])
+        self.assertTrue(all(call.args[0][0] == "git" for call in calls.call_args_list))
+        self.assertFalse((self.workspace / "de/run/loop_evidence/loop_context.json").exists())
+
     def test_requested_mode_is_a_floor(self) -> None:
         result = self.context(["ip/digital/demo/de/rtl/demo.sv"], mode="merge")
         self.assertEqual(result["mode"], "merge")
         self.assertEqual(result["scope"], "repo")
-        self.assertIn("soc_comp", result["checks_to_run"])
+        self.assertIn("soc_comp", result["suggested_checks"])
+        self.assertEqual(result["checks_to_run"], [])
+        result = self.context(["ip/digital/demo/de/rtl/demo.sv"], mode="merge", selected_checks=["soc_comp"])
         self.assertIn("soc_comp", result["execution"]["preflight"]["before_checks"])
 
     def test_loop_mode_environment_sets_the_floor_for_auto(self) -> None:
@@ -226,7 +303,7 @@ class LoopContextCase(unittest.TestCase):
         self.assertTrue(result["delivery_ready"])
 
     def test_text_packet_exposes_execution_preflight_and_reuse(self) -> None:
-        result = self.context(["ip/digital/demo/dv/tb/tb_demo.sv"])
+        result = self.context(["ip/digital/demo/dv/tb/tb_demo.sv"], selected_checks=["soc_sim"])
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             loop_context._print_text(result)
@@ -361,7 +438,8 @@ class LoopContextCase(unittest.TestCase):
         )
         self.assertTrue(before_review["stage_evidence_ready"])
         self.assertFalse(before_review["delivery_ready"])
-        self.assertEqual(before_review["checks_to_run"], ["loop_review_normal"])
+        self.assertEqual(before_review["suggested_checks"], ["loop_review_normal"])
+        self.assertEqual(before_review["checks_to_run"], [])
         self.assertTrue(result["delivery_ready"], result)
         self.assertEqual(result["checks_to_run"], [])
         self.assertFalse(result["execution"]["preflight"]["required"])
@@ -381,6 +459,16 @@ class LoopContextCase(unittest.TestCase):
         self.assertNotIn("check_results", output.getvalue())
         self.assertLess(len(output.getvalue()), 4096)
 
+    def test_explicit_selection_does_not_rerun_fresh_stage_evidence(self) -> None:
+        self.close_pipeline()
+        result = self.context(
+            ["ip/digital/demo/de/rtl/demo.sv"], mode="merge", review_result="pass",
+            selected_checks=["soc_comp", "soc_sim"],
+        )
+        self.assertEqual(result["selected_checks"], ["soc_comp", "soc_sim"])
+        self.assertEqual(result["checks_to_run"], [])
+        self.assertTrue(result["delivery_ready"])
+
     def test_signoff_requires_risk_checks_and_review(self) -> None:
         self.close_pipeline()
         pending = self.context(
@@ -396,13 +484,11 @@ class LoopContextCase(unittest.TestCase):
         )
         self.assertTrue(pending["stage_evidence_ready"])
         self.assertFalse(pending["delivery_ready"])
-        self.assertIn("risk_specific_checks", pending["checks_to_run"])
+        self.assertIn("risk_specific_checks", pending["suggested_checks"])
+        self.assertEqual(pending["checks_to_run"], [])
         self.assertEqual(pending["execution"]["profile"], "heavy")
         self.assertEqual(pending["execution"]["max_parallel_owners"], 2)
-        self.assertIn(
-            "risk_specific_checks",
-            pending["execution"]["preflight"]["before_checks"],
-        )
+        self.assertEqual(pending["execution"]["preflight"]["before_checks"], [])
         self.assertTrue(ready["delivery_ready"])
         self.assertEqual(ready["checks_to_run"], [])
 

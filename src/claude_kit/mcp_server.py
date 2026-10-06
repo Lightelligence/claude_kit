@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__
+from .artifact_search import search_artifact
 from .core import (
     DEFAULT_ARTIFACT_MAX_BYTES,
     KitError,
@@ -134,13 +135,18 @@ def _tool_definitions(allow_exec: bool, tool_profile: str = "full") -> list[dict
                     "workflow": {"type": "string", "description": "Workflow id or auto"},
                     "roles": {"type": "array", "items": {"type": "string"}},
                     "packs": {"type": "array", "items": {"type": "string"}},
+                    "view": {"type": "string", "enum": ["full", "summary"],
+                             "description": "summary removes duplicate definitions; full preserves the legacy response"},
                 },
             },
         },
         {
             "name": "list_checks",
             "description": "List all profile-declared checks as an engineer-selectable menu with categories and approval requirements.",
-            "inputSchema": {"type": "object", "properties": {}},
+            "inputSchema": {"type": "object", "properties": {
+                "scope": {"type": "string", "enum": ["rtl", "dv", "rtl-dv"],
+                          "description": "Adjust check recommendations for the requested work domain"},
+            }},
         },
         {
             "name": "resolve_context",
@@ -161,6 +167,20 @@ def _tool_definitions(allow_exec: bool, tool_profile: str = "full") -> list[dict
             "inputSchema": {"type": "object", "properties": {}},
         },
         {
+            "name": "search_artifact",
+            "description": "Search up to eight literal queries in one project artifact scan; return counts and bounded snippets with byte offsets. Incomplete scans and zero matches are not verification results.",
+            "inputSchema": {
+                "type": "object", "required": ["path", "queries"],
+                "properties": {
+                    "path": {"type": "string"},
+                    "queries": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"type": "string", "minLength": 1}},
+                    "max_output_bytes": {"type": "integer", "minimum": 0, "maximum": 1000000},
+                    "max_matches": {"type": "integer", "minimum": 0, "maximum": 1000},
+                    "max_scan_bytes": {"type": "integer", "minimum": 0, "maximum": 1073741824},
+                },
+            },
+        },
+        {
             "name": "read_artifact",
             "description": "Read a bounded UTF-8 project artifact without leaving the project root.",
             "inputSchema": {
@@ -169,6 +189,8 @@ def _tool_definitions(allow_exec: bool, tool_profile: str = "full") -> list[dict
                 "properties": {
                     "path": {"type": "string"},
                     "max_bytes": {"type": "integer", "minimum": 0, "maximum": MAX_ARTIFACT_BYTES},
+                    "offset": {"type": "integer", "minimum": 0,
+                               "description": "Byte offset; resume with next_offset from a bounded read"},
                 },
             },
         },
@@ -249,6 +271,8 @@ def _tool_definitions(allow_exec: bool, tool_profile: str = "full") -> list[dict
                 "required": ["category"],
                 "properties": {
                     "category": {"type": "string", "enum": list(_CATALOG_CATEGORIES)},
+                    "scope": {"type": "string", "enum": ["rtl", "dv", "rtl-dv"],
+                              "description": "Adjust recommendations; only valid for checks"},
                 },
             },
         })
@@ -257,6 +281,24 @@ def _tool_definitions(allow_exec: bool, tool_profile: str = "full") -> list[dict
 
 def _text_result(value: Any) -> dict[str, Any]:
     return {"content": [{"type": "text", "text": json.dumps(value, separators=(",", ":"), ensure_ascii=False)}]}
+
+
+def _plan_view(plan: dict[str, Any], view: str) -> dict[str, Any]:
+    if view not in ("full", "summary"):
+        raise KitError("plan_task view must be full or summary")
+    if view == "full":
+        return plan
+    # Keep every gate, warning, source fingerprint and check-menu definition.
+    # Only remove copies already present elsewhere in the same response.
+    result = dict(plan)
+    result["facts"] = {key: value for key, value in plan["facts"].items()
+                       if key not in ("artifacts", "providers")}
+    result["available_commands"] = [{key: value for key, value in item.items()
+                                      if key != "definition"}
+                                     for item in plan["available_commands"]]
+    result["view"] = "summary"
+    result["definition_source"] = "check_plan; artifacts and providers are top-level"
+    return result
 
 
 def _bool_argument(arguments: dict[str, Any], name: str, default: bool = False) -> bool:
@@ -269,7 +311,7 @@ def _bool_argument(arguments: dict[str, Any], name: str, default: bool = False) 
 def _catalog_category(arguments: dict[str, Any]) -> str:
     if "category" not in arguments:
         raise KitError("list_catalog requires category")
-    unknown = sorted(str(key) for key in arguments if key != "category")
+    unknown = sorted(str(key) for key in arguments if key not in ("category", "scope"))
     if unknown:
         raise KitError(f"list_catalog unknown argument: {unknown[0]}")
     category = arguments["category"]
@@ -278,7 +320,18 @@ def _catalog_category(arguments: dict[str, Any]) -> str:
     if category not in _CATALOG_CATEGORIES:
         values = ", ".join(_CATALOG_CATEGORIES)
         raise KitError(f"list_catalog category must be one of: {values}")
+    if "scope" in arguments and category != "checks":
+        raise KitError("list_catalog scope is only valid for checks")
     return category
+
+
+def _check_scope(arguments: dict[str, Any]) -> str | None:
+    if "scope" not in arguments:
+        return None
+    scope = arguments["scope"]
+    if not isinstance(scope, str) or scope not in ("rtl", "dv", "rtl-dv"):
+        raise KitError("check scope must be rtl, dv or rtl-dv")
+    return scope
 
 
 def _call_tool(
@@ -319,7 +372,10 @@ def _call_tool(
         workflow = arguments.get("workflow", "auto")
         if not isinstance(workflow, str):
             raise KitError("plan_task workflow must be a string")
-        return _text_result(resolve_plan(
+        view = arguments.get("view", "full")
+        if not isinstance(view, str) or view not in ("full", "summary"):
+            raise KitError("plan_task view must be full or summary")
+        return _text_result(_plan_view(resolve_plan(
             root,
             profile_path,
             profile,
@@ -327,7 +383,7 @@ def _call_tool(
             arguments.get("roles"),
             arguments.get("packs"),
             task,
-        ))
+        ), view))
     if name == "get_project_profile":
         issues = validate_profile(root, profile)
         return _text_result({
@@ -339,9 +395,9 @@ def _call_tool(
             },
         })
     if name == "list_checks":
-        return _text_result(command_menu(profile))
+        return _text_result(command_menu(profile, scope=_check_scope(arguments)))
     if name == "list_catalog":
-        return _text_result(command_menu(profile))
+        return _text_result(command_menu(profile, scope=_check_scope(arguments)))
     if name == "resolve_context":
         task = arguments.get("task", "")
         if not isinstance(task, str):
@@ -358,12 +414,20 @@ def _call_tool(
         return _text_result({"context": context, "manifest": manifest})
     if name == "inspect_design":
         return _text_result(inspect_project(root, profile))
+    if name == "search_artifact":
+        path = arguments.get("path")
+        if not isinstance(path, str):
+            raise KitError("search_artifact requires path")
+        return _text_result(search_artifact(root, path, arguments.get("queries"),
+            max_output_bytes=arguments.get("max_output_bytes", 16384),
+            max_matches=arguments.get("max_matches", 40),
+            max_scan_bytes=arguments.get("max_scan_bytes", 64 * 1024 * 1024)))
     if name == "read_artifact":
         path = arguments.get("path")
         if not isinstance(path, str):
             raise KitError("read_artifact requires path")
         max_bytes = arguments.get("max_bytes", DEFAULT_ARTIFACT_MAX_BYTES)
-        return _text_result(read_artifact(root, path, max_bytes))
+        return _text_result(read_artifact(root, path, max_bytes, offset=arguments.get("offset", 0)))
     if name == "discover_regression_artifacts":
         kind = arguments.get("kind", "all")
         if not isinstance(kind, str):

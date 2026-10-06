@@ -347,6 +347,7 @@ def _attach_project(
             raise KitError(f"Unknown skill in attachment manifest: {resource_id}")
 
     desired: dict[str, tuple[str, str]] = {}
+    inactive_exclusions: list[str] = []
 
     def add_desired(relative: str, kind: str, value: str) -> None:
         _checked_target(root, relative)
@@ -371,8 +372,15 @@ def _attach_project(
         if catalog.get("schema_version") != 1 or len(files) != len(set(files)):
             raise KitError("Invalid framework manifest")
         excluded = set(attachment["framework_exclude"])
-        if excluded - set(files):
-            raise KitError("Unknown framework exclusion")
+        for relative in sorted(excluded - set(files)):
+            # Consumer-owned files may stay excluded across dependency versions
+            # which do not ship them. Preserve that ownership declaration.
+            if not relative.startswith(".claude/") or ".." in Path(relative).parts:
+                raise KitError(f"Invalid framework exclusion: {relative}")
+            local = _checked_target(root, relative)
+            if not local.is_file() or local.is_symlink():
+                raise KitError(f"Unknown framework exclusion: {relative}")
+            inactive_exclusions.append(relative)
         for relative in files:
             if not relative.startswith(".claude/") or Path(relative).is_absolute() or ".." in Path(relative).parts:
                 raise KitError("Invalid framework attachment path")
@@ -602,6 +610,7 @@ tools for configured checks and report missing prerequisites as unverified.
         "skills": selected_skills,
         "roles": selected_roles,
         "retired_managed_paths": retired,
+        "inactive_framework_exclusions": inactive_exclusions,
         "functional_validation": "not_run",
     }
     if dry_run:

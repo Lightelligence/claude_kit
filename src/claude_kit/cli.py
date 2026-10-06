@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__
+from .artifact_search import search_artifact
 from .core import (
     DEFAULT_ARTIFACT_MAX_BYTES,
     KitError,
@@ -208,6 +209,14 @@ def build_parser() -> argparse.ArgumentParser:
     artifact_read.add_argument("--max-bytes", type=int, default=DEFAULT_ARTIFACT_MAX_BYTES)
     artifact_read.add_argument("--json", action="store_true", help="Print JSON")
     artifact_read.set_defaults(handler=handle_artifact_read)
+    artifact_search = artifact_subparsers.add_parser("search", help="Batch literal queries over a project artifact with bounded snippets")
+    _add_project_options(artifact_search)
+    artifact_search.add_argument("--file", required=True, type=Path)
+    artifact_search.add_argument("--query", required=True, action="append", help="Literal query; repeat for up to eight queries")
+    artifact_search.add_argument("--max-output-bytes", type=int, default=16384)
+    artifact_search.add_argument("--max-matches", type=int, default=40)
+    artifact_search.add_argument("--max-scan-bytes", type=int, default=64 * 1024 * 1024)
+    artifact_search.set_defaults(handler=handle_artifact_search)
     artifact_discover = artifact_subparsers.add_parser(
         "discover",
         help="Find compile/simulation artifacts below the profile's configured regression root",
@@ -507,6 +516,14 @@ def handle_artifact_read(args: argparse.Namespace) -> int:
         print(f"truncated: {str(result['truncated']).lower()}")
         print("---")
         print(result["text"], end="" if result["text"].endswith("\n") else "\n")
+    return 0
+
+
+def handle_artifact_search(args: argparse.Namespace) -> int:
+    result = search_artifact(_root(args.project_root), args.file.as_posix(), args.query,
+        max_output_bytes=args.max_output_bytes, max_matches=args.max_matches,
+        max_scan_bytes=args.max_scan_bytes)
+    _json_print(result)
     return 0
 
 

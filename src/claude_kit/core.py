@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import fnmatch
 import hashlib
 import importlib.util
@@ -8,6 +9,7 @@ import json
 import os
 import re
 import subprocess
+import tempfile
 import tomllib
 from pathlib import Path
 from typing import Any, Iterable
@@ -396,8 +398,20 @@ def doctor(root: Path, explicit_profile: str | Path | None = None, strict: bool 
     }
 
 
-def _front_matter(path: Path) -> dict[str, str]:
-    lines = path.read_text(encoding="utf-8").splitlines()
+class _ResourceSnapshot:
+    """Reuse file contents within one resolution, never across requests."""
+
+    def __init__(self) -> None:
+        self.files: dict[Path, bytes] = {}
+
+    def read(self, path: Path) -> bytes:
+        if path not in self.files:
+            self.files[path] = path.read_bytes()
+        return self.files[path]
+
+
+def _front_matter(path: Path, text: str | None = None) -> dict[str, str]:
+    lines = (path.read_text(encoding="utf-8") if text is None else text).splitlines()
     if not lines or lines[0].strip() != "---":
         return {"id": path.stem}
     result: dict[str, str] = {}
@@ -431,13 +445,14 @@ def _front_matter(path: Path) -> dict[str, str]:
     return result
 
 
-def role_catalog(resources: Path | None = None) -> list[dict[str, str]]:
+def role_catalog(resources: Path | None = None, *, _snapshot: _ResourceSnapshot | None = None) -> list[dict[str, str]]:
     resources = resource_root() if resources is None else resources
     directory = resources / "roles"
     result: list[dict[str, str]] = []
     for path in sorted(directory.rglob("*.md")):
-        metadata = _front_matter(path)
-        title = next((line[2:].strip() for line in path.read_text(encoding="utf-8").splitlines() if line.startswith("# ")), path.stem)
+        text = (_snapshot.read(path).decode("utf-8") if _snapshot else path.read_text(encoding="utf-8"))
+        metadata = _front_matter(path, text)
+        title = next((line[2:].strip() for line in text.splitlines() if line.startswith("# ")), path.stem)
         result.append({
             "id": metadata["id"],
             "version": metadata.get("version", "1"),
@@ -449,12 +464,12 @@ def role_catalog(resources: Path | None = None) -> list[dict[str, str]]:
     return result
 
 
-def pack_catalog() -> list[dict[str, Any]]:
+def pack_catalog(*, _snapshot: _ResourceSnapshot | None = None) -> list[dict[str, Any]]:
     directory = resource_root() / "packs"
     result: list[dict[str, Any]] = []
     for path in sorted(directory.rglob("pack.json")):
         try:
-            metadata = json.loads(path.read_text(encoding="utf-8"))
+            metadata = json.loads(_snapshot.read(path) if _snapshot else path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             raise KitError(f"Invalid pack metadata {path}: {exc}") from exc
         if not isinstance(metadata, dict) or not isinstance(metadata.get("id"), str):
@@ -466,12 +481,12 @@ def pack_catalog() -> list[dict[str, Any]]:
     return result
 
 
-def skill_catalog(resources: Path | None = None) -> list[dict[str, str]]:
+def skill_catalog(resources: Path | None = None, *, _snapshot: _ResourceSnapshot | None = None) -> list[dict[str, str]]:
     resources = resource_root() if resources is None else resources
     directory = resources / "skills"
     result: list[dict[str, str]] = []
     for path in sorted(directory.rglob("SKILL.md")):
-        metadata = _front_matter(path)
+        metadata = _front_matter(path, _snapshot.read(path).decode("utf-8") if _snapshot else None)
         identifier = metadata.get("name", path.parent.name)
         # Retain old resource paths for pinned consumers, without advertising
         # two native skills for the same capability. Old resource trees still work.
@@ -521,12 +536,12 @@ def provider_catalog() -> list[dict[str, Any]]:
     return result
 
 
-def workflow_catalog() -> list[dict[str, Any]]:
+def workflow_catalog(*, _snapshot: _ResourceSnapshot | None = None) -> list[dict[str, Any]]:
     """Return reusable RTL/DV workflow plans without project-specific facts."""
 
     path = resource_root() / "workflows" / "catalog.json"
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload = json.loads(_snapshot.read(path) if _snapshot else path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise KitError(f"Invalid workflow catalog {path}: {exc}") from exc
     if not isinstance(payload, dict) or payload.get("schema_version") != 1:
@@ -556,12 +571,23 @@ def workflow_catalog() -> list[dict[str, Any]]:
     return result
 
 
-def _select_workflow(task: str, requested: str | None) -> tuple[dict[str, Any], str]:
-    workflows = workflow_catalog()
+def _select_workflow(task: str, requested: str | None, workflows: list[dict[str, Any]] | None = None) -> tuple[dict[str, Any], str]:
+    workflows = workflow_catalog() if workflows is None else workflows
     requested_value = (requested or "auto").strip()
     if requested_value and requested_value != "auto":
         return _find_by_id(workflows, requested_value, "workflow"), "explicit"
     text = task.casefold()
+    # Action intent outranks source/domain vocabulary. Explicit IDs still win.
+    for identifier, keywords in (
+        ("review", ("review", "审查", "审核", "评审", "audit", "sign-off", "signoff", "签核")),
+        ("debug", ("debug", "调试", "failure", "failed", "失败", "error", "错误", "timeout", "超时", "waveform", "波形", "fsdb")),
+    ):
+        if any(
+            bool(re.search(r"(?<!\w)" + re.escape(keyword) + r"(?!\w)", text))
+            if keyword.isascii() else keyword in text
+            for keyword in keywords
+        ):
+            return _find_by_id(workflows, identifier, "workflow"), "selected from task action intent"
     scores: list[tuple[int, int, dict[str, Any]]] = []
     for index, workflow in enumerate(workflows):
         keywords = workflow.get("keywords", [])
@@ -574,10 +600,10 @@ def _select_workflow(task: str, requested: str | None) -> tuple[dict[str, Any], 
     return best, "selected from task keywords"
 
 
-def _protocol_pack_recommendations(task: str) -> list[str]:
+def _protocol_pack_recommendations(task: str, workflows: list[dict[str, Any]] | None = None) -> list[str]:
     text = task.casefold()
     recommendations: list[str] = []
-    for workflow in workflow_catalog():
+    for workflow in workflow_catalog() if workflows is None else workflows:
         hints = workflow.get("protocol_hints", {})
         if not isinstance(hints, dict):
             continue
@@ -685,7 +711,18 @@ def command_selection_policy(name: str, command: dict[str, Any] | None = None) -
     }
 
 
-def _preferred_command_name(preferred: str, commands: dict[str, Any]) -> str | None:
+def _outside_command_scope(command: dict[str, Any], scope: str | None) -> bool:
+    applies_to = command.get("applies_to")
+    if applies_to is None or scope is None:
+        return False
+    scopes = _as_list(applies_to)
+    if not scopes or any(item not in {"rtl", "dv", "all"} for item in scopes):
+        raise KitError("Command applies_to must contain rtl, dv or all")
+    requested = {"rtl", "dv"} if scope == "rtl-dv" else {scope}
+    return "all" not in scopes and requested.isdisjoint(scopes)
+
+
+def _preferred_command_name(preferred: str, commands: dict[str, Any], scope: str | None = None) -> str | None:
     if isinstance(commands.get(preferred), dict):
         return preferred
     category = command_category(preferred)
@@ -695,6 +732,8 @@ def _preferred_command_name(preferred: str, commands: dict[str, Any]) -> str | N
         str(name)
         for name, command in commands.items()
         if isinstance(command, dict) and command_category(str(name), command) == category
+        and not _outside_command_scope(command, scope)
+        and not (scope == "dv" and category == "lint" and "applies_to" not in command)
     )
     return matches[0] if matches else None
 
@@ -711,7 +750,7 @@ def command_menu(
     preferred = preferred_commands or []
     ordered_names: list[str] = []
     preferred_names = [
-        _preferred_command_name(name, commands) or name
+        _preferred_command_name(name, commands, scope) or name
         for name in preferred
     ]
     for name in [*preferred_names, *sorted(str(item) for item in commands)]:
@@ -726,7 +765,7 @@ def command_menu(
         if isinstance(applies_to, str):
             applies_to = [applies_to]
         declared_scope = isinstance(applies_to, list) and bool(applies_to)
-        outside_scope = bool(scope and declared_scope and scope not in applies_to and "all" not in applies_to)
+        outside_scope = _outside_command_scope(definition or {}, scope)
         unknown_dv_lint = scope == "dv" and policy["category"] == "lint" and not declared_scope
         if outside_scope or unknown_dv_lint:
             policy["recommended"] = False
@@ -770,31 +809,34 @@ def resolve_plan(
 
     if not isinstance(task, str) or not task.strip():
         raise KitError("plan task must be a non-empty string")
-    selected, selection_reason = _select_workflow(task, workflow)
+    snapshot = _ResourceSnapshot()
+    workflows = workflow_catalog(_snapshot=snapshot)
+    selected, selection_reason = _select_workflow(task, workflow, workflows)
 
     role_ids = _as_list(roles) if roles is not None else _as_list(selected.get("roles", []))
     if not role_ids:
         role_config = profile.get("roles", {})
         defaults = role_config.get("defaults", []) if isinstance(role_config, dict) else role_config
         role_ids = _as_list(defaults)
+    role_entries = role_catalog(_snapshot=snapshot) if role_ids else []
     for identifier in role_ids:
-        _find_by_id(role_catalog(), identifier, "role")
+        _find_by_id(role_entries, identifier, "role")
 
     pack_ids = _as_list(packs) if packs is not None else _as_list(profile.get("packs", []))
-    for identifier in pack_ids:
-        _find_by_id(pack_catalog(), identifier, "pack")
     recommended_packs: list[str] = []
-    for identifier in [*_as_list(selected.get("pack_hints", [])), *_protocol_pack_recommendations(task)]:
+    for identifier in [*_as_list(selected.get("pack_hints", [])), *_protocol_pack_recommendations(task, workflows)]:
         if identifier not in recommended_packs:
             recommended_packs.append(identifier)
-    for identifier in recommended_packs:
-        _find_by_id(pack_catalog(), identifier, "pack")
+    pack_entries = pack_catalog(_snapshot=snapshot) if pack_ids or recommended_packs else []
+    for identifier in [*pack_ids, *recommended_packs]:
+        _find_by_id(pack_entries, identifier, "pack")
 
     skill_ids = _as_list(selected.get("skills", []))
+    skill_entries = skill_catalog(_snapshot=snapshot) if skill_ids else []
     skill_sources: list[dict[str, str]] = []
     for identifier in skill_ids:
-        entry = _find_by_id(skill_catalog(), identifier, "skill")
-        source = _source_entry(resource_root() / entry["path"], resource_root())
+        entry = _find_by_id(skill_entries, identifier, "skill")
+        source = _source_entry(resource_root() / entry["path"], resource_root(), snapshot)
         skill_sources.append({
             "id": identifier,
             "version": str(entry.get("version", "1")),
@@ -807,7 +849,7 @@ def resolve_plan(
     available_commands: list[dict[str, Any]] = []
     missing_commands: list[str] = []
     for requested_name in preferred_commands:
-        name = _preferred_command_name(requested_name, commands)
+        name = _preferred_command_name(requested_name, commands, selected.get("scope"))
         command = commands.get(name) if name is not None else None
         if isinstance(command, dict) and name is not None:
             item = {"name": name, "definition": redact_profile(command)}
@@ -885,7 +927,7 @@ def resolve_plan(
             "strict_check": "claude-kit evidence check --strict",
         },
         "warnings": warnings,
-        "source": _source_entry(resource_root() / selected["path"], resource_root()),
+        "source": _source_entry(resource_root() / selected["path"], resource_root(), snapshot),
     }
 
 
@@ -900,8 +942,8 @@ def _find_by_id(entries: Iterable[dict[str, Any]], identifier: str, kind: str) -
     raise KitError(f"Unknown {kind} {identifier}. Available: {known or '<none>'}")
 
 
-def _source_entry(path: Path, display_root: Path) -> dict[str, str]:
-    data = path.read_bytes()
+def _source_entry(path: Path, display_root: Path, snapshot: _ResourceSnapshot | None = None) -> dict[str, str]:
+    data = snapshot.read(path) if snapshot else path.read_bytes()
     return {
         "path": str(path.relative_to(display_root)).replace(os.sep, "/"),
         "sha256": hashlib.sha256(data).hexdigest(),
@@ -919,12 +961,13 @@ def resolve_context(
 ) -> tuple[str, dict[str, Any]]:
     if not isinstance(task, str):
         raise KitError("task must be a string")
+    snapshot = _ResourceSnapshot()
     role_config = profile.get("roles", {})
     defaults = role_config.get("defaults", []) if isinstance(role_config, dict) else role_config
     role_ids = list(dict.fromkeys(_as_list(roles) if roles is not None else _as_list(defaults)))
     pack_ids = list(dict.fromkeys(_as_list(packs) if packs is not None else _as_list(profile.get("packs", []))))
     requested_skills = _as_list(skills) if skills is not None else []
-    skill_entries = skill_catalog() if requested_skills else []
+    skill_entries = skill_catalog(_snapshot=snapshot) if requested_skills else []
     skill_ids = list(dict.fromkeys(
         _find_by_id(skill_entries, identifier, "skill")["id"]
         for identifier in requested_skills
@@ -932,32 +975,34 @@ def resolve_context(
     resources = resource_root()
     sources: list[dict[str, str]] = []
     sections: list[str] = []
+    role_entries = role_catalog(_snapshot=snapshot) if role_ids else []
+    pack_entries = pack_catalog(_snapshot=snapshot) if pack_ids else []
 
     if not role_ids:
         sections.append("## Roles\n\nNo role selected.")
     else:
         sections.append("## Roles")
         for identifier in role_ids:
-            entry = _find_by_id(role_catalog(), identifier, "role")
+            entry = _find_by_id(role_entries, identifier, "role")
             path = resources / entry["path"]
-            sources.append(_source_entry(path, resources))
-            sections.append(f"\n### {identifier}\n\n{path.read_text(encoding='utf-8').strip()}\n")
+            sources.append(_source_entry(path, resources, snapshot))
+            sections.append(f"\n### {identifier}\n\n{snapshot.read(path).decode('utf-8').strip()}\n")
 
     if not pack_ids:
         sections.append("## Packs\n\nNo protocol/VIP pack selected.")
     else:
         sections.append("## Packs")
         for identifier in pack_ids:
-            entry = _find_by_id(pack_catalog(), identifier, "pack")
+            entry = _find_by_id(pack_entries, identifier, "pack")
             pack_dir = resources / entry["path"]
-            sources.append(_source_entry(pack_dir / "pack.json", resources))
+            sources.append(_source_entry(pack_dir / "pack.json", resources, snapshot))
             entrypoints = entry.get("entrypoints") or ["overview.md"]
             for relative in entrypoints:
                 path = pack_dir / str(relative)
                 if not path.is_file():
                     raise KitError(f"Pack {identifier} entrypoint does not exist: {relative}")
-                sources.append(_source_entry(path, resources))
-                sections.append(f"\n### {identifier}: {relative}\n\n{path.read_text(encoding='utf-8').strip()}\n")
+                sources.append(_source_entry(path, resources, snapshot))
+                sections.append(f"\n### {identifier}: {relative}\n\n{snapshot.read(path).decode('utf-8').strip()}\n")
 
     if not skill_ids:
         sections.append("## Skills\n\nNo skill guidance selected; use the plan output to choose a skill when needed.")
@@ -966,8 +1011,8 @@ def resolve_context(
         for identifier in skill_ids:
             entry = _find_by_id(skill_entries, identifier, "skill")
             path = resources / entry["path"]
-            sources.append(_source_entry(path, resources))
-            sections.append(f"\n### {identifier}\n\n{path.read_text(encoding='utf-8').strip()}\n")
+            sources.append(_source_entry(path, resources, snapshot))
+            sections.append(f"\n### {identifier}\n\n{snapshot.read(path).decode('utf-8').strip()}\n")
 
     redacted_profile = _redact(profile)
     context = "\n".join([
@@ -1052,30 +1097,55 @@ DEFAULT_ARTIFACT_MAX_BYTES = 100_000
 MAX_ARTIFACT_BYTES = 1_000_000
 
 
-def _read_bounded_file(path: Path, max_bytes: int) -> dict[str, Any]:
+def _read_bounded_file(path: Path, max_bytes: int, offset: int = 0) -> dict[str, Any]:
     # Stat the opened file, not a second path lookup. DV logs may be gigabytes;
     # the response budget must also bound the read, including a zero-byte probe.
     with path.open("rb") as stream:
-        size = os.fstat(stream.fileno()).st_size
+        before = os.fstat(stream.fileno())
+        size = before.st_size
+        if offset > size:
+            raise KitError(f"offset exceeds artifact size: {size}")
+        if offset:
+            stream.seek(offset)
         data = stream.read(max_bytes)
+        after = os.fstat(stream.fileno())
+    changed = (before.st_size, before.st_mtime_ns, before.st_ino) != (after.st_size, after.st_mtime_ns, after.st_ino)
+    next_offset = offset + len(data)
+    encoding: dict[str, str] = {"text_encoding": "utf-8"}
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        text = data.decode("utf-8", errors="replace")
+        # Split multibyte characters and non-UTF8 logs remain recoverable.
+        # Only problematic chunks carry the additional bounded raw encoding.
+        encoding = {"text_encoding": "utf-8-replace", "raw_base64": base64.b64encode(data).decode("ascii")}
     return {
         "bytes": size,
-        "truncated": size > max_bytes,
-        "text": data.decode("utf-8", errors="replace"),
+        "truncated": size > next_offset,
+        "text": text,
+        **encoding,
+        "offset": offset,
+        "bytes_read": len(data),
+        "next_offset": next_offset,
+        "complete": next_offset >= size and not changed,
+        "changed_during_read": changed,
+        "file_version": {"bytes": size, "mtime_ns": before.st_mtime_ns, "inode": before.st_ino},
     }
 
 
-def read_artifact(root: Path, relative_path: str, max_bytes: int = DEFAULT_ARTIFACT_MAX_BYTES) -> dict[str, Any]:
+def read_artifact(root: Path, relative_path: str, max_bytes: int = DEFAULT_ARTIFACT_MAX_BYTES, offset: int = 0) -> dict[str, Any]:
     if isinstance(max_bytes, bool) or not isinstance(max_bytes, int) or max_bytes < 0:
         raise KitError("max_bytes must be a non-negative integer")
     if max_bytes > MAX_ARTIFACT_BYTES:
         raise KitError(f"max_bytes must not exceed {MAX_ARTIFACT_BYTES}")
+    if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
+        raise KitError("offset must be a non-negative byte offset")
     path = _project_path(root, relative_path, "artifact path")
     if not path.is_file():
         raise KitError(f"Artifact does not exist: {relative_path}")
     return {
         "path": path.relative_to(root.resolve()).as_posix(),
-        **_read_bounded_file(path, max_bytes),
+        **_read_bounded_file(path, max_bytes, offset),
     }
 
 
@@ -1530,6 +1600,19 @@ def _command_metadata(name: str, command: dict[str, Any]) -> dict[str, Any]:
     return metadata
 
 
+DEFAULT_COMMAND_OUTPUT_BYTES = 8192
+
+
+def _command_output_report(root: Path, directory: Path) -> dict[str, Any]:
+    report: dict[str, Any] = {"output_limit_bytes": DEFAULT_COMMAND_OUTPUT_BYTES, "output_artifacts": {}}
+    for stream in ("stdout", "stderr"):
+        path = directory / f"{stream}.log"
+        preview = _read_bounded_file(path, DEFAULT_COMMAND_OUTPUT_BYTES)
+        report[stream] = preview.pop("text").replace("\r\n", "\n").replace("\r", "\n")
+        report["output_artifacts"][stream] = {"path": path.relative_to(root).as_posix(), **preview}
+    return report
+
+
 def run_project_command(
     root: Path,
     profile: dict[str, Any],
@@ -1571,47 +1654,37 @@ def run_project_command(
     cwd = _project_path(root, cwd_value, f"Command cwd for {name}")
     if not cwd.is_dir():
         raise KitError(f"Command cwd does not exist: {cwd_value}")
+    # Spool both streams instead of retaining an arbitrarily large pipe buffer.
+    # Each private directory ignores itself, including when the project has no
+    # runtime ignore rule. Never overwrite an existing artifact or tracked file.
+    runtime = _project_path(root, ".claude/.runtime", "command output directory")
     try:
-        completed = subprocess.run(
-            argv,
-            cwd=cwd,
-            text=True,
-            capture_output=True,
-            timeout=timeout,
-            check=False,
-        )
-    except subprocess.TimeoutExpired as exc:
-        return {
-            **metadata,
-            "status": "failed",
-            "argv": argv,
-            "cwd": cwd.relative_to(root).as_posix(),
-            "returncode": None,
-            "stdout": _process_output(exc.stdout),
-            "stderr": _process_output(exc.stderr),
-            "timed_out": True,
-            "timeout": timeout,
-        }
+        runtime.mkdir(parents=True, exist_ok=True, mode=0o700)
+        directory = Path(tempfile.mkdtemp(prefix="command-", dir=runtime))
+        descriptor = os.open(directory / ".gitignore", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as ignore:
+            ignore.write("*\n")
     except OSError as exc:
-        return {
-            **metadata,
-            "status": "failed",
-            "argv": argv,
-            "cwd": cwd.relative_to(root).as_posix(),
-            "returncode": None,
-            "stdout": "",
-            "stderr": str(exc),
-            "launch_error": True,
-        }
-    return {
-        **metadata,
-        "status": "passed" if completed.returncode == 0 else "failed",
-        "argv": argv,
-        "cwd": cwd.relative_to(root).as_posix(),
-        "returncode": completed.returncode,
-        "stdout": completed.stdout,
-        "stderr": completed.stderr,
+        raise KitError(f"Cannot prepare private command output artifacts: {exc}") from exc
+    result = {
+        **metadata, "status": "failed", "argv": argv,
+        "cwd": cwd.relative_to(root).as_posix(), "returncode": None,
     }
+    try:
+        with os.fdopen(os.open(directory / "stdout.log", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as stdout:
+            with os.fdopen(os.open(directory / "stderr.log", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as stderr:
+                try:
+                    completed = subprocess.run(argv, cwd=cwd, stdout=stdout, stderr=stderr, timeout=timeout, check=False)
+                    result.update(status="passed" if completed.returncode == 0 else "failed", returncode=completed.returncode)
+                except subprocess.TimeoutExpired:
+                    result.update(timed_out=True, timeout=timeout)
+                except OSError as exc:
+                    result.update(launch_error=True)
+                    stderr.write(str(exc).encode("utf-8"))
+    except OSError as exc:
+        raise KitError(f"Cannot open private command output artifacts: {exc}") from exc
+    result.update(_command_output_report(root, directory))
+    return result
 
 
 def run_project_commands(

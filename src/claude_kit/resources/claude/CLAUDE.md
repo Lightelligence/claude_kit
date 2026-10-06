@@ -6,6 +6,7 @@ This file is shared by projects that pin claude_kit.
 - For RTL/DV projects, `hw/**` is a normal implementation scope when `[roots].hw` and `permissions.writable` declare it; do not assume other paths are writable.
 - Use `permissions.writable` for ordinary edits. For deliberate cleanup, declare the exact obsolete path under `permissions.deletable` and record the evidence change as `{\"path\": \"...\", \"operation\": \"delete\"}`; read-only and forbidden scopes still override both.
 - Reuse current project facts and task context. Inspect only missing or stale information.
+- For project artifacts, batch known literal questions through `search_artifact`, then use `read_artifact` for missing source ranges. Retain complete logs and hashes; partial scans or zero matches do not prove a check passed.
 - Prefer registered kit MCP tools in Claude Code. Use `plan_task` only when workflow or check selection is unclear; resolve missing facts before the affected operation, not as a blanket gate for unrelated edits.
 - Load only missing skill/role/protocol guidance through native skills or `resolve_context`; do not load the same guidance twice. Pass empty roles/packs when profile defaults are unnecessary. CLI plan/context are maintenance equivalents, not extra steps.
 - Treat a new or modified DV test as an implementation task first: finish planning, edits, static/lint checks and evidence before execution.

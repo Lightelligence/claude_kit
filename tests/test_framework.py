@@ -60,6 +60,31 @@ class FrameworkTests(unittest.TestCase):
                 attach_project(root, manifest='.claude/kit-attachment.toml')
             self.assertFalse((root / '.claude/agents').exists())
 
+    def test_inactive_project_exclusions_survive_kit_versions(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = self.project(Path(temp), 'framework_exclude = [".claude/mcp-requirements.txt"]\n')
+            override = root / '.claude/mcp-requirements.txt'
+            override.write_text('project-specific-pins\n')
+            preview = attach_project(root, manifest='.claude/kit-attachment.toml', dry_run=True)
+            self.assertEqual(preview['inactive_framework_exclusions'], ['.claude/mcp-requirements.txt'])
+            self.assertEqual(override.read_text(), 'project-specific-pins\n')
+            attach_project(root, manifest='.claude/kit-attachment.toml')
+            self.assertFalse(override.is_symlink())
+            self.assertEqual(override.read_text(), 'project-specific-pins\n')
+            self.assertEqual(attach_project(root, manifest='.claude/kit-attachment.toml')['changed'], [])
+
+    def test_unknown_missing_or_linked_exclusions_fail_before_writes(self):
+        for linked in (False, True):
+            with tempfile.TemporaryDirectory() as temp:
+                root = self.project(Path(temp), 'framework_exclude = [".claude/local-only.md"]\n')
+                if linked:
+                    target = root / 'local.md'
+                    target.write_text('local guidance')
+                    (root / '.claude/local-only.md').symlink_to(target)
+                with self.assertRaisesRegex(KitError, 'Unknown framework exclusion'):
+                    attach_project(root, manifest='.claude/kit-attachment.toml')
+                self.assertFalse((root / '.claude/agents').exists())
+
     def test_framework_and_catalog_overlap_fails_before_writes(self):
         for identifier in ('xwiki', 'rtl-dv-kit'):
             with self.subTest(skill=identifier), tempfile.TemporaryDirectory() as temp:

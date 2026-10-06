@@ -925,6 +925,10 @@ claude-kit artifact read \
 
 Reads a text artifact under the project root. The default maximum is 100 KiB and the hard maximum is 1 MiB. The result includes original byte count and truncation status. The command is read-only and rejects paths or symlinks that escape the project root.
 
+Use `search_artifact` (MCP) or `claude-kit artifact search --project-root . --file out/run.log --query FATAL --query ERROR` to answer several literal log questions in one scan. It returns per-query counts, byte offsets, line numbers and bounded snippets; the original artifact remains available through `read_artifact`. This avoids loading every log page into the conversation. No new dependency or log execution is involved.
+
+The default scan limit is 64 MiB, with at most 40 hit records and 16 KiB of snippet text (JSON metadata has separate bounded size). A line exceeding 64 KiB stops the scan explicitly. Counts cover only the scanned prefix when `scan_complete` is false. A stable complete scan includes SHA256 and file-version metadata; changed files or partial scans have no complete-file hash. Snippet/output truncation is reported independently. No match, a PASS string, or a zero exit status is a verification conclusion by itself; retrieve missing evidence and check explicit failure markers before interpreting results.
+
 ### evidence
 
 Create an evidence template:

@@ -225,7 +225,8 @@ def detect_semantic_impacts(repo: Path, base_ref: str, paths: list[str]) -> set[
     impacts: set[str] = set()
     for path in paths:
         suffix = Path(path).suffix.lower()
-        if suffix not in RTL_SUFFIXES:
+        # A testbench module/clock edit is not an RTL interface/clock change.
+        if suffix not in RTL_SUFFIXES or "/dv/" in f"/{path}":
             continue
         current_path = repo / path
         current = (current_path.read_text(encoding="utf-8", errors="replace") if current_path.is_file() else None)
@@ -442,6 +443,7 @@ def build_context(
     impacts: set[str] | None = None,
     review_result: str | None = None,
     risk_checks_passed: bool = False,
+    selected_checks: list[str] | None = None,
     policy_path: Path | None = None,
 ) -> dict:
     workspace = workspace.expanduser().resolve()
@@ -502,7 +504,10 @@ def build_context(
             rules.append(rule)
     # RTL write/review work: inject short style into the packet instruction set,
     # and require a Read of the full coding standard (too large for budget dump).
-    rtl_work = "rtl" in needed_stages or any(Path(path).suffix.lower() in RTL_SUFFIXES for path in paths)
+    rtl_work = "rtl" in affected_stage_list or any(
+        Path(path).suffix.lower() in RTL_SUFFIXES and "/dv/" not in f"/{path}"
+        for path in paths
+    )
     if rtl_work:
         rules.extend(rule for rule in (
             ".claude/rules/04_coding_style.md",
@@ -520,7 +525,8 @@ def build_context(
         required_checks = mode_policy["required_checks"]
     review_mode = mode_policy["review_mode"] if governed else "not_run"
     close_pipeline = mode_policy["close_pipeline"] if governed else False
-    checks_to_run = []
+    # Evidence requirements describe readiness; they do not authorize execution.
+    suggested_checks = []
     for check in required_checks:
         stage = CHECK_STAGE.get(check)
         if (mode in {"merge", "signoff"} and stage and freshness.get(stage, {}).get("fresh")):
@@ -529,47 +535,59 @@ def build_context(
             continue
         if check == "risk_specific_checks" and risk_checks_passed:
             continue
-        checks_to_run.append(check)
+        suggested_checks.append(check)
+    selectable_checks = set(required_checks)
+    if "targeted_soc_sim_or_soc_comp" in selectable_checks:
+        selectable_checks.update(("soc_sim", "soc_comp"))
+    selected_checks = list(dict.fromkeys(selected_checks or []))
+    unsupported = [check for check in selected_checks if check not in selectable_checks]
+    if unsupported:
+        raise ValueError("checks are outside the current delta: " + ", ".join(unsupported))
+    checks_to_run = [
+        check for check in selected_checks
+        if check in suggested_checks or (
+            check in {"soc_sim", "soc_comp"} and "targeted_soc_sim_or_soc_comp" in suggested_checks
+        )
+    ]
     preflight_checks = [check for check in checks_to_run if check in RESOURCE_HEAVY_CHECKS]
     actions = []
     if governed and mode == "dev" and "rtl" in affected_stage_list:
-        behavior_action = ("run targeted soc_sim and validate its real log" if "verif" in affected_stage_list else
-                           "run targeted soc_sim when a meaningful test exists; otherwise soc_comp")
         actions = [
             "read required coding-style files before editing RTL",
             "start or keep rtl in_progress",
-            "run registered lint and RTL quality checks",
-            behavior_action,
+            "select relevant registered checks; use targeted soc_sim when a meaningful test exists, otherwise soc_comp",
             "defer pipeline closure, synthesis, and independent review",
         ]
     elif governed and mode == "dev" and affected_stage_list == ["doc"]:
         actions = [
             "start or keep doc in_progress",
-            "run the documentation delta check",
+            "select the documentation delta check",
             "defer downstream closure until merge",
         ]
     elif governed and mode == "dev" and "verif" in affected_stage_list:
         actions = [
             "start or keep verif in_progress",
-            "run targeted soc_sim and validate its real log",
+            "select a relevant registered DV target and checks; validate the real log of any selected run",
             "defer pipeline closure, synthesis, and independent review",
         ]
     elif governed and mode == "dev" and "syn" in affected_stage_list:
         actions = [
             "start or keep syn in_progress",
-            "run registered soc_syn for the current snapshot",
+            "select registered soc_syn if synthesis is in the task scope",
             "defer pipeline closure, verification, and independent review",
         ]
     elif governed and mode in {"merge", "signoff"} and stale:
-        actions = [f"complete stale delivery stages: {', '.join(stale)}"]
+        actions = [f"inspect stale delivery stages and select relevant checks: {', '.join(stale)}"]
     elif risk_checks_required and not risk_checks_passed:
-        actions = ["run the router-selected registered risk-specific checks"]
+        actions = ["select relevant registered risk-specific checks or report missing validation"]
     elif governed and review_result != "pass":
-        actions = [f"run soc-reviewer {mode_policy['review_mode']} and record --review-result pass"]
+        actions = [f"select soc-reviewer {mode_policy['review_mode']} and record its actual review result"]
     elif governed:
         actions = ["delivery evidence and review are ready; deliver the final diff"]
     else:
-        actions = ["run the closest non-EDA validation for the changed files"]
+        actions = ["select the closest non-EDA validation for the changed files"]
+    if checks_to_run:
+        actions.append("run only selected checks after required preflight: " + ", ".join(checks_to_run))
 
     state_summary = (compact_state_summary(state, workspace, issues=issues) if state else {"present": False})
     visible_paths = paths[:100]
@@ -609,7 +627,10 @@ def build_context(
         "required_reads": required_reads,
         "rule_set_fingerprint": _rule_set_fingerprint(repo, rules + required_reads),
         "required_checks": required_checks,
+        "suggested_checks": suggested_checks,
+        "selected_checks": selected_checks,
         "checks_to_run": checks_to_run,
+        "check_selection_policy": "explicit_selection_only",
         "execution": {
             **mode_policy["execution"],
             "preflight": {
@@ -663,7 +684,8 @@ def _print_text(context: dict) -> None:
     print("Rules         : " + (", ".join(context["rules"]) or "none"))
     print("Required reads: " + (", ".join(context.get("required_reads") or []) or "none"))
     print("Checks        : " + ", ".join(context["required_checks"]))
-    print("Run now       : " + ", ".join(context["checks_to_run"]))
+    print("Suggestions   : " + (", ".join(context["suggested_checks"]) or "none"))
+    print("Selected      : " + (", ".join(context["checks_to_run"]) or "none; select checks explicitly"))
     preflight = execution["preflight"]
     print("Preflight     : " + (", ".join(preflight["requirements"]) + " before " +
                                 ", ".join(preflight["before_checks"]) if preflight["required"] else "not needed"))
@@ -686,6 +708,12 @@ def main() -> int:
         help="dev defaults to the target workspace; delivery modes use the repo diff",
     )
     parser.add_argument("--base-ref")
+    parser.add_argument(
+        "--check",
+        action="append",
+        default=[],
+        help="explicitly select a suggested check; repeatable, never runs a check itself",
+    )
     parser.add_argument(
         "--changed",
         action="append",
@@ -730,6 +758,7 @@ def main() -> int:
             impacts=set(args.impact),
             review_result=args.review_result,
             risk_checks_passed=args.risk_checks_passed,
+            selected_checks=args.check,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"loop_context: {exc}", file=sys.stderr)
