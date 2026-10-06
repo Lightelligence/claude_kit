@@ -112,7 +112,7 @@ class CompactMcpTests(unittest.TestCase):
     def _schema_bytes(tools: list[dict]) -> int:
         return len(json.dumps(tools, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
 
-    def test_compact9_and_default_full14_readonly_schema(self) -> None:
+    def test_compact10_and_default_full15_readonly_schema(self) -> None:
         full = self._start()
         try:
             self._initialize(full)
@@ -137,8 +137,9 @@ class CompactMcpTests(unittest.TestCase):
             "list_workflows",
             "list_checks",
         }
-        self.assertEqual(len(full_tools), 14)
-        self.assertEqual(len(compact_tools), 9)
+        self.assertEqual(len(full_tools), 15)
+        self.assertEqual(len(compact_tools), 10)
+        self.assertIn("search_artifact", full_names & compact_names)
         self.assertTrue(catalog_names.issubset(full_names))
         self.assertTrue(catalog_names.isdisjoint(compact_names))
         self.assertIn("list_catalog", compact_names)

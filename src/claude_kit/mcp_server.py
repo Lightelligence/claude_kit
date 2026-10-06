@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__
+from .artifact_search import search_artifact
 from .core import (
     DEFAULT_ARTIFACT_MAX_BYTES,
     KitError,
@@ -161,6 +162,20 @@ def _tool_definitions(allow_exec: bool, tool_profile: str = "full") -> list[dict
             "name": "inspect_design",
             "description": "Return a read-only file and extension summary for configured project roots.",
             "inputSchema": {"type": "object", "properties": {}},
+        },
+        {
+            "name": "search_artifact",
+            "description": "Search up to eight literal queries in one project artifact scan; return counts and bounded snippets with byte offsets. Incomplete scans and zero matches are not verification results.",
+            "inputSchema": {
+                "type": "object", "required": ["path", "queries"],
+                "properties": {
+                    "path": {"type": "string"},
+                    "queries": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"type": "string", "minLength": 1}},
+                    "max_output_bytes": {"type": "integer", "minimum": 0, "maximum": 1000000},
+                    "max_matches": {"type": "integer", "minimum": 0, "maximum": 1000},
+                    "max_scan_bytes": {"type": "integer", "minimum": 0, "maximum": 1073741824},
+                },
+            },
         },
         {
             "name": "read_artifact",
@@ -383,6 +398,14 @@ def _call_tool(
         return _text_result({"context": context, "manifest": manifest})
     if name == "inspect_design":
         return _text_result(inspect_project(root, profile))
+    if name == "search_artifact":
+        path = arguments.get("path")
+        if not isinstance(path, str):
+            raise KitError("search_artifact requires path")
+        return _text_result(search_artifact(root, path, arguments.get("queries"),
+            max_output_bytes=arguments.get("max_output_bytes", 16384),
+            max_matches=arguments.get("max_matches", 40),
+            max_scan_bytes=arguments.get("max_scan_bytes", 64 * 1024 * 1024)))
     if name == "read_artifact":
         path = arguments.get("path")
         if not isinstance(path, str):
