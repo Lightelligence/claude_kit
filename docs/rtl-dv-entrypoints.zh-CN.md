@@ -59,6 +59,11 @@ scope = "Review the requested DV changes; consult RTL only as context. Do not ru
 - 单次仿真、regression、coverage、综合、CDC 和生成器，继续按工程师明确选择执行。
 - 不为改名字注册两套相同 MCP；Make/Bazel、RTL top 生成/构建图查询的不同语义不应混合。
 
+检查菜单支持 `list_checks({"scope":"dv"})` 或
+`list_catalog({"category":"checks","scope":"dv"})`，也可选择 `rtl`、`rtl-dv`。
+`scope` 按命令的 `applies_to` 调整推荐，保留全部命令供明确选择，不改变执行权限和确认要求。
+省略 `scope` 保留原菜单；只有 checks catalog 接受此参数。
+
 ## 审计与验收
 
 ```bash

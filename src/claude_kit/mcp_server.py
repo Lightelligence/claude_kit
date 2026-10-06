@@ -143,7 +143,10 @@ def _tool_definitions(allow_exec: bool, tool_profile: str = "full") -> list[dict
         {
             "name": "list_checks",
             "description": "List all profile-declared checks as an engineer-selectable menu with categories and approval requirements.",
-            "inputSchema": {"type": "object", "properties": {}},
+            "inputSchema": {"type": "object", "properties": {
+                "scope": {"type": "string", "enum": ["rtl", "dv", "rtl-dv"],
+                          "description": "Adjust check recommendations for the requested work domain"},
+            }},
         },
         {
             "name": "resolve_context",
@@ -268,6 +271,8 @@ def _tool_definitions(allow_exec: bool, tool_profile: str = "full") -> list[dict
                 "required": ["category"],
                 "properties": {
                     "category": {"type": "string", "enum": list(_CATALOG_CATEGORIES)},
+                    "scope": {"type": "string", "enum": ["rtl", "dv", "rtl-dv"],
+                              "description": "Adjust recommendations; only valid for checks"},
                 },
             },
         })
@@ -306,7 +311,7 @@ def _bool_argument(arguments: dict[str, Any], name: str, default: bool = False) 
 def _catalog_category(arguments: dict[str, Any]) -> str:
     if "category" not in arguments:
         raise KitError("list_catalog requires category")
-    unknown = sorted(str(key) for key in arguments if key != "category")
+    unknown = sorted(str(key) for key in arguments if key not in ("category", "scope"))
     if unknown:
         raise KitError(f"list_catalog unknown argument: {unknown[0]}")
     category = arguments["category"]
@@ -315,7 +320,18 @@ def _catalog_category(arguments: dict[str, Any]) -> str:
     if category not in _CATALOG_CATEGORIES:
         values = ", ".join(_CATALOG_CATEGORIES)
         raise KitError(f"list_catalog category must be one of: {values}")
+    if "scope" in arguments and category != "checks":
+        raise KitError("list_catalog scope is only valid for checks")
     return category
+
+
+def _check_scope(arguments: dict[str, Any]) -> str | None:
+    if "scope" not in arguments:
+        return None
+    scope = arguments["scope"]
+    if not isinstance(scope, str) or scope not in ("rtl", "dv", "rtl-dv"):
+        raise KitError("check scope must be rtl, dv or rtl-dv")
+    return scope
 
 
 def _call_tool(
@@ -379,9 +395,9 @@ def _call_tool(
             },
         })
     if name == "list_checks":
-        return _text_result(command_menu(profile))
+        return _text_result(command_menu(profile, scope=_check_scope(arguments)))
     if name == "list_catalog":
-        return _text_result(command_menu(profile))
+        return _text_result(command_menu(profile, scope=_check_scope(arguments)))
     if name == "resolve_context":
         task = arguments.get("task", "")
         if not isinstance(task, str):
