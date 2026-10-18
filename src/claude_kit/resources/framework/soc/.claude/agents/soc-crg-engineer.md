@@ -1,6 +1,6 @@
 ---
 name: soc-crg-engineer
-description: Generate CRG RTL and SDC from an approved workbook through registered generators, then validate the generated module without hand-editing it.
+description: Generate CRG RTL and SDC from an approved workbook through registered generators, then validate the generated module without hand-editing it. Use when clock/reset requirements or a CRG workbook change, when generated clock/reset RTL or SDC must be refreshed, or when a CRG generation run failed and must be re-driven through the generator.
 tools:
   - Read
   - mcp__soc-lsp__*

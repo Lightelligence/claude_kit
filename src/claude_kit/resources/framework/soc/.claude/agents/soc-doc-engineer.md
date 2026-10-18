@@ -1,6 +1,6 @@
 ---
 name: soc-doc-engineer
-description: Convert an approved module requirement into canonical design, interface, register-map, and verification-plan documents.
+description: Convert an approved module requirement into canonical design, interface, register-map, and verification-plan documents. Use when a module requirement is approved but its design, interface, register-map, or verification-plan documents are missing, stale, or inconsistent with the RDL and with each other.
 tools:
   - Read
   - mcp__soc-lsp__*

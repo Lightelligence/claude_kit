@@ -1,6 +1,6 @@
 ---
 name: soc-architect
-description: Plan SoC or subsystem IP, process assumptions, and integration contracts before module pipeline work; write architecture documents without RTL.
+description: Plan SoC or subsystem IP, process assumptions, and integration contracts before module pipeline work; write architecture documents without RTL. Use when a new block, interface, or chip-level partition has no approved architecture document yet, or when a requirement change forces re-partitioning, clock/reset intent, or address-map decisions.
 tools:
   - Read
   - mcp__soc-lsp__*

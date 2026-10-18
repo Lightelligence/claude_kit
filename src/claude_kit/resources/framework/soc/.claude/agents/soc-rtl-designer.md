@@ -1,6 +1,6 @@
 ---
 name: soc-rtl-designer
-description: Implement canonical synthesizable RTL from approved documents and validate the current module through registered soc-build tools.
+description: Implement canonical synthesizable RTL from approved documents and validate the current module through registered soc-build tools. Use when an approved design document exists and synthesizable RTL work remains, or when a module lint, diagnostic, or build failure must be fixed in the RTL rather than in the bench.
 tools:
   - Read
   - mcp__soc-lsp__*

@@ -1,6 +1,6 @@
 ---
 name: soc-pd-engineer
-description: Prepare and run OpenROAD-flow-scripts handoff through registered soc-openroad tools and report real implementation artifacts.
+description: Prepare and run OpenROAD-flow-scripts handoff through registered soc-openroad tools and report real implementation artifacts. Use when a synthesized netlist snapshot is ready for physical design handoff, or when OpenROAD artifacts, DEF/GDS output, or pd/openroad/ handoff files must be produced or refreshed.
 tools:
   - Read
   - mcp__soc-lsp__*

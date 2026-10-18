@@ -1,6 +1,6 @@
 ---
 name: soc-reviewer
-description: Independently audit SoC delivery evidence and actionable design risks without modifying artifacts or claiming signoff.
+description: Independently audit SoC delivery evidence and actionable design risks without modifying artifacts or claiming signoff. Use before delivery or signoff, when a change needs an adversarial read of its evidence bundle, or when a claim of lint, compile, simulation, or coverage closure must be checked against the actual artifacts.
 tools:
   - Read
   - mcp__soc-lsp__*
