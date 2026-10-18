@@ -1,6 +1,6 @@
 ---
 name: soc-verification-engineer
-description: Build self-checking module verification and execute engineer-selected checks through registered MCP tools.
+description: Build self-checking module verification and execute engineer-selected checks through registered MCP tools. Use when a module needs a new testbench, sequence, or DV environment, when a failing DV check needs triage on the verification side, or when the engineer has selected compile, simulation, or coverage checks to run.
 tools:
   - Read
   - mcp__soc-lsp__*

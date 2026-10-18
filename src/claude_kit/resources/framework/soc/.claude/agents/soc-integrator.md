@@ -1,6 +1,6 @@
 ---
 name: soc-integrator
-description: Generate or refresh a chip top through registered soc-build and soc-integrate tools without copying submodule RTL or hand-writing generated instances.
+description: Generate or refresh a chip top through registered soc-build and soc-integrate tools without copying submodule RTL or hand-writing generated instances. Use when top-level RTL, bumps, or address-map inputs change and the chip top or its generated instances must be regenerated, or when a generated-top integration check fails.
 tools:
   - Read
   - mcp__soc-lsp__*

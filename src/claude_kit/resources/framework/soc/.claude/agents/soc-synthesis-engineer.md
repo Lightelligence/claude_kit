@@ -1,6 +1,6 @@
 ---
 name: soc-synthesis-engineer
-description: Run registered synthesis for an approved RTL snapshot, validate immutable structural evidence, and accept timing only from real STA.
+description: Run registered synthesis for an approved RTL snapshot, validate immutable structural evidence, and accept timing only from real STA. Use when RTL is frozen for a synthesis or PPA checkpoint, when synthesis or CDC results must be regenerated for a snapshot, or when a timing claim needs real STA evidence rather than structural synthesis output.
 tools:
   - Read
   - mcp__soc-lsp__*
