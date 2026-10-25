@@ -8,6 +8,28 @@ Use this document when you already know what you want to do and need the shortes
 
 ## Project tool inventory
 
+Paired skill evaluations and fix checks (Python >=3.11, read-only):
+
+```bash
+python <kit>/bin/claude-kit skill-eval template suite
+python <kit>/bin/claude-kit skill-eval template run
+python <kit>/bin/claude-kit skill-eval snapshot --project-root . --suite eval-suite.json
+python <kit>/bin/claude-kit skill-eval report --project-root . --suite eval-suite.json --run out/base.json --run out/candidate.json
+python <kit>/bin/claude-kit dv template fix-plan
+python <kit>/bin/claude-kit dv template fix-run
+python <kit>/bin/claude-kit dv fix-snapshot --project-root . --input rtl --input tb
+python <kit>/bin/claude-kit dv fix-report --project-root . --plan fix-plan.json --run out/base.json --run out/patched.json
+python <kit>/bin/claude-kit dv template variant-plan
+python <kit>/bin/claude-kit dv variant-search --project-root . --plan variants.json
+```
+
+Repeat `--run` for the full declared review set; reports also accept
+`--format markdown`. Exit 0 means a complete comparison, review-ready fix, or
+complete literal scan respectively; 1 means gaps and 2 invalid input. No model
+or EDA execution is started. Comparison completeness is not a quality approval,
+and search hits are unreviewed candidates. See the [contracts and usefulness
+gate](p0-evaluation.zh-CN.md) before interpreting results.
+
 For configuration inventory before changing tool selection:
 
 ```bash

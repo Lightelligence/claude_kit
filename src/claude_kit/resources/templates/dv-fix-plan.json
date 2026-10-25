@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "project": "replace-with-profile-project-id",
+  "id": "BUG-001",
+  "root_cause": "Replace with the confirmed causal mechanism, not just the symptom.",
+  "inputs": ["rtl", "tb", "spec"],
+  "base": {"source_revision": null, "input_digest": "0000000000000000000000000000000000000000000000000000000000000000"},
+  "patched": {"source_revision": null, "input_digest": "1111111111111111111111111111111111111111111111111111111111111111"},
+  "variant_review": {"status": "pending", "rationale": "Review all candidate dispositions and record scope/budget gaps.", "artifacts": []},
+  "checks": [
+    {"id": "original-failure", "kind": "reproducer", "test": "fifo_underflow", "configuration": "default", "seed": 42, "failure_signature": "scoreboard:unexpected_read"},
+    {"id": "normal-traffic", "kind": "control", "test": "fifo_basic", "configuration": "default", "seed": 42},
+    {"id": "reset-boundary", "kind": "regression", "test": "fifo_reset", "configuration": "default", "seed": 42}
+  ]
+}

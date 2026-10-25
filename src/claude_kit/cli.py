@@ -295,7 +295,7 @@ def build_parser() -> argparse.ArgumentParser:
     dv = subparsers.add_parser("dv", help="Read-only requirement evidence readiness (not signoff)")
     dv_commands = dv.add_subparsers(dest="dv_command", required=True)
     dv_template = dv_commands.add_parser("template", help="Print a project-owned DV plan or run template")
-    dv_template.add_argument("kind", choices=("plan", "run"))
+    dv_template.add_argument("kind", choices=("plan", "run", "fix-plan", "fix-run", "variant-plan"))
     dv_template.set_defaults(handler=handle_dv)
     dv_snapshot = dv_commands.add_parser("snapshot", help="Hash declared inputs before an existing runner executes")
     _add_project_options(dv_snapshot)
@@ -308,7 +308,85 @@ def build_parser() -> argparse.ArgumentParser:
     dv_report.add_argument("--format", choices=("json", "markdown"), default="json")
     dv_report.set_defaults(handler=handle_dv)
 
+    fix_snapshot = dv_commands.add_parser("fix-snapshot", help="Hash inputs before collecting base or patched fix evidence")
+    _add_project_options(fix_snapshot)
+    fix_snapshot.add_argument("--input", action="append", required=True, help="Declared input file or tree; repeat as needed")
+    fix_snapshot.set_defaults(handler=handle_fix)
+    fix_report = dv_commands.add_parser("fix-report", help="Check paired fix, control, variant and regression evidence")
+    _add_project_options(fix_report)
+    fix_report.add_argument("--plan", required=True)
+    fix_report.add_argument("--run", action="append", default=[])
+    fix_report.add_argument("--format", choices=("json", "markdown"), default="json")
+    fix_report.set_defaults(handler=handle_fix)
+    variants = dv_commands.add_parser("variant-search", help="Find bounded literal candidates for one known bug")
+    _add_project_options(variants)
+    variants.add_argument("--plan", required=True)
+    variants.add_argument("--max-files", type=int, default=200)
+    variants.add_argument("--max-scan-bytes", type=int, default=8_000_000)
+    variants.add_argument("--max-matches", type=int, default=100)
+    variants.add_argument("--format", choices=("json", "markdown"), default="json")
+    variants.set_defaults(handler=handle_fix)
+
+    evaluation = subparsers.add_parser("skill-eval", help="Compare explicitly collected baseline/candidate skill outputs")
+    eval_commands = evaluation.add_subparsers(dest="eval_command", required=True)
+    eval_template = eval_commands.add_parser("template", help="Print a project-owned evaluation suite or run template")
+    eval_template.add_argument("kind", choices=("suite", "run"))
+    eval_template.set_defaults(handler=handle_skill_eval)
+    for name in ("snapshot", "report"):
+        command = eval_commands.add_parser(name)
+        _add_project_options(command)
+        command.add_argument("--suite", required=True)
+        if name == "report":
+            command.add_argument("--run", action="append", default=[])
+            command.add_argument("--format", choices=("json", "markdown"), default="json")
+        command.set_defaults(handler=handle_skill_eval)
+
     return parser
+
+
+def _experiment_result(args: argparse.Namespace, result: dict, title: str, complete: bool) -> int:
+    from .experiment import markdown
+
+    if args.format == "markdown":
+        print(markdown(result, title), end="")
+    else:
+        _json_print(result)
+    return 0 if complete else 1
+
+
+def handle_skill_eval(args: argparse.Namespace) -> int:
+    from .core import resource_root
+    from .experiment import load
+    from .skill_eval import report, snapshot
+
+    if args.eval_command == "template":
+        print((resource_root() / "templates" / f"skill-eval-{args.kind}.json").read_text(encoding="utf-8"), end="")
+        return 0
+    root = _root(args.project_root)
+    _, profile = load_profile(root, args.profile)
+    if args.eval_command == "snapshot":
+        _json_print(snapshot(root, profile, load(root, profile, args.suite)))
+        return 0
+    result = report(root, profile, args.suite, args.run)
+    return _experiment_result(args, result, "Skill evaluation", result["status"] == "complete")
+
+
+def handle_fix(args: argparse.Namespace) -> int:
+    from .experiment import load, scope_snapshot
+    from .fix_validation import report
+    from .variants import search
+
+    root = _root(args.project_root)
+    _, profile = load_profile(root, args.profile)
+    if args.dv_command == "fix-snapshot":
+        _json_print(scope_snapshot(root, profile, args.input))
+        return 0
+    if args.dv_command == "variant-search":
+        result = search(root, profile, load(root, profile, args.plan), max_files=args.max_files,
+                        max_scan_bytes=args.max_scan_bytes, max_matches=args.max_matches)
+        return _experiment_result(args, result, "Variant candidates", result["search_complete"])
+    result = report(root, profile, args.plan, args.run)
+    return _experiment_result(args, result, "Fix validation", result["status"] == "ready_for_review")
 
 
 def handle_dv(args: argparse.Namespace) -> int:

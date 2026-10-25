@@ -8,6 +8,11 @@
 
 ## 项目工具清单
 
+技能成对评估、修复验证和同类 bug 候选搜索使用 `skill-eval`、`dv fix-snapshot`、
+`dv fix-report`、`dv variant-search`，保持现有原生入口不变。
+命令、模板、退出码和合并前收益标准见 [P0 接入说明](p0-evaluation.zh-CN.md)。
+这些命令只读已有记录和声明输入，模型及 EDA 仍由原有客户端/项目 runner 执行。
+
 调整工具选择前，可先只读审计项目配置：
 
 ```bash
