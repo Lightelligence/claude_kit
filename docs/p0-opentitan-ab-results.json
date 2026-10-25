@@ -1,0 +1,309 @@
+{
+  "schema_version": 1,
+  "kind": "one-off-historical-dv-guidance-study",
+  "case": {
+    "project": "lowRISC/opentitan",
+    "pr": 31507,
+    "before": "2c36b23a1e0204b20a1d41da7172a0756204b1c8",
+    "after": "de113e396ac850d6a5a89841b118771d51ba95dd"
+  },
+  "model_requested": "gpt-6.1-sol",
+  "backend_build_independently_verified": false,
+  "sessions": {
+    "r1-baseline-diagnosis": {
+      "status": "completed",
+      "answer_valid": true,
+      "tokens": 366020,
+      "cached_input_tokens": 301568,
+      "duration_seconds": 76.2667495830101,
+      "tool_calls": 10,
+      "workspace_unchanged": true,
+      "command_budget_exceeded": false
+    },
+    "r1-candidate-diagnosis": {
+      "status": "completed",
+      "answer_valid": true,
+      "tokens": 196542,
+      "cached_input_tokens": 145024,
+      "duration_seconds": 85.5722297920147,
+      "tool_calls": 7,
+      "workspace_unchanged": true,
+      "command_budget_exceeded": false
+    },
+    "r1-candidate-review": {
+      "status": "completed",
+      "answer_valid": true,
+      "tokens": 203716,
+      "cached_input_tokens": 157824,
+      "duration_seconds": 57.15617287502391,
+      "tool_calls": 7,
+      "workspace_unchanged": true,
+      "command_budget_exceeded": false
+    },
+    "r1-baseline-review": {
+      "status": "completed",
+      "answer_valid": true,
+      "tokens": 167593,
+      "cached_input_tokens": 128512,
+      "duration_seconds": 67.77299374999711,
+      "tool_calls": 7,
+      "workspace_unchanged": true,
+      "command_budget_exceeded": false
+    },
+    "r2-candidate-diagnosis": {
+      "status": "completed",
+      "answer_valid": true,
+      "tokens": 192968,
+      "cached_input_tokens": 145024,
+      "duration_seconds": 69.7932677079807,
+      "tool_calls": 7,
+      "workspace_unchanged": true,
+      "command_budget_exceeded": false
+    },
+    "r2-baseline-diagnosis": {
+      "status": "completed",
+      "answer_valid": true,
+      "tokens": 379189,
+      "cached_input_tokens": 313728,
+      "duration_seconds": 75.70108558400534,
+      "tool_calls": 9,
+      "workspace_unchanged": true,
+      "command_budget_exceeded": false
+    },
+    "r2-baseline-review": {
+      "status": "completed",
+      "answer_valid": true,
+      "tokens": 205672,
+      "cached_input_tokens": 134400,
+      "duration_seconds": 65.08131941701868,
+      "tool_calls": 7,
+      "workspace_unchanged": true,
+      "command_budget_exceeded": false
+    },
+    "r2-candidate-review": {
+      "status": "completed",
+      "answer_valid": true,
+      "tokens": 173902,
+      "cached_input_tokens": 130944,
+      "duration_seconds": 62.96936691598967,
+      "tool_calls": 6,
+      "workspace_unchanged": true,
+      "command_budget_exceeded": false
+    }
+  },
+  "workflows": {
+    "r1-baseline": {
+      "complete": true,
+      "required_criteria_passed": true,
+      "diagnosis_mechanism_assessment": "partial mechanism; correct failure path",
+      "normalized_missing_evidence_bundles": 3,
+      "criteria": {
+        "D1_primary": true,
+        "D2_coverage": true,
+        "D3_pair_tracking_secondary": false,
+        "D4_validation": true,
+        "R1_patch": true,
+        "R2_evidence": true,
+        "R3_next_checks": true,
+        "R4_variants_secondary": true,
+        "no_unsupported_verification": true,
+        "read_only_in_scope": true
+      },
+      "tokens": 533613,
+      "cached_input_tokens": 430080,
+      "duration_seconds": 144.0397433330072,
+      "tool_calls": 17,
+      "human_intervention_proxy_counts": {
+        "root_cause_corrections": 0,
+        "verification_corrections": 0,
+        "unnecessary_requests": 0,
+        "blocking_questions": 0
+      },
+      "additional_request_entries": 1,
+      "actual_human_minutes": null
+    },
+    "r1-candidate": {
+      "complete": true,
+      "required_criteria_passed": true,
+      "diagnosis_mechanism_assessment": "partial mechanism; correct failure path",
+      "normalized_missing_evidence_bundles": 3,
+      "criteria": {
+        "D1_primary": true,
+        "D2_coverage": true,
+        "D3_pair_tracking_secondary": false,
+        "D4_validation": true,
+        "R1_patch": true,
+        "R2_evidence": true,
+        "R3_next_checks": true,
+        "R4_variants_secondary": true,
+        "no_unsupported_verification": true,
+        "read_only_in_scope": true
+      },
+      "tokens": 400258,
+      "cached_input_tokens": 302848,
+      "duration_seconds": 142.7284026670386,
+      "tool_calls": 14,
+      "human_intervention_proxy_counts": {
+        "root_cause_corrections": 0,
+        "verification_corrections": 0,
+        "unnecessary_requests": 0,
+        "blocking_questions": 0
+      },
+      "additional_request_entries": 1,
+      "actual_human_minutes": null
+    },
+    "r2-baseline": {
+      "complete": true,
+      "required_criteria_passed": true,
+      "diagnosis_mechanism_assessment": "partial mechanism; correct failure path",
+      "normalized_missing_evidence_bundles": 3,
+      "criteria": {
+        "D1_primary": true,
+        "D2_coverage": true,
+        "D3_pair_tracking_secondary": false,
+        "D4_validation": true,
+        "R1_patch": true,
+        "R2_evidence": true,
+        "R3_next_checks": true,
+        "R4_variants_secondary": true,
+        "no_unsupported_verification": true,
+        "read_only_in_scope": true
+      },
+      "tokens": 584861,
+      "cached_input_tokens": 448128,
+      "duration_seconds": 140.78240500102402,
+      "tool_calls": 16,
+      "human_intervention_proxy_counts": {
+        "root_cause_corrections": 0,
+        "verification_corrections": 0,
+        "unnecessary_requests": 0,
+        "blocking_questions": 0
+      },
+      "additional_request_entries": 1,
+      "actual_human_minutes": null
+    },
+    "r2-candidate": {
+      "complete": true,
+      "required_criteria_passed": true,
+      "diagnosis_mechanism_assessment": "partial mechanism; correct failure path",
+      "normalized_missing_evidence_bundles": 3,
+      "criteria": {
+        "D1_primary": true,
+        "D2_coverage": true,
+        "D3_pair_tracking_secondary": false,
+        "D4_validation": true,
+        "R1_patch": true,
+        "R2_evidence": true,
+        "R3_next_checks": true,
+        "R4_variants_secondary": true,
+        "no_unsupported_verification": true,
+        "read_only_in_scope": true
+      },
+      "tokens": 366870,
+      "cached_input_tokens": 275968,
+      "duration_seconds": 132.76263462397037,
+      "tool_calls": 13,
+      "human_intervention_proxy_counts": {
+        "root_cause_corrections": 0,
+        "verification_corrections": 0,
+        "unnecessary_requests": 0,
+        "blocking_questions": 0
+      },
+      "additional_request_entries": 0,
+      "actual_human_minutes": null
+    }
+  },
+  "pairs": [
+    {
+      "repetition": 1,
+      "comparable": true,
+      "deltas_candidate_minus_baseline": {
+        "tokens": -133355,
+        "duration_seconds": -1.3113406659686007,
+        "tool_calls": -3
+      }
+    },
+    {
+      "repetition": 2,
+      "comparable": true,
+      "deltas_candidate_minus_baseline": {
+        "tokens": -217991,
+        "duration_seconds": -8.019770377053646,
+        "tool_calls": -3
+      }
+    }
+  ],
+  "aggregate": {
+    "baseline": {
+      "complete_workflows": 2,
+      "required_criteria_passed": 2,
+      "tokens_all_attempts": 1118474,
+      "duration_seconds_all_attempts": 284.8221483340312,
+      "tool_calls_all_attempts": 33,
+      "intervention_proxy_counts": {
+        "root_cause_corrections": 0,
+        "verification_corrections": 0,
+        "unnecessary_requests": 0,
+        "blocking_questions": 0
+      },
+      "additional_request_entries": 2,
+      "normalized_missing_evidence_bundles_per_workflow": [
+        3,
+        3
+      ],
+      "actual_human_minutes": null
+    },
+    "candidate": {
+      "complete_workflows": 2,
+      "required_criteria_passed": 2,
+      "tokens_all_attempts": 767128,
+      "duration_seconds_all_attempts": 275.491037291009,
+      "tool_calls_all_attempts": 27,
+      "intervention_proxy_counts": {
+        "root_cause_corrections": 0,
+        "verification_corrections": 0,
+        "unnecessary_requests": 0,
+        "blocking_questions": 0
+      },
+      "additional_request_entries": 1,
+      "normalized_missing_evidence_bundles_per_workflow": [
+        3,
+        3
+      ],
+      "actual_human_minutes": null
+    }
+  },
+  "paired_descriptive_cost_stats": {
+    "tokens": {
+      "count": 2,
+      "mean_delta": -175673,
+      "sample_stdev_delta": 59846.689532504635
+    },
+    "duration_seconds": {
+      "count": 2,
+      "mean_delta": -4.6655555215111235,
+      "sample_stdev_delta": 4.743576139821547
+    },
+    "tool_calls": {
+      "count": 2,
+      "mean_delta": -3,
+      "sample_stdev_delta": 0.0
+    }
+  },
+  "grading_source": "grading.json; parent evaluator against presealed rubric, not independent human blind grading",
+  "independent_eda_runs": 0,
+  "human_expert_minutes_measured": false,
+  "interpretation_cautions": [
+    "Required-criteria passes are frozen minimum checks, not fully confirmed blind root-cause recovery. All four diagnoses have a partial STATUS/retirement mechanism; see grading.json.",
+    "The raw additional_requests array count reflects where requests were placed in the answer. Both arms require three normalized kinds of engineering evidence; array lengths do not measure human intervention.",
+    "Correction-item counts are the parent AI evaluator's judgments, not independently measured domain-expert effort.",
+    "Token totals include cached input. Removing cached input still does not yield billed cost; pricing and backend build were not independently verified."
+  ],
+  "limitations": [
+    "Same external source/evidence/prompt/settings. Review stage also receives its own uncorrected diagnosis from that arm/repetition; downstream context difference is part of the treatment.",
+    "Guidance effectiveness and evidence review only. No actual licensed EDA, waveform query, full-repository semantic variant search, native Claude discovery, or production helper effectiveness claim.",
+    "Count actual requests and evaluator-identified correction items. No measured human expert minutes; no conversion from model latency to engineer time.",
+    "Parent evaluator applies frozen substantive rubric after outputs. Not a blind independent human domain expert review; no model self-scoring.",
+    "One selected case, two repetitions, dependent stages; descriptive only. Public-case memorization cannot be excluded."
+  ]
+}
