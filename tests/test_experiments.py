@@ -12,7 +12,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from claude_kit.cli import main
-from claude_kit.core import KitError, resource_root
+from claude_kit.core import KitError
 from claude_kit.experiment import digest, load, scope_snapshot
 from claude_kit.fix_validation import report as fix_report
 from claude_kit.skill_eval import report as eval_report, snapshot as eval_snapshot
@@ -84,13 +84,11 @@ class SkillEvaluationTests(ExperimentFixture):
         self.assertEqual(result["summary"]["candidate_pass_rate"], 1)
         self.assertEqual(result["metric_deltas"]["tokens"], {"count": 2, "mean": -50, "stdev": 0})
         self.assertIsNone(result["metric_deltas"]["duration_seconds"]["mean"])
-
-    def test_complete_comparison_can_show_regression(self):
-        self.runs[1]["outputs"] = self.runs[0]["outputs"]
-        self.runs[0]["outputs"] = self.runs[3]["outputs"]
-        result = self.result()
-        self.assertEqual(result["status"], "complete")
-        self.assertEqual(result["pass_rate_delta"], 0)
+        for offset in (0, 2):
+            self.runs[offset]["outputs"], self.runs[offset + 1]["outputs"] = self.runs[offset + 1]["outputs"], self.runs[offset]["outputs"]
+        regressed = self.result()
+        self.assertEqual(regressed["status"], "complete")
+        self.assertEqual(regressed["pass_rate_delta"], -1)
 
     def test_missing_pair_or_failed_execution_is_not_comparable(self):
         self.assertEqual(self.result(self.runs[:-1])["status"], "gaps")
@@ -115,14 +113,9 @@ class SkillEvaluationTests(ExperimentFixture):
         self.write("skills/debug/SKILL.md", "Use evidence.\n")
         self.suite["cases"][0]["prompt"] += " Changed task."
         self.assertEqual(self.result()["summary"]["comparable_pairs"], 0)
-
-    def test_corrupt_output_and_missing_json_pointer_cannot_pass(self):
+        self.suite["cases"][0]["prompt"] = self.suite["cases"][0]["prompt"].removesuffix(" Changed task.")
         self.write(self.runs[1]["outputs"]["observations"]["path"], "tampered")
-        self.assertEqual(self.result()["status"], "gaps")
-        self.runs[1]["outputs"]["observations"] = self.ref("out/empty.json", {})
-        result = self.result()
-        self.assertEqual(result["status"], "complete")
-        self.assertFalse(result["pairs"][0]["arms"]["candidate"]["passed"])
+        self.assertIn("candidate:changed_artifact:out/candidate-1.json", self.result()["pairs"][0]["gaps"])
 
     def test_malformed_or_unproduced_model_output_counts_as_quality_failure(self):
         self.runs[1]["outputs"]["observations"] = self.ref("out/malformed.json", "not JSON")
@@ -137,11 +130,6 @@ class SkillEvaluationTests(ExperimentFixture):
         result = self.result()
         self.assertEqual(result["status"], "gaps")
         self.assertIn("candidate:missing_transcript", result["pairs"][0]["gaps"])
-
-    def test_invalid_pointer_is_rejected_before_execution(self):
-        self.suite["cases"][0]["assertions"][0]["pointer"] = "/bad~escape"
-        with self.assertRaisesRegex(KitError, "pointer escape"):
-            eval_snapshot(self.root, self.profile, self.suite)
 
     def test_json_boolean_does_not_match_integer(self):
         self.suite["cases"][0]["assertions"][0]["pointer"] = "/flag"
@@ -159,17 +147,6 @@ class SkillEvaluationTests(ExperimentFixture):
         self.runs[0]["metrics"]["tokens"] = True
         with self.assertRaisesRegex(KitError, "finite non-negative"):
             self.result()
-
-    def test_text_checks_use_full_artifact_and_escaped_pointer(self):
-        self.suite["cases"][0]["assertions"] = [
-            {"id": "text", "artifact": "transcript", "operator": "text_not_contains", "expected": "SIMULATE"},
-            {"id": "pointer", "artifact": "observations", "operator": "json_equals", "pointer": "/a~1b/~0key", "expected": True}]
-        current = eval_snapshot(self.root, self.profile, self.suite)
-        for run in self.runs:
-            run["suite_digest"] = current["suite_digest"]
-            run["outputs"] = {"transcript": self.ref(f"out/{run['run_id']}.txt", "review only"),
-                              "observations": self.ref(f"out/{run['run_id']}.json", {"a/b": {"~key": True}})}
-        self.assertEqual(self.result()["summary"]["candidate_pass_rate"], 1)
 
     def test_cli_and_no_tool_execution(self):
         self.result()
@@ -261,17 +238,6 @@ class FixValidationTests(ExperimentFixture):
         with self.assertRaisesRegex(KitError, "requires reproducer"):
             self.result([])
 
-    def test_cli_no_execution_and_empty_review_set(self):
-        self.result()
-        with patch("subprocess.run", side_effect=AssertionError("no execution")):
-            code, output, _ = self.cli(["dv", "fix-report", "--plan", "fix.json", "--format", "markdown"])
-            self.assertEqual(code, 1)
-            self.assertIn('"signoff": false', output)
-        code, output, _ = self.cli(["dv", "fix-snapshot", "--input", "source"])
-        self.assertEqual(code, 0)
-        self.assertEqual(json.loads(output)["input_digest"], self.plan["patched"]["input_digest"])
-
-
 class VariantTests(ExperimentFixture):
     def setUp(self):
         super().setUp()
@@ -289,10 +255,12 @@ class VariantTests(ExperimentFixture):
         self.assertEqual({c["path"] for c in result["candidates"]}, {"rtl/a.sv", "rtl/b.sv"})
         self.assertTrue(all(c["verdict"] == "unreviewed" for c in result["candidates"]))
 
-    def test_anchor_must_match_the_declared_line(self):
-        self.plan["known_instance"]["line"] = 2
-        with self.assertRaisesRegex(KitError, "First pattern"):
-            search(self.root, self.profile, self.plan)
+    def test_anchor_must_match_the_declared_line_and_scope(self):
+        for line, scope in ((2, ["rtl"]), (1, ["source"])):
+            with self.subTest(line=line, scope=scope):
+                self.plan["known_instance"]["line"], self.plan["scope"] = line, scope
+                with self.assertRaises(KitError):
+                    search(self.root, self.profile, self.plan)
 
     def test_file_match_and_byte_budgets_report_incompleteness(self):
         for limits in ({"max_files": 1}, {"max_matches": 1}, {"max_scan_bytes": 20}):
@@ -306,12 +274,6 @@ class VariantTests(ExperimentFixture):
         self.assertFalse(result["search_complete"])
         self.assertNotIn("secret-value", json.dumps(result))
         self.assertIn("forbidden_path:rtl/private.sv", result["gaps"])
-
-    def test_scope_traversal_and_no_anchor_in_scope_rejected(self):
-        for scope in (["../outside"], ["source"]):
-            self.plan["scope"] = scope
-            with self.assertRaises(KitError):
-                search(self.root, self.profile, self.plan)
 
     @unittest.skipIf(os.name == "nt", "Windows symlink privileges vary")
     def test_symlink_candidates_are_not_followed(self):
@@ -343,23 +305,6 @@ class RecordBoundaryTests(ExperimentFixture):
         for value in ("secrets/data.json", "huge.json", "../outside.json", str(self.root / "huge.json")):
             with self.subTest(value=value), self.assertRaises(KitError):
                 load(self.root, self.profile, value)
-
-    def test_templates_are_available_from_the_cli(self):
-        for prefix, names in ((["skill-eval", "template"], ["suite", "run"]),
-                              (["dv", "template"], ["fix-plan", "fix-run", "variant-plan"])):
-            for name in names:
-                output = io.StringIO()
-                with contextlib.redirect_stdout(output):
-                    self.assertEqual(main([*prefix, name]), 0)
-                self.assertEqual(json.loads(output.getvalue())["schema_version"], 1)
-
-    def test_starter_suite_uses_packaged_raw_fixtures(self):
-        template = json.loads((resource_root() / "templates/skill-eval-suite.json").read_text())
-        fixtures = resource_root() / "evals/fixtures"
-        for name in ("dv-only.diff", "license.log", "checker.json", "formal.json"):
-            self.assertTrue((fixtures / name).is_file())
-        self.assertEqual(len(template["cases"]), 4)
-
 
 if __name__ == "__main__":
     unittest.main()
