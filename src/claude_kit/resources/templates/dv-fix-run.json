@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "project": "replace-with-profile-project-id",
+  "fix_id": "BUG-001",
+  "check_id": "original-failure",
+  "side": "base",
+  "run_id": "replace-with-real-run-id",
+  "test": "fifo_underflow",
+  "configuration": "default",
+  "seed": 42,
+  "tool_version": "replace-with-actual-tool-version",
+  "command": ["replace-with-actual-runner-argv"],
+  "baseline": {"source_revision": null, "input_digest": "0000000000000000000000000000000000000000000000000000000000000000"},
+  "status": "skipped",
+  "complete": false,
+  "failure_signature": "",
+  "artifacts": [{"path": "out/fix/check-summary.json", "sha256": "0000000000000000000000000000000000000000000000000000000000000000"}]
+}

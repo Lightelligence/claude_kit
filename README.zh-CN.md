@@ -10,6 +10,9 @@
 
 用 `tool-audit --project-root .` 只读检查项目工具配置；最小 skills 接入与按任务选择
 MCP 的步骤见[精简接入指南](docs/tool-slimming.zh-CN.md)。
+
+`skill-eval` 与 `dv` 提供成对效果评估、修复证据检查和有界同类 bug 候选搜索；
+使用合同、样例和合并前收益标准见 [P0 接入说明](docs/p0-evaluation.zh-CN.md)。
 当前 server 清单、已验证能力与阻塞项，参见[工具验证快照](docs/tool-verification.zh-CN.md)。
 
 从需求澄清、场景实现到证据评审的完整流程，以及 OpenTitan/HAVEN 借鉴评估，参见

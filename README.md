@@ -16,6 +16,10 @@ For four clearly scoped native entrypoints per domain, see
 
 Use `tool-audit --project-root .` for a read-only project configuration inventory;
 see the [minimal DV attachment and task profiles](docs/tool-slimming.zh-CN.md).
+
+Paired skill-output evaluation, fix-evidence validation and bounded known-bug
+candidate search are available through `skill-eval` and `dv`; see the
+[P0 integration and pre-merge usefulness criteria](docs/p0-evaluation.zh-CN.md).
 For the current server inventory and tested versus blocked capabilities, see
 the [verification snapshot](docs/tool-verification.md).
 

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "project": "replace-with-profile-project-id",
+  "id": "BUG-001-variants",
+  "root_cause": "Read pointer advances when empty; confirm the mechanism before searching.",
+  "known_instance": {"path": "rtl/fifo.sv", "line": 12},
+  "scope": ["rtl"],
+  "patterns": [
+    {"id": "exact", "literal": "if (rd_en)", "rationale": "First reproduce the known occurrence at the declared line."},
+    {"id": "family", "literal": "rd_en", "rationale": "Broaden one element; inspect each candidate's empty guard and pointer update."}
+  ]
+}

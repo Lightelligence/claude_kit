@@ -42,6 +42,11 @@ For a requirement or coverage closure task, read
 testplan and runner; the kit's `dv report` checks evidence readiness across
 configurations without creating a second execution state machine.
 
+For a confirmed bug fix, preserve the original failing case plus normal and
+related regression cases for paired base/patched validation. The existing
+debugging guidance describes `dv fix-report` and scoped variant triage; do not
+expand an ordinary test edit into a full fix-validation campaign.
+
 ## Simulation gate
 
 - Default new-test handoff: simulation and regression are `not run`.

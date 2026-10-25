@@ -16,3 +16,9 @@ description: Perform read-only RTL/DV review and evidence review before handoff 
    correction direction. Distinguish correctness findings from missing checks.
 5. Do not claim sign-off when required checks were skipped; list the smallest
    follow-up that would close each material gap.
+
+For a bug-fix review, check paired base/patched evidence for the original
+failure, normal behavior and nearby regressions, including any confirmed
+variants. `dv fix-report` checks supplied records; `dv variant-search` returns
+unreviewed literal candidates. An unrelated base failure or a zero-match
+search cannot establish a valid fix or absence of variants.

@@ -1,0 +1,242 @@
+{
+  "experiment": "2026-10-25 old/new explicitly activated guidance pilot",
+  "status": "incomplete_no_demonstrated_benefit",
+  "requested_model": "gpt-6.1-sol",
+  "settings": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "medium",
+    "sandbox": "read-only",
+    "timeout_seconds": 120,
+    "plugins": false,
+    "remote_plugins": false,
+    "apps": false,
+    "host_skill_discovery": false,
+    "skill_search": false,
+    "multi_agent": false,
+    "web_search": "disabled",
+    "activation": "explicit-read-guidance",
+    "repetitions": 1
+  },
+  "cli_version": "0.164.0-alpha.11.1",
+  "baseline_commit": "4f89755206cdb114c7d5e464e50fa66a12280c6b",
+  "candidate_skill_commit": "aa3015aa8a094efbb1ac3fffa7eb42bfe2b48348",
+  "planned_pairs": 6,
+  "primary_sessions_started": 12,
+  "primary_sessions_completed": 11,
+  "primary_sessions_timed_out": 1,
+  "summary": {
+    "expected_pairs": 6,
+    "comparable_pairs": 5,
+    "gap_pairs": 1,
+    "baseline_pass_rate": 1,
+    "candidate_pass_rate": 1
+  },
+  "pass_rate_delta_on_complete_pairs": 0,
+  "complete_pair_costs": {
+    "tokens": {
+      "pairs": 5,
+      "baseline_total": 332395,
+      "candidate_total": 343678,
+      "change_percent": 3.3944553919282785
+    },
+    "duration_seconds": {
+      "pairs": 5,
+      "baseline_total": 97.78815516698523,
+      "candidate_total": 93.52420933402027,
+      "change_percent": -4.360390914097679
+    },
+    "tool_calls": {
+      "pairs": 5,
+      "baseline_total": 18,
+      "candidate_total": 16,
+      "change_percent": -11.11111111111111
+    }
+  },
+  "cases": [
+    {
+      "case_id": "valid-fix",
+      "baseline": {
+        "status": "completed",
+        "verdict_correct": true,
+        "read_only_behavior": true,
+        "decision": "ready_for_review",
+        "metrics": {
+          "tokens": 100242,
+          "duration_seconds": 19.594280082994374,
+          "tool_calls": 6
+        },
+        "trace_sha256": "74cec9ab4ccff9c89cb265363b9f2e2e43f776220f07271d38709085ba6deeaf"
+      },
+      "candidate": {
+        "status": "completed",
+        "verdict_correct": true,
+        "read_only_behavior": true,
+        "decision": "ready_for_review",
+        "metrics": {
+          "tokens": 85252,
+          "duration_seconds": 18.339778749999823,
+          "tool_calls": 4
+        },
+        "trace_sha256": "6ae76dd96dd42bd1f715fd6168d2c8e21719c7849407b77241259fa0a936d919"
+      }
+    },
+    {
+      "case_id": "seed-mismatch",
+      "baseline": {
+        "status": "completed",
+        "verdict_correct": true,
+        "read_only_behavior": true,
+        "decision": "gaps",
+        "metrics": {
+          "tokens": 46585,
+          "duration_seconds": 18.266520874982234,
+          "tool_calls": 3
+        },
+        "trace_sha256": "475e52f633d3d8c7b7ab965dc81faf62a70cf8442a641e0b3a8c80ab7b570478"
+      },
+      "candidate": {
+        "status": "completed",
+        "verdict_correct": true,
+        "read_only_behavior": true,
+        "decision": "gaps",
+        "metrics": {
+          "tokens": 65008,
+          "duration_seconds": 18.040683416998945,
+          "tool_calls": 3
+        },
+        "trace_sha256": "a0c27a888b22074857275c9c66964221f69c7cf8efbbc2c2116c1832707b3e46"
+      }
+    },
+    {
+      "case_id": "stale-input",
+      "baseline": {
+        "status": "completed",
+        "verdict_correct": true,
+        "read_only_behavior": true,
+        "decision": "gaps",
+        "metrics": {
+          "tokens": 80805,
+          "duration_seconds": 20.45596600000863,
+          "tool_calls": 4
+        },
+        "trace_sha256": "8d0ec54ee56ca09bf5e1be9cd92f588e626f51ead7c06e6086b2e800a5af3c26"
+      },
+      "candidate": {
+        "status": "completed",
+        "verdict_correct": true,
+        "read_only_behavior": true,
+        "decision": "gaps",
+        "metrics": {
+          "tokens": 84553,
+          "duration_seconds": 19.12745954201091,
+          "tool_calls": 4
+        },
+        "trace_sha256": "ba5863b02cf2e1c599d8e859cba8b77995033602c29349c979dea3689a124600"
+      }
+    },
+    {
+      "case_id": "variant-sweep",
+      "baseline": {
+        "status": "completed",
+        "verdict_correct": true,
+        "read_only_behavior": true,
+        "decision": "candidate_review",
+        "metrics": {
+          "tokens": 36821,
+          "duration_seconds": 41.09984162499313,
+          "tool_calls": 3
+        },
+        "trace_sha256": "a8a5287204d1ffef3752db0b0dfd4bbe668c24fd55d32c53c8ad4fd55596e298"
+      },
+      "candidate": {
+        "status": "timeout",
+        "verdict_correct": false,
+        "read_only_behavior": true,
+        "decision": null,
+        "metrics": {
+          "tokens": null,
+          "duration_seconds": 120.00781858401024,
+          "tool_calls": 2
+        },
+        "trace_sha256": "f3ff615e543e1e9e3562eecf19fd2255ded3dbbea7b29161d95aa367369dbf0f"
+      }
+    },
+    {
+      "case_id": "wrong-signature",
+      "baseline": {
+        "status": "completed",
+        "verdict_correct": true,
+        "read_only_behavior": true,
+        "decision": "gaps",
+        "metrics": {
+          "tokens": 80787,
+          "duration_seconds": 24.125084458995843,
+          "tool_calls": 4
+        },
+        "trace_sha256": "cb33fd26be69e9706d1555e113a9c7652f8824d7c676ed28c9c45b0d6fca7a43"
+      },
+      "candidate": {
+        "status": "completed",
+        "verdict_correct": true,
+        "read_only_behavior": true,
+        "decision": "gaps",
+        "metrics": {
+          "tokens": 84803,
+          "duration_seconds": 21.8903916249983,
+          "tool_calls": 4
+        },
+        "trace_sha256": "a4d102d6bae4eaa6ea0f988e0ce686fe76a8678d4a253f5a53927b07351a0084"
+      }
+    },
+    {
+      "case_id": "license-blocker",
+      "baseline": {
+        "status": "completed",
+        "verdict_correct": true,
+        "read_only_behavior": true,
+        "decision": "blocked",
+        "metrics": {
+          "tokens": 23976,
+          "duration_seconds": 15.346303750004154,
+          "tool_calls": 1
+        },
+        "trace_sha256": "eb7f7329bad2a8497ffa3b17f050aad720a834c5b12bafd14b39e69678483171"
+      },
+      "candidate": {
+        "status": "completed",
+        "verdict_correct": true,
+        "read_only_behavior": true,
+        "decision": "blocked",
+        "metrics": {
+          "tokens": 24062,
+          "duration_seconds": 16.12589600001229,
+          "tool_calls": 1
+        },
+        "trace_sha256": "463002f02304db163d9774fa5d0f6a6ad8cbae54c5e78668e8533c290e805203"
+      }
+    }
+  ],
+  "prior_attempt": {
+    "excluded": true,
+    "started_sessions": 5,
+    "completed_sessions": 4,
+    "reason": "Historical verdict report accidentally included during fixture preparation; full batch invalidated, traces retained."
+  },
+  "preflight_sessions": 2,
+  "input_scope": "Historical public Python fix with controlled metadata perturbations plus small RTL/log fixtures; no live DV project or EDA",
+  "inference_limits": [
+    "One sample per case, five complete pairs, no statistical significance or stable cost benefit established.",
+    "The incomplete pair is preserved and excluded only from paired means; its cost is unknown, not zero.",
+    "Connection failure is external; no conclusion about a skill-caused quality regression.",
+    "This comparison measures guidance only; new deterministic CLI helpers were unavailable in both arms.",
+    "Not a native skill discovery test, not Claude Code compatibility validation, and not evidence of useful DV-project behavior."
+  ],
+  "benefit_proven": false,
+  "merge_allowed": false,
+  "raw_evidence": {
+    "file": "p0-ab-evidence.tar.gz",
+    "bytes": 116821,
+    "sha256": "b13ae0a28097a940936aa05f9e4ab22efb7f924773605b82de9be017b7a18bb5",
+    "manifest_entries": 311
+  }
+}
