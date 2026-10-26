@@ -148,6 +148,7 @@ def _replace(path: Path, data: bytes, expected: bytes | None) -> None:
                 raise KitError("Memory target changed while preparing the update") from exc
             if current != expected:
                 raise KitError("Memory target changed while preparing the update")
+            os.chmod(name, stat.S_IMODE(path.stat().st_mode))
             os.replace(name, path)
     finally:
         if os.path.exists(name):

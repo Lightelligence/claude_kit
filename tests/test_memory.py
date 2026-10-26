@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import stat
 import sys
 import tempfile
 import unittest
@@ -154,6 +155,15 @@ class MemoryTests(unittest.TestCase):
         before = path.read_bytes()
         self.assertFalse(memory.enable_auto_memory(self.root)['changed'])
         self.assertEqual(path.read_bytes(), before)
+
+    def test_settings_update_preserves_existing_permission_bits(self):
+        path = self.root / '.claude/settings.json'
+        path.parent.mkdir()
+        path.write_text('{"env":{"EXAMPLE":"keep"}}')
+        path.chmod(0o640)
+        before = stat.S_IMODE(path.stat().st_mode)
+        memory.enable_auto_memory(self.root)
+        self.assertEqual(stat.S_IMODE(path.stat().st_mode), before)
 
     def test_bad_settings_and_secrets_do_not_leak_or_get_replaced(self):
         settings = self.root / '.claude/settings.json'
