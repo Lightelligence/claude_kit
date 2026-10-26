@@ -13,6 +13,7 @@
     ".claude/loop_policy.json",
     ".claude/references/log-evidence.md",
     ".claude/references/project-workflow.md",
+    ".claude/references/task-memory.md",
     ".claude/rules/00_loop_modes.md",
     ".claude/rules/01_swarm_flow.md",
     ".claude/rules/02_toolchain.md",

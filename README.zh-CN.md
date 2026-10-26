@@ -1,5 +1,8 @@
 # claude_kit
 
+[长期记忆](docs/memory.md)：通用机制留在 kit，任务状态留在项目；按需恢复，
+校验版本后更新，不增加 MCP 工具发现开销。
+
 [English](README.md) | 简体中文
 
 面向 RTL / DV 工程的可复用 Claude Code kit。
