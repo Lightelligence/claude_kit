@@ -6,6 +6,21 @@ This is the fast lookup guide for using `claude_kit` from a consumer RTL/DV repo
 
 Use this document when you already know what you want to do and need the shortest path to the correct command or Claude Code prompt.
 
+## Project task memory
+
+Use the pinned launcher (or a matching installed `claude-kit`):
+
+```sh
+python <kit>/bin/claude-kit memory status --project-root .
+python <kit>/bin/claude-kit memory enable-auto --project-root .
+python <kit>/bin/claude-kit memory init --project-root . --task <task>
+python <kit>/bin/claude-kit memory read --project-root . --task <task>
+python <kit>/bin/claude-kit memory checkpoint --project-root . --task <task> --input <project-relative-file> --expected-sha256 <previous-read-sha>
+```
+
+The [memory workflow](memory.md) defines ownership, limits, recovery and client
+activation checks. These commands operate on metadata and invoke no EDA/model.
+
 ## Project tool inventory
 
 For configuration inventory before changing tool selection:

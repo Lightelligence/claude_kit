@@ -1,5 +1,8 @@
 # claude_kit
 
+[Long-term memory](docs/memory.md): bounded project task checkpoints, checked
+updates and native auto-memory setup without adding MCP discovery overhead.
+
 Requirement-driven DV: [AI assistant DV flow and upstream assessment (Chinese)](docs/ai-dv-flow.zh-CN.md)
 and [DV evidence CLI](docs/command-reference.md#requirement-level-dv-evidence).
 `dv snapshot/report` adds source-bound evidence readiness per requirement,
