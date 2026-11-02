@@ -1,0 +1,4 @@
+Synthetic evaluation fixture; no simulator was executed.
+run_id=fixture-license test=smoke seed=42
+Error-[LIC-FLEXLM] License checkout failed for VCS simulation feature.
+Simulation did not start. No checker or coverage results are available.

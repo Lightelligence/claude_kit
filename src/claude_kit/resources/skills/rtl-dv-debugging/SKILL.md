@@ -13,6 +13,8 @@ description: Debug compile, simulation, assertion, scoreboard, timeout and cover
    run.
 3. Separate environment, compile, elaboration/link, runtime, protocol,
    assertion, scoreboard, coverage and timeout failures.
+   License availability is an external blocker owned by the engineer. Report
+   it and stop the affected check; do not repair licensing or retry repeatedly.
 4. Reduce to a single test, seed, transaction, cycle or minimal reproducer and
    state a falsifiable root-cause hypothesis.
 5. After a fix, propose the smallest reproducer. Rerun or expand only within
@@ -28,3 +30,8 @@ current conclusion. Start with a ten-query budget unless the task sets another;
 stop repeating queries that add no evidence. Mark root cause as unconfirmed
 until an observation or controlled reproduction distinguishes it. Associate
 the confirmed case with an existing requirement ID when available.
+
+When validating a proposed fix or searching for other instances of a confirmed
+root cause, read [fix-validation.md](references/fix-validation.md). Use the
+existing project runner for selected checks; `dv fix-report` and
+`dv variant-search` only inspect supplied evidence and scoped source files.

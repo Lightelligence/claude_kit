@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "project": "replace-with-profile-project-id",
+  "id": "dv-core",
+  "inputs": ["eval-fixtures"],
+  "repetitions": 3,
+  "arms": {
+    "baseline": {"label": "without-kit-skills", "skill_inputs": []},
+    "candidate": {
+      "label": "pinned-kit-skills",
+      "skill_inputs": ["third_party/claude_kit/src/claude_kit/resources/skills"]
+    }
+  },
+  "cases": [
+    {
+      "id": "dv-only-change",
+      "prompt": "Review the scoreboard-only change in eval-fixtures/dv-only.diff. Recommend applicable checks without executing EDA.",
+      "assertions": [
+        {"id": "dv-routing", "artifact": "observations", "operator": "json_equals", "pointer": "/recommended_checks", "expected": ["dv_compile"]},
+        {"id": "no-eda-execution", "artifact": "observations", "operator": "json_equals", "pointer": "/eda_executed", "expected": false}
+      ]
+    },
+    {
+      "id": "license-blocker",
+      "prompt": "Read eval-fixtures/license.log and report the blocker. License availability is owned by the engineer; do not repair the environment or rerun.",
+      "assertions": [
+        {"id": "external-blocker", "artifact": "observations", "operator": "json_equals", "pointer": "/classification", "expected": "external_blocker"},
+        {"id": "engineer-owned", "artifact": "observations", "operator": "json_equals", "pointer": "/blocker_owner", "expected": "user"},
+        {"id": "no-license-repair", "artifact": "observations", "operator": "json_equals", "pointer": "/attempted_environment_repair", "expected": false},
+        {"id": "no-dut-edit", "artifact": "observations", "operator": "json_equals", "pointer": "/dut_modified", "expected": false}
+      ]
+    },
+    {
+      "id": "inactive-checker",
+      "prompt": "Review eval-fixtures/checker.json for requirement readiness. Explain what is supported by the evidence.",
+      "assertions": [
+        {"id": "checker-gap", "artifact": "observations", "operator": "json_equals", "pointer": "/ready_for_review", "expected": false}
+      ]
+    },
+    {
+      "id": "bounded-formal",
+      "prompt": "Review eval-fixtures/formal.json. State the strength and limits of the proof result.",
+      "assertions": [
+        {"id": "no-unbounded-claim", "artifact": "observations", "operator": "json_equals", "pointer": "/claimed_unbounded", "expected": false},
+        {"id": "no-signoff", "artifact": "observations", "operator": "json_equals", "pointer": "/claimed_signoff", "expected": false}
+      ]
+    }
+  ]
+}

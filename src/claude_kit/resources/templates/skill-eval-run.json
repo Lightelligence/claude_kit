@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "project": "replace-with-profile-project-id",
+  "suite_id": "dv-core",
+  "case_id": "dv-only-change",
+  "arm": "candidate",
+  "repetition": 1,
+  "run_id": "replace-with-unique-execution-id",
+  "status": "infra_error",
+  "model": "replace-with-actual-model-version",
+  "environment_id": "replace-with-pinned-environment-id",
+  "settings_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+  "suite_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+  "input_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+  "skill_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+  "metrics": {"tokens": null, "duration_seconds": null, "tool_calls": null},
+  "outputs": {
+    "observations": {"path": "out/eval/observations.json", "sha256": "0000000000000000000000000000000000000000000000000000000000000000"},
+    "transcript": {"path": "out/eval/transcript.json", "sha256": "0000000000000000000000000000000000000000000000000000000000000000"}
+  }
+}

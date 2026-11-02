@@ -1,0 +1,242 @@
+{
+  "schema_version": 1,
+  "kind": "helper-enabled-historical-dv-study",
+  "arms": {
+    "baseline": "4f89755206cdb114c7d5e464e50fa66a12280c6b",
+    "candidate": "dac1c5eedf28f5c316b3a12926db019c745f80ff"
+  },
+  "sessions": {
+    "r1-baseline-primary": {
+      "status": "completed",
+      "duration_seconds": 250.89027704199543,
+      "tool_calls": 15,
+      "tokens": 1170390,
+      "immutable_changes": [],
+      "command_budget_exceeded": false
+    },
+    "r1-candidate-primary": {
+      "status": "completed",
+      "duration_seconds": 211.82794012498925,
+      "tool_calls": 14,
+      "tokens": 758373,
+      "immutable_changes": [],
+      "command_budget_exceeded": false
+    },
+    "r2-baseline-primary": {
+      "status": "completed",
+      "duration_seconds": 205.861851499998,
+      "tool_calls": 12,
+      "tokens": 790795,
+      "immutable_changes": [],
+      "command_budget_exceeded": false
+    },
+    "r2-candidate-primary": {
+      "status": "completed",
+      "duration_seconds": 243.8013595000084,
+      "tool_calls": 15,
+      "tokens": 1037397,
+      "immutable_changes": [],
+      "command_budget_exceeded": false
+    }
+  },
+  "workflows": {
+    "r1-baseline-primary": {
+      "complete": true,
+      "missed_required_issues": [],
+      "evidence_defects_detected": 3,
+      "known_source_omissions_detected": 2,
+      "unsupported_acceptances": 0,
+      "safe_code_false_escalations": 0,
+      "unverified_extra_source_items": [
+        {
+          "path": "project/source/hw/ip/otbn/dv/uvm/env/otbn_env_cov.sv",
+          "line": 2486,
+          "classification": "related_omission",
+          "rationale": "P2: CTRL sampling passes only data[0] to the one-bit covergroup at 473. WFI enable at data[1] has no independent field coverage despite scoreboard forwarding at 223 and RTL idle-only update behavior at otbn.sv:949. Add WFI enable/disable and ignored-write coverage while retaining existing bit-0 coverage."
+        },
+        {
+          "path": "project/source/hw/ip/otbn/dv/uvm/env/otbn_scoreboard.sv",
+          "line": 342,
+          "classification": "related_omission",
+          "rationale": "P1: process_tl_mem_write predicts LOAD_CHECKSUM updates for aligned full writes, including paused DMEM writes. RTL otbn.sv:789 disables CRC updates while imem_access_core is asserted, which includes wfi_pending at 451. Gate prediction to RTL acceptance conditions; discriminate with a paused DMEM write followed by LOAD_CHECKSUM read."
+        },
+        {
+          "path": "project/source/hw/ip/otbn/dv/uvm/env/otbn_scoreboard.sv",
+          "line": 677,
+          "classification": "unresolved",
+          "rationale": "P2 candidate: PAUSED permits super.mem_compare for both memories, although RTL otbn.sv:451,484 retains and blanks IMEM while releasing DMEM at 705,730. Confirm callback/configuration behavior in the absent base scoreboard, then distinguish paused IMEM zero responses from valid DMEM comparisons."
+        },
+        {
+          "path": "project/source/hw/ip/otbn/dv/uvm/env/otbn_scoreboard.sv",
+          "line": 223,
+          "classification": "unresolved",
+          "rationale": "P2 candidate: CTRL writes forward wfi_enabled without an idle guard, whereas RTL ignores changes outside IDLE. C++ setter otbn_model.cc:570 forwards into an absent ISSWrapper implementation. Inspect its gating before claiming divergence; check an ignored paused CTRL write/readback/resume."
+        },
+        {
+          "path": "project/source/hw/ip/otbn/dv/uvm/env/otbn_scoreboard.sv",
+          "line": 188,
+          "classification": "unresolved",
+          "rationale": "P2 verification-gap candidate: the bounded pending_start_tl_trans check covers idle Execute/wipe commands, excluding PAUSED Resume. Specify whether a separate bounded resume acknowledgment is required, including rapid re-pause/reset behavior. This does not establish a current Resume failure."
+        }
+      ],
+      "preparation_failures": {
+        "helper_invalid_invocations": 0,
+        "shell_errors": [],
+        "search_budget_exhaustions": 0,
+        "extra_helper_searches": 0
+      },
+      "external_correction_issue_cues": 0,
+      "external_correction_rounds": 0,
+      "actual_human_minutes": null
+    },
+    "r1-candidate-primary": {
+      "complete": true,
+      "missed_required_issues": [],
+      "evidence_defects_detected": 3,
+      "known_source_omissions_detected": 2,
+      "unsupported_acceptances": 0,
+      "safe_code_false_escalations": 0,
+      "unverified_extra_source_items": [
+        {
+          "path": "project/source/hw/ip/otbn/dv/uvm/env/otbn_env_cov.sv",
+          "line": 2486,
+          "classification": "related_omission",
+          "rationale": "P2: CTRL coverage samples only data[0] into the scalar covergroup at line 473. CTRL.wfi_enabled at data[1], explicitly forwarded to the model by scoreboard line 223, has no corresponding value coverage. Extend the sampling interface and cover enabled/disabled values plus accepted and ignored writes, including paused writes. Grouped with the covergroup definition as one omission."
+        },
+        {
+          "path": "project/source/hw/ip/otbn/dv/uvm/env/otbn_scoreboard.sv",
+          "line": 395,
+          "classification": "unresolved",
+          "rationale": "was_executing excludes PAUSED before the recoverable-alert expectation at 428. No supplied trace establishes a direct PAUSED-to-IDLE transition with nonzero recoverable err_bits. Determine reachability before changing this checker; this is not a confirmed defect."
+        }
+      ],
+      "preparation_failures": {
+        "helper_invalid_invocations": 0,
+        "shell_errors": [
+          {
+            "kind": "shell-glob",
+            "evidence": "native command 4 and work/preparation-notes.txt",
+            "reason": "Unmatched kit/src/claude_kit/templates* glob; autonomously recovered by reading actual parser/implementation."
+          }
+        ],
+        "search_budget_exhaustions": 1,
+        "extra_helper_searches": 1
+      },
+      "external_correction_issue_cues": 0,
+      "external_correction_rounds": 0,
+      "actual_human_minutes": null
+    },
+    "r2-candidate-primary": {
+      "complete": true,
+      "missed_required_issues": [],
+      "evidence_defects_detected": 3,
+      "known_source_omissions_detected": 2,
+      "unsupported_acceptances": 0,
+      "safe_code_false_escalations": 0,
+      "unverified_extra_source_items": [
+        {
+          "path": "project/source/hw/ip/otbn/dv/uvm/env/otbn_env_cov.sv",
+          "line": 473,
+          "classification": "related_omission",
+          "rationale": "P2: CTRL coverage samples one bit; its caller at 2486 supplies data[0], leaving WFI-enable bit 1 invisible. Extend the sampling interface and coverage for enable/disable and writes outside idle; update fcov.md:167."
+        },
+        {
+          "path": "project/source/hw/ip/otbn/dv/uvm/env/otbn_scoreboard.sv",
+          "line": 677,
+          "classification": "related_omission",
+          "rationale": "P1: mem_compare permits ordinary content comparison for both memories during PAUSED. RTL otbn.sv:451/485 retains and blanks IMEM while releasing DMEM at 705/730. Split memory-specific expectations: paused IMEM reads expect zero, whereas legal DMEM reads compare contents."
+        },
+        {
+          "path": "project/source/hw/ip/otbn/dv/uvm/env/otbn_scoreboard.sv",
+          "line": 341,
+          "classification": "unresolved",
+          "rationale": "Paused-write checksum candidate: prediction steps CRC at 371, while RTL otbn.sv:789 suppresses CRC during retained IMEM ownership. C++ delegates to an absent ISSWrapper implementation. Inspect that dependency and observe a paused DMEM write followed by LOAD_CHECKSUM read before confirming another defect."
+        }
+      ],
+      "preparation_failures": {
+        "helper_invalid_invocations": 0,
+        "shell_errors": [],
+        "search_budget_exhaustions": 1,
+        "extra_helper_searches": 2
+      },
+      "external_correction_issue_cues": 0,
+      "external_correction_rounds": 0,
+      "actual_human_minutes": null
+    },
+    "r2-baseline-primary": {
+      "complete": true,
+      "missed_required_issues": [],
+      "evidence_defects_detected": 3,
+      "known_source_omissions_detected": 2,
+      "unsupported_acceptances": 0,
+      "safe_code_false_escalations": 0,
+      "unverified_extra_source_items": [
+        {
+          "path": "project/source/hw/ip/otbn/dv/uvm/env/otbn_env_cov.sv",
+          "line": 2486,
+          "classification": "related_omission",
+          "rationale": "P2 coverage gap: CTRL sampling passes only data[0] into the one-bit covergroup at 473. WFI enable is bit 1, as scoreboard:223 demonstrates. Add field-specific enable/disable and relevant state coverage; existing coverage cannot establish WFI-enable coverage."
+        },
+        {
+          "path": "project/source/hw/ip/otbn/dv/uvm/env/otbn_scoreboard.sv",
+          "line": 395,
+          "classification": "unresolved",
+          "rationale": "The recoverable-alert predecessor predicate excludes PAUSED. The partial snapshot does not establish whether a direct Paused-to-Idle recoverable-error transition is reachable. Resolve against the complete ISS/spec before changing it."
+        },
+        {
+          "path": "project/source/hw/ip/otbn/dv/uvm/env/otbn_scoreboard.sv",
+          "line": 445,
+          "classification": "unresolved",
+          "rationale": "The bounded exception has source-level timing justification and matching monitor edge choices, but no supplied cycle trace independently validates the bound across consecutive WFI, reset and wipe boundaries."
+        }
+      ],
+      "preparation_failures": {
+        "helper_invalid_invocations": 0,
+        "shell_errors": [],
+        "search_budget_exhaustions": 0,
+        "extra_helper_searches": 0
+      },
+      "external_correction_issue_cues": 0,
+      "external_correction_rounds": 0,
+      "actual_human_minutes": null
+    }
+  },
+  "aggregate": {
+    "baseline": {
+      "evidence_defects_detected": 6,
+      "known_source_omissions_detected": 4,
+      "unsupported_acceptances": 0,
+      "safe_code_false_escalations": 0,
+      "external_correction_issue_cues": 0,
+      "external_correction_rounds": 0,
+      "missed_required_issues": 0,
+      "complete_workflows": 2,
+      "actual_human_minutes": null
+    },
+    "candidate": {
+      "evidence_defects_detected": 6,
+      "known_source_omissions_detected": 4,
+      "unsupported_acceptances": 0,
+      "safe_code_false_escalations": 0,
+      "external_correction_issue_cues": 0,
+      "external_correction_rounds": 0,
+      "missed_required_issues": 0,
+      "complete_workflows": 2,
+      "actual_human_minutes": null
+    }
+  },
+  "limitations": [
+    "Common fixture/plan records prepared for both arms. New arm must create its own scoped variant plan, run real helpers and triage output. This does not measure engineer time to integrate an actual simulator collector.",
+    "Actual engineer minutes unmeasured. Parent AI counts residual issues and, if mandatory issues are missed, supplies one standardized corrective session per workflow; report both cue count and round count as simulated intervention.",
+    "Actual helper execution with real historical source/report context plus explicitly controlled collector records. No local VCS/Xcelium execution and no claim that controlled probes demonstrate real DV failure detection.",
+    "Frozen substantive oracle applied by parent AI; excerpts and commands retained. Not independent human expert grading.",
+    "One case/two repetitions, requested model alias not exact backend build, possible public-case knowledge. Token/latency descriptive only."
+  ],
+  "interpretation": [
+    "Real helper invocation is verified separately by offline replay, not by model self-declaration.",
+    "The three injected metadata faults are controlled probes, not real VCS/Xcelium run evidence.",
+    "Known omissions are two source-supported related coverage issues, not independently reproduced DUT bugs.",
+    "Extra findings outside the frozen oracle are not counted as proven gains or automatically treated as false positives.",
+    "External correction cues are parent-AI simulated intervention, not measured engineer minutes."
+  ]
+}
