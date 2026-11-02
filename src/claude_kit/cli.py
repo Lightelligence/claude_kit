@@ -86,6 +86,18 @@ def build_parser() -> argparse.ArgumentParser:
     version = subparsers.add_parser("version", help="Show kit version")
     version.set_defaults(handler=lambda args: {"version": __version__})
 
+    memory = subparsers.add_parser("memory", help="Bounded project task checkpoints and native auto-memory setup")
+    memory_commands = memory.add_subparsers(dest="memory_action", required=True)
+    for action in ("status", "enable-auto", "init", "read", "checkpoint"):
+        command = memory_commands.add_parser(action)
+        command.add_argument("--project-root", help="Project root")
+        if action in ("init", "read", "checkpoint"):
+            command.add_argument("--task", required=True, help="Explicit task slug; no automatic latest-task selection")
+        if action == "checkpoint":
+            command.add_argument("--input", required=True, help="Project-relative UTF-8 input file, or - for stdin")
+            command.add_argument("--expected-sha256", required=True, help="SHA256 from the preceding state read")
+        command.set_defaults(handler=handle_memory)
+
     tool_profiles = subparsers.add_parser(
         "tool-profiles", help="List project MCP tool profiles without exposing server credentials"
     )
@@ -672,6 +684,22 @@ def handle_session(args: argparse.Namespace) -> int:
     if arguments[:1] == ["--"]:
         arguments = arguments[1:]
     return launch_session(_root(args.project_root), args.tools, arguments)
+
+
+def handle_memory(args: argparse.Namespace) -> dict:
+    from . import memory
+
+    root = _root(args.project_root)
+    if args.memory_action == "status":
+        return memory.memory_status(root)
+    if args.memory_action == "enable-auto":
+        return memory.enable_auto_memory(root)
+    if args.memory_action == "init":
+        return memory.init_state(root, args.task)
+    if args.memory_action == "read":
+        return memory.read_state(root, args.task)
+    data = sys.stdin.buffer.read(memory.MAX_STATE_BYTES + 1) if args.input == '-' else memory.read_input(root, args.input)
+    return memory.checkpoint(root, args.task, data, args.expected_sha256)
 
 
 def main(argv: list[str] | None = None) -> int:

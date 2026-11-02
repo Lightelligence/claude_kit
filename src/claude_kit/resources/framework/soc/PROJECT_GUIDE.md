@@ -30,7 +30,8 @@ Preserve user edits. Treat vendor IP/VIP as read-only unless authorized.
   files or tool results. Bound matches, bytes and delegated responses; truncated
   results are incomplete. Skip unrelated outputs/caches/vendor trees.
 - Reuse unchanged evidence; refresh after source, branch or configuration changes.
-  Before compact, save decisions, changed paths, evidence and next action.
+  Checkpoint multi-step work in `.claude/task-memory/<task>/STATE.md` at milestones;
+  reuse its existing plan. See [task memory](.claude/references/task-memory.md) as needed.
 
 ## Execution and delivery
 

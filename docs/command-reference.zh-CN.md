@@ -6,6 +6,21 @@
 
 如果已经知道要做什么，只需要查找对应命令、tool、参数或 Claude Code prompt，可以直接从本页开始。
 
+## 项目任务记忆
+
+通过当前项目固定的 kit 执行，`<task>` 为明确选择的任务 slug：
+
+```sh
+python <kit>/bin/claude-kit memory status --project-root .
+python <kit>/bin/claude-kit memory enable-auto --project-root .
+python <kit>/bin/claude-kit memory init --project-root . --task <task>
+python <kit>/bin/claude-kit memory read --project-root . --task <task>
+python <kit>/bin/claude-kit memory checkpoint --project-root . --task <task> --input <项目内文件> --expected-sha256 <上次读取的SHA256>
+```
+
+分层存储、恢复边界与客户端启用检查见[长期记忆](memory.md)。这些是元数据操作，
+不调用模型或 EDA；已有显式设置、项目权限和检查选择规则继续有效。
+
 ## 项目工具清单
 
 调整工具选择前，可先只读审计项目配置：
