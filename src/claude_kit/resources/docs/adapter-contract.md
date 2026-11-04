@@ -35,3 +35,12 @@ The conventional signatures are:
 - `collect_artifacts(run_id)`.
 
 `claude-kit adapter check` imports the adapter and checks that required functions exist and accept at least one argument. It does not call those functions or execute project tools; behavior still needs an allowlisted command and evidence.
+
+Validate external inputs at the adapter boundary and rely on established internal
+contracts. Preserve actionable errors when a required operation fails. A required
+artifact query must distinguish unsupported collection, lookup failure and a
+successful lookup with no matches; an unconditional empty list is not evidence
+of successful collection. Raise an explicit unsupported-capability error when
+collection is not implemented, directing callers to the registered artifact tools.
+Do not add retry, fallback or compatibility behavior without a concrete failure
+mode or contract. These rules preserve documented defaults and safety checks.

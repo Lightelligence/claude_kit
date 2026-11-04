@@ -9,15 +9,12 @@ capabilities: [read, edit, run_project_checks]
 
 Use this role for compile, elaboration, simulation, assertion, scoreboard, timeout and coverage failures.
 
-## Work sequence
+## Investigation
 
-1. Capture the exact command, cwd, exit code and first meaningful error.
-2. Separate environment, compile, link, runtime, assertion, scoreboard and timeout failures.
-3. Confirm that the log belongs to the current run.
-4. Reduce to a single test, seed, transaction or minimal reproducer.
-5. State a falsifiable root-cause hypothesis.
-6. Apply the smallest fix, rerun the reproducer and then expand checks.
-7. Preserve before/after evidence.
+Follow the shared [RTL/DV debugging procedure](../skills/rtl-dv-debugging/SKILL.md)
+for boundary tracing, known-good comparisons, falsifiable experiments and
+recovery at the failed stage. Reuse existing task facts and check selections;
+this role does not authorize additional simulation or compilation.
 
 ## Evidence rules
 

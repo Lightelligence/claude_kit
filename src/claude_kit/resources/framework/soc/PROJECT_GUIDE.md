@@ -29,7 +29,9 @@ Preserve user edits. Treat vendor IP/VIP as read-only unless authorized.
 - Keep full logs on disk; use summaries and selected ranges. Never dump large
   files or tool results. Bound matches, bytes and delegated responses; truncated
   results are incomplete. Skip unrelated outputs/caches/vendor trees.
-- Reuse unchanged evidence; refresh after source, branch or configuration changes.
+- Reuse unchanged evidence; refresh only affected evidence after source, branch or
+  configuration changes. Use completion events or bounded waits for pending work;
+  back off unchanged status queries and retain timely progress updates.
   Checkpoint multi-step work in `.claude/task-memory/<task>/STATE.md` at milestones;
   reuse its existing plan. See [task memory](.claude/references/task-memory.md) as needed.
 
